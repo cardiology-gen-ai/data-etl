@@ -62,6 +62,9 @@ detailed discussion of the data that have provided the basis of the guidelines.
 
 
 
+
+![Page 2 Images](Cardio_oncology_2022_images/page_002_images.png)
+
 The content of these European Society of Cardiology (ESC) Guidelines has been published for personal and educational use only. No commercial use is authorized. No part of the ESC
 Guidelines may be translated or reproduced in any form without written permission from the ESC. Permission can be obtained upon submission of a written request to Oxford University
 [Press, the publisher of the European Heart Journal and the party authorized to handle such permissions on behalf of the ESC (journals.permissions@oup.com).](mailto:journals.permissions@oup.com)
@@ -1412,11 +1415,26 @@ ESC Guidelines 4239
 
 
 
+![Page 30 Images](Cardio_oncology_2022_images/page_030_images.png)
 
 
 
 
+![Page 32 Images](Cardio_oncology_2022_images/page_032_images.png)
 
+
+
+
+![Page 34 Images](Cardio_oncology_2022_images/page_034_images.png)
+
+
+
+![Page 35 Images](Cardio_oncology_2022_images/page_035_images.png)
+
+
+
+
+![Page 37 Images](Cardio_oncology_2022_images/page_037_images.png)
 
 Figure 1 [Video 1 Central Illustration: Dynamics of cardiovascular toxicity risk of patients with cancer over their therapy continuum. CS, cancer](https://players.brightcove.net/1611106596001/default_default/index.html?videoId=6309381730112)
 survivors; CTR-CVT, cancer therapy-related cardiovascular toxicity; CV, cardiovascular; CVD, cardiovascular disease; CVRF, cardiovascular risk factors; CTR-CVT risk is a dynamic variable that changes through the pathway of care, and is influenced by several conditions including age, cancer
@@ -1456,6 +1474,20 @@ Recommendations are formed regarding the most permissible (from a
 
 
 
+![Page 40 Images](Cardio_oncology_2022_images/page_040_images.png)
+
+
+
+![Page 41 Images](Cardio_oncology_2022_images/page_041_images.png)
+
+
+
+![Page 42 Images](Cardio_oncology_2022_images/page_042_images.png)
+
+
+
+
+![Page 44 Images](Cardio_oncology_2022_images/page_044_images.png)
 
 
 
@@ -1464,6 +1496,7 @@ Recommendations are formed regarding the most permissible (from a
 
 
 
+![Page 50 Images](Cardio_oncology_2022_images/page_050_images.png)
 
 
 Figure 2 Cardio-oncology care pathways. BP, blood pressure; CS, cancer survivors; CTR-CVT, cancer therapy-related cardiovascular toxicity;
@@ -1477,10 +1510,16 @@ HbA1c, ECG, and NP) and CVRF management is recommended in CS who were treated wi
 volume exposing the heart.
 
 
+
+![Page 52 Images](Cardio_oncology_2022_images/page_052_images.png)
+
 CVD perspective) and the most effective (from an oncological perspective) cancer treatment. Adjudication of CV events occurring in patients on active therapy is another important aspect of
 cardio-oncology practice. [1][,][3] This is in addition to recommendations
 on best treatment and management practices. This includes the full
 
+
+
+![Page 53 Images](Cardio_oncology_2022_images/page_053_images.png)
 
 scope of CV therapies, including healthy lifestyle promotion and
 pharmacological, device, and surgical treatments. [4][,][9][,][10]
@@ -1495,6 +1534,9 @@ ESC Guidelines 4241
 
 
 
+
+
+![Page 59 Images](Cardio_oncology_2022_images/page_059_images.png)
 
 
 Figure 3 Baseline cardiovascular toxicity risk assessment checklist. BNP, B-type natriuretic peptide; cTn, cardiac troponin; CTR-CVT, cancer therapy-related
@@ -1530,7 +1572,6 @@ personalize approaches to minimize CTR-CVT and improve both
 cancer and CV outcomes.
 
 4242 ESC Guidelines
-
 
 
 
@@ -1614,6 +1655,9 @@ Continued
 4244 ESC Guidelines
 
 
+
+
+![Page 75 Images](Cardio_oncology_2022_images/page_075_images.png)
 
 |Col1|Coronary epicardial<br>vasoreactivity|Col3|Vasospastic angina|
 |---|---|---|---|
@@ -1721,6 +1765,9 @@ Only a limited number of retrospective risk scores have been published in patien
 or extrapolated to other type of malignancies. [24][–][29] While further
 
 
+
+![Page 92 Images](Cardio_oncology_2022_images/page_092_images.png)
+
 validation is needed, HFA-ICOS risk assessment tools should be con
 sidered to determine pre-treatment risk of CTR-CVT as they are
 easy to use and implement in oncology and haematology services
@@ -1749,6 +1796,12 @@ inhibitors
 
 
 
+
+![Page 96 Images](Cardio_oncology_2022_images/page_096_images.png)
+
+
+
+![Page 97 Images](Cardio_oncology_2022_images/page_097_images.png)
 
 
 
@@ -5517,6 +5570,7 @@ Figure 33 Recommended threshold for asymptomatic hypertension treatment in diffe
 
 
 
+
 Figure 34 Treatment of arterial hypertension in patients with cancer. AF, atrial fibrillation; ACE-I, angiotensin-converting enzyme inhibitors; ARB, angiotensin receptor blockers; BP, blood pressure; CCB, calcium channel blockers; HF, heart failure; MI, myocardial infarction; N, no; VEGFi, vascular endothelial
 growth factor inhibitors; Y, yes. [a] Resistant hypertension is defined as BP being uncontrolled despite treatment with optimal or best-tolerated doses of three
 or more drugs including a diuretic, and confirmed by ambulatory and home BP monitoring. [b] Consider beta-blockers (nebivolol or carvedilol are preferred in
@@ -5554,7 +5608,6 @@ Recommendations Class [a] Level [b]
 
 
 Continued
-
 
 
 
@@ -6648,6 +6701,7 @@ ACE-I/ARB and/or beta-blockers may be considered.
 
 
 
+
 Figure 38 Long-term follow-up in cancer survivors. BP, blood pressure; CAD, coronary artery disease; CS, cancer survivors; CTR-CVT, cancer
 therapy-related cardiovascular toxicity; CV, cardiovascular; CVD, cardiovascular disease; CVRF, cardiovascular risk factors; ECG, electrocardiogram;
 HbA1c, glycated haemoglobin; NP, natriuretic peptides; TTE, transthoracic echocardiography. [a] Clinical review, BP, lipid profile, HbA1c, ECG, NP. In
@@ -7105,7 +7159,6 @@ elevated during normal pregnancy (NT-proBNP, 300 ng/L, BNP,
 
 
 
-
 Figure 39 Location of primary and secondary cardiac tumours.
 
 close CTRCD monitoring during cancer treatment with the higher
@@ -7171,7 +7224,6 @@ HF, heart failure; MDT, multidisciplinary team; RT, radiotherapy.
 
 
 4322 ESC Guidelines
-
 
 
 
@@ -7461,7 +7513,6 @@ ESC Guidelines 4327
 
 
 
-
 Figure 44 Risk stratification in patients with a cardiac implantable electronic device undergoing radiotherapy. CIED, cardiac implantable electronic device; Gy, Gray; ICD, implantable cardioverter defibrillator; MV, megavolt; RT, radiotherapy.
 
 
@@ -7633,7 +7684,6 @@ between different healthcare professionals is critical to optimize
 the care of patients with cancer and CVD.
 
 - Cardio-oncology programmes facilitate cancer treatment by minimizing unnecessary cancer therapy interruptions and CTR-CVT
-
 
 
 

@@ -168,6 +168,9 @@ for genetic testing ............................................................
 ESC Guidelines **3505**
 
 
+
+![Page 2 Images](Cardiomyopathies_2023_images/page_002_images.png)
+
 6.8.3.1. Genetic counselling in children ........................................ 3534
 
 6.8.3.2. Pre- and post-test genetic counselling (proband) .... 3535
@@ -961,6 +964,9 @@ TIA Transient ischaemic attack
 TMEM43 transmembrane protein 43
 
 
+
+![Page 11 Images](Cardiomyopathies_2023_images/page_011_images.png)
+
 TRED-HF Therapy withdrawal in REcovered Dilated
 cardiomyopathy **—** Heart Failure
 TTE Transthoracic echocardiography
@@ -1038,6 +1044,9 @@ Table 1 **Classes for recommendations**
 
 
 
+
+
+![Page 17 Images](Cardiomyopathies_2023_images/page_017_images.png)
 
 
 
@@ -1202,6 +1211,9 @@ with multiple disease processes contributing to disease phenotypes;
 
 
 
+![Page 31 Images](Cardiomyopathies_2023_images/page_031_images.png)
+
+
 
 
 
@@ -1312,6 +1324,9 @@ cardial abnormality’. [2] This definition applies to both children and
 adults and makes no a priori assumptions about aetiology (which
 can be familial/genetic or acquired) or myocardial pathology. While
 
+
+
+![Page 53 Images](Cardiomyopathies_2023_images/page_053_images.png)
 
 the focus of this guideline is on genetic cardiomyopathies, the system-­
 atic approach to diagnosis starting from the phenotype at presenta-­
@@ -1570,6 +1585,12 @@ Table 4 **Key epidemiological metrics in adults and**
 **children for the different cardiomyopathy phenotypes**
 
 
+
+![Page 78 Images](Cardiomyopathies_2023_images/page_078_images.png)
+
+
+
+![Page 79 Images](Cardiomyopathies_2023_images/page_079_images.png)
 
 
 
@@ -2310,7 +2331,6 @@ tients with first-generation linear unstable gadolinium chelates and
 
 Figure 6 Multimodality imaging process in cardiomyopathies. CMR, cardiac magnetic resonance; CTCA, computed tomography coronary angiography;
 LGE, late gadolinium enhancement; LV, left ventricular; PET, positron emission tomography.
-
 
 
 severe renal disease. [114] However, gadolinium-based contrast agents
@@ -5266,6 +5286,7 @@ ESC Guidelines **3561**
 
 
 
+
 Figure 16 Flow chart for implantation of an implantable cardioverter defibrillator in patients with hypertrophic cardiomyopathy. 2D, two-dimensional;
 CMR, cardiac magnetic resonance; ECG, electrocardiogram; HCM, hypertrophic cardiomyopathy; ICD, implantable cardioverter defibrillator; LGE, late gado-­
 linium enhancement; LV, left ventricular; LVEF, left ventricular ejection fraction; NSVT, non-sustained ventricular tachycardia; SCD, sudden cardiac death; VF,
@@ -5279,14 +5300,7 @@ Recommendation Table 23 **— Additional recommen-­**
 **Recommendations** **Class** **[a]** **Level** **[b]**
 
 
-
 **Primary prevention**
-
-
-
-
-*Continued*
-
 
 
 |The HCM Risk-SCD calculator is recommended as a<br>method of estimating risk of sudden death at 5 years<br>in patients aged ≥16 years for primary<br>prevention.525,821–824|I|B|
@@ -5295,6 +5309,12 @@ Recommendation Table 23 **— Additional recommen-­**
 
 
 *Continued*
+
+
+
+
+*Continued*
+
 
 **3562** ESC Guidelines
 
@@ -5432,6 +5452,15 @@ genetic and acquired causes of DCM are shown in *Table 10* and
 *Table 20* . Detailed lists of causes of DCM have been previously
 published. [9][,][852]
 
+*7.2.2.1. Genetic testing*
+Causative gene variants occur in up to 40% of DCM patients in contem-­
+porary cohorts, [185][,][186][,][853][,][854] and between 10 and 15% in
+chemotherapy-induced, alcoholic, or peripartum DCM. [42][–][44] Although
+the prevalence of genetic variants is higher in familial DCM, causative
+genetic variants are also identified in over 20% of non-familial DCM
+cases. [185][,][854][,][855] Finding a causative gene variant in a patient with
+DCM allows better prediction of the disease outcome and progression,
+
 
 Table 20 **Non-genetic causes of dilated cardiomyopathy**
 
@@ -5476,17 +5505,6 @@ Table 20 **Non-genetic causes of dilated cardiomyopathy**
 
 
 
-
-
-
-*7.2.2.1. Genetic testing*
-Causative gene variants occur in up to 40% of DCM patients in contem-­
-porary cohorts, [185][,][186][,][853][,][854] and between 10 and 15% in
-chemotherapy-induced, alcoholic, or peripartum DCM. [42][–][44] Although
-the prevalence of genetic variants is higher in familial DCM, causative
-genetic variants are also identified in over 20% of non-familial DCM
-cases. [185][,][854][,][855] Finding a causative gene variant in a patient with
-DCM allows better prediction of the disease outcome and progression,
 
 
 
@@ -6791,7 +6809,6 @@ ESC Guidelines **3577**
 
 
 
-
 18F-FDG-PET, 18F-fluorodeoxyglucose positron emission tomography; AL, amyloid light chain; ATTR, transthyretin amyloidosis; ATTR-CA: transthyretin cardiac amyloidosis; AV,
 atrioventricular; CCB, calcium channel blocker; CK, creatinine kinase; CMR, cardiac magnetic resonance; DBS, deep brain stimulation; DMD, Duchenne muscular dystrophy; DPD,
 3,3-diphosphono-1,2-propanodicarboxylic acid; ECG, electrocardiogram; Gb3, globotriaosylceramide; HCM, hypertrophic cardiomyopathy; HMDP, hydroxymethylene diphosphonate;
@@ -6855,13 +6872,6 @@ CMR, cardiac magnetic resonance; ECG, electrocardiogram; LVH, left ventricular
 hypertrophy; NT-proBNP, N-terminal pro-brain natriuretic peptide.
 
 
-*7.6.1.4. Management*
-Specific treatment strategies, including enzyme replacement or
-pharmacological chaperone, have limited efficacy in advanced cases
-with irreversible organ damage, so early initiation appears to be import-­
-ant. Enzyme replacement therapy is indicated in all symptomatic
-
-
 *7.6.2.2. Diagnosis, clinical work-up, and differential diagnosis*
 
 The suspicion of an underlying RASopathy should be raised in infantand childhood-onset HCM with coexisting CHD [262][,][263][,][991][,][997][–][1000] or
@@ -6885,6 +6895,14 @@ compared with non-syndromic HCM, particularly in patients who
 have been diagnosed before 1 year of age. Disease-specific risk factors
 for SCD are currently an area of debate, and may include the degree of
 LV hypertrophy, prolonged QTc interval, ECG risk score for HCM, [771]
+
+
+*7.6.1.4. Management*
+Specific treatment strategies, including enzyme replacement or
+pharmacological chaperone, have limited efficacy in advanced cases
+with irreversible organ damage, so early initiation appears to be import-­
+ant. Enzyme replacement therapy is indicated in all symptomatic
+
 
 and the HCM Risk-Kids score >6%. [81][,][826]
 

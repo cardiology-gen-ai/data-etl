@@ -125,7 +125,9 @@ Keywords Guidelines - valvular heart disease - valve disease - valve surgery - p
 3.8 Prophylaxis for rheumatic fever . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
 
 
-. [...................................................................................]
+
+
+![Page 2 Images](Valvular_Heart_Disease_2021_images/page_002_images.png)
 
 
 4 Aortic regurgitation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
@@ -297,7 +299,6 @@ complications . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 18 Author information . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
 
-. [............................................................................................................................................................................]
 
 
 20 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 55
@@ -591,7 +592,6 @@ HALT Hypo-attenuated leaflet thickening
 HTx Heart transplantation
 
 INR International normalized ratio
-i.v. Intravenous . [...........................................................................................................................................................................]
 
 
 LA Left atrium/left atrial
@@ -757,7 +757,6 @@ Guidelines Committee (CPG). A critical evaluation of diagnostic and
 therapeutic procedures was performed, including assessment of the
 risk�benefit ratio. The level of evidence and the strength of the recommendation of particular management options were weighed and
 graded according to predefined scales, as outlined below.
-The experts of the writing and reviewing panels provided declaration of interest forms for all relationships that might be perceived as . [....................................................................................................]
 
 Table 1 Classes of recommendations
 
@@ -848,7 +847,6 @@ central role.
  - [New evidence on anti-thrombotic therapies leading to new rec-]
 
 ommendations in patients with surgical or transcatheter biopros
-. [..............................................................................................................]
 
 
 long term. The recommendation for non- vitamin K antagonist
@@ -941,7 +939,6 @@ needs to be confirmed by further evaluation.
 The new evidence described above made a revision of the recom
 mendations necessary.
 
-. [......................]
 
 Table 3 What is new
 
@@ -1187,7 +1184,6 @@ guidelines have been published by the ESC on these topics.
 The new guidelines have been adapted to facilitate their use in clinical
 practice and to meet readers’ demands by focusing on condensed,
 
-. [............................................................]
 
 
 key points summarize the essentials. Gaps in evidence are listed to
@@ -1283,9 +1279,7 @@ surgical aortic valve replacement (SAVR) volume. [16][,][17] The data available 
 transcatheter tricuspid procedures are more limited.
 
 
-. [...............................................................................................]
 
-**.** **[.................................................................]**
 
 
 Table 4 Requirements for a Heart Valve Centre
@@ -1333,7 +1327,6 @@ and proper physical examination, in particular auscultation [21] and
 search for heart failure signs, are crucial. In addition, assessment of
 their comorbidities and general condition require particular attention. The essential questions in the evaluation of a patient for valvular
 intervention are summarized in Figure 1 (Central illustration).
-. [.....................]
 
 
 3.2.2 Echocardiography
@@ -1415,7 +1408,6 @@ configuration. CCT is essential in the pre-procedural planning of
 TAVI and can also be useful to assess patient-prosthesis mismatch
 (PPM). [37] It is also a prerequisite for pre-procedural planning of
 
-[38] Positron emission . [............................................................................................................................................................................]
 
 
 tomography (PET)/CCT is useful in patients with a suspicion of
@@ -1575,7 +1567,6 @@ estimates. [55][�][59] Several tools are available for assessing frailty
 
 prognosis.
 
- - [[Other major organ failures (][Supplementary Table 4][), in particular]](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehab395#supplementary-data) . [....................................................................................................................]
 
 
 goes beyond survival and includes functional recovery. The futility of
@@ -1772,9 +1763,7 @@ recurrence, such as age, LA dilatation, years in AF, renal dysfunction,
 and other cardiovascular risk factors. In addition, left atrial appendage
 
 
-. [.........................................]
 
-. [..................................................................................................................................]
 
 
 
@@ -1857,9 +1846,7 @@ for valve repair should be provided by preoperative TOE if aortic
 valve repair or a valve-sparing surgery of the aortic root is
 
 
-. [...........................................................................................]
 
-. [..............................................................................]
 
 
 Table 5 Echocardiographic criteria for the definition of
@@ -1939,7 +1926,6 @@ be related to body surface area (BSA) and a cut-off of 25 mm/m [2] BSA
 appeared to be more appropriate, especially in patients with small
 body size (BSA <1.68 m [2] ) or with large BSA who are not overweight. [108][,][115] Some recent retrospective, non-randomized studies
 emphasized the role of indexed LVESD and proposed a lower cut-off
-value of 20 or 22 mm/m [2] BSA for the indexed LVESD. [116][�][118] One of . [..................................................................]
 
 
 40 mm or more) in women with low BSA, TGFBR2 mutation, and
@@ -2022,7 +2008,6 @@ Recommendations on indications for surgery in (A)
 severe aortic regurgitation and (B) aortic root or tubular ascending aortic aneurysm (irrespective of the
 severity of aortic regurgitation)
 
-. [.........................................................................................................]
 
 |Indications for surgery|Classa|Levelb|
 |---|---|---|
@@ -2126,7 +2111,6 @@ cussed in section 13.
 4.4 Serial testing
 All asymptomatic patients with severe aortic regurgitation and normal LV function should be followed up at least every year. In patients
 with either a first diagnosis or with LV diameter and/or ejection frac
-. [.....................................................................................]
 
 
 In patients with Marfan syndrome, beta-blockers remain the mainstay for medical treatment and reducing shear stress and aortic
@@ -2209,7 +2193,6 @@ population. [2][,][152]
 Echocardiography is key to confirming the diagnosis and severity of
 aortic stenosis, assessing valve calcification, LV function and wall
 thickness, detecting other valve disease or aortic pathology, and providing prognostic information. [43][,][153][,][154] Assessment should be undertaken when blood pressure (BP) is well controlled to avoid the
-flow effects of increased afterload. New . [............................................................................................................................................................................]
 
 
 echocardiographic parameters, stress imaging and CCT
@@ -2397,7 +2380,6 @@ when CCT is difficult to interpret or relatively contraindicated (e.g.
 chronic renal failure).
 
 
-. [...........................................................................................................................................................................]
 
 
 Table 6 Clinical, anatomical and procedural factors that
@@ -2473,7 +2455,6 @@ and asymptomatic aortic stenosis and recommended mode of intervention and in Fig
 
 5.2.1 Symptomatic aortic stenosis
 Symptomatic severe aortic stenosis has dismal prognosis and early
-intervention is strongly recommended in all patients. The only . [...............................]
 
 
 exceptions are for those in whom intervention is unlikely to improve
@@ -2488,7 +2469,6 @@ of patients with low-gradient aortic stenosis is more challenging:
 
 low-flow, low-gradient aortic stenosis, when reduced ejection
 fraction is predominantly caused by excessive afterload. [32][,][180]
-
 
 
 
@@ -2578,7 +2558,6 @@ asymptomatic patients include clinical characteristics (older age, atherosclerot
 [189] increase in mean gradient >20 mmHg with exer
 [172] severe LV hypertrophy, [191] indexed stroke volume, [158] LA
 
-[192] LV global longitudinal strain, [26][,][168][,][193] and abnormal biolevels and fetuin- . [.........................................................................................................................................................................]
 
 
 A). [170][,][171][,][194][,][195] Early intervention may be considered in asymptomatic patients with severe aortic stenosis and one or more of these
@@ -2730,7 +2709,6 @@ and recommended mode of intervention (C)
 
 
 
-Continued . [...........................................................................................................................................................................]
 
 
 
@@ -2906,7 +2884,6 @@ disease (e.g. aortic root dilatation, complex coronary disease, or
 severe mitral regurgitation) requiring a surgical approach.
 
 
-. [........................................................................................................] **[...................................................................]** [.]
 
 **588** ESC/EACTS Guidelines
 
@@ -2961,7 +2938,6 @@ The underlying mechanism (primary or secondary) determines the
 therapeutic approach.
 
 6.1 Primary mitral regurgitation
-Primary lesion of one or more components of the mitral valve apparatus characterizes PMR. . [............................................................................................................................................................................]
 
 
 deficiency and Barlow disease) is most frequent in Western countries. [1][,][2][,][266] In low-income countries, rheumatic aetiology is the most
@@ -3106,7 +3082,6 @@ American Society of Echocardiography.
 recommended in patients with symptomatic severe PMR and acceptable surgical risk according to the Heart Team decision. The presence
 of LVEF <_60%, LVESD >_40 mm, [285][,][286] LA volume >_60 mL/m [2] or
 diameter >_55 mm, [287][,][288] systolic pulmonary arterial pressure (SPAP)
->50 mmHg, [289] and AF [290][,][291] have been associated with worse out- . [.............]
 comes and are considered triggers for intervention regardless of
 symptomatic status. [292] In the absence of these criteria, watchful waiting is a safe strategy in asymptomatic patients with severe PMR and
 ideally should be performed in a Heart Valve Clinic.
@@ -3153,7 +3128,6 @@ severe primary mitral regurgitation
 
 
 Continued
-. [............................................................]
 
 
 
@@ -3276,7 +3250,6 @@ repair, the currently reported rates of residual moderate and severe
 mitral regurgitation (23 30%) would suggest that yearly echocardiogram is appropriate. [14][,][300][,][301]
 
 
-. [............................................................................................................................................................................]
 
 ESC/EACTS Guidelines **591**
 
@@ -3309,7 +3282,6 @@ Chronic SMR is associated with impaired prognosis [321][,][328] and its
 interventional management is complex (see recommendations on
 
 indications for mitral valve intervention in chronic severe SMR, and
-6 . [.....................................................]
 
 
 by the methodology group of the task force is available in
@@ -3353,7 +3325,6 @@ in SMR are particularly restrictive, owing to significant procedural
 risk, high rates of recurrent mitral regurgitation, and the absence of
 proven survival benefit. [333][�][335] In patients with atrial functional mitral
 regurgitation, LVEF is usually normal, LV dilatation less pronounced
-. [................]
 and mitral annular dilatation represents the main mechanism of mitral
 regurgitation. This subgroup may be more effectively treated by ring
 annuloplasty often associated with ablation of AF but evidence is still
@@ -3447,7 +3418,6 @@ The management of moderate ischaemic SMR in patients undergoing CABG remains an 
 to be considered if myocardial viability is present and if comorbidity is
 
 
-. [..........................................................................................................................................................]
 
 
 
@@ -3537,7 +3507,6 @@ summarized in Figure 7 and the indications and contraindications for
 PMC are provided in the table of recommendations below, and Table 8.
 
 
-. [...........................................................................................................................................................................]
 
 
 Recommendations on indications for percutaneous
@@ -3619,7 +3588,6 @@ kept on VKA and not receive NOACs. Currently there is no solid
 evidence to support the use of NOACs in this setting [370] and a
 randomized clinical trial is underway (INVICTUS VKA NCT
 02832544). Neither cardioversion nor catheter pulmonary vein
-. [................................]
 
 
 isolation are indicated before intervention in patients with significant
@@ -3685,7 +3653,6 @@ necessary to take into account the abnormalities of LA and LV compliance before 
 echocardiography is used for initial evaluation and CCT is necessary
 to assess the degree and location of calcification and to evaluate the
 
-[379] . [............................................................................................................................................................................]
 
 
 7.2.2 Indications for intervention
@@ -3839,7 +3806,6 @@ b Preferably biplane.
 c Baseline Nyquist limit shift of 28 cm/s.
 d In the absence of other causes of elevated RA pressure.
 
-. [............................................................................................................................................................................]
 
 
 In experienced laboratories, RV strain [27] and/or 3D measurements of
@@ -3983,7 +3949,6 @@ Diuretics are useful in the presence of right heart failure. To counterbalance t
 associated with hepatic congestion, the addition of an aldosterone
 antagonist may be considered. [247] Dedicated treatment of pulmonary
 hypertension is indicated in specific cases. Although data are limited,
-rhythm control may help to decrease tricuspid regurgitation and . [.....................................]
 
 
 contain annular dilatation in patients with chronic AF. [450] Importantly,
@@ -4054,7 +4019,6 @@ essary to consider the interaction between the different valve
 lesions. As an illustration, associated mitral regurgitation may
 
 
-. [...........................................................................................................................................................................]
 
 |Recommendations|Classa|Levelb|ESC/EACTS 2021|
 |---|---|---|---|
@@ -4174,9 +4138,7 @@ Recommendations for prosthetic valve selection
 
 
 
-. [...........................................................................................................................................................]
 
-**.** **[...............]**
 
 
 AF = atrial fibrillation; NOAC = non-vitamin K antagonist oral anticoagulant;
@@ -4239,7 +4201,6 @@ sutureless and rapid-deployment aortic valves may reduce invasiveness, cross-cla
 lower perioperative complications of SAVR, there is a lack of a largescale randomized comparison on both short- and long-term safety,
 efficacy, and haemodynamic performance of this approach against
 
-. [..............................................................................]
 
 
 The best aortic valve substitute for younger adults remains
@@ -4346,7 +4307,6 @@ for >_24 h, bridging can be discontinued. The postoperative risk of
 thromboembolism peaks about 1 month after implantation, but risks
 
 
-. [.............................................................................................]
 
 **602** ESC/EACTS Guidelines
 
@@ -4387,7 +4347,6 @@ antithrombotic therapy in patients with CAD is summarized in
 procedures
 In patients with MHVs, preoperative bridging with UFH or LMWH
 before surgery imposes a risk of perioperative bleeding while interrupting anticoagulation results in an increased risk of thromboembo
-[488] . [...............................................................................................]
 
 
 Transcatheter bioprostheses: A meta-analysis of three small RCTs
@@ -4572,7 +4531,6 @@ evidence, severely impaired LV dysfunction (ejection fraction <35%).
 Continued
 
 
-. [...............................................................................................................................................................................]
 
 **604** ESC/EACTS Guidelines
 
@@ -4594,7 +4552,6 @@ Observational data suggest comparable risk of thromboembolism
 with ASA or VKAs following mitral valve repair, [503] but randomized
 data are lacking. The high incidence of new-onset AF and its recurrence, the thrombogenic tendency of the non-endothelialized repair
 components, and a relatively high rate of patients who are resistant
-to ASA establish VKAs as a preferable option for the initial period . [..........................................................]
 
 
 (e.g. 3 months). However, the potential for bleeding complications in
@@ -4699,7 +4656,6 @@ consistent efficacy. [539] Transcatheter closure of paravalvular leaks
 should be considered for anatomically suitable paravalvular leaks in
 candidates selected by the Heart Team. [540] Medical therapy (including
 
-. [...............................................................................................................................]
 
 
 Percutaneous balloon interventions should be avoided in the treat
@@ -4910,7 +4866,6 @@ mitral stenosis may require valve replacement or percutaneous intervention befor
 the setting is available in specific ESC Guidelines. [489]
 
 
-. [............................................................................................................................................................................]
 
 **608** ESC/EACTS Guidelines
 
@@ -4952,7 +4907,6 @@ Although an aortic diameter <40 mm is rarely associated with
 aortic dissection, a completely safe diameter does not exist. With
 an aortic diameter between 40 and 45 mm, previous aortic growth
 
-. [........................................................................]
 
 
 without aortic repair. [558] Although the actual risk of dissection is
@@ -5066,7 +5020,6 @@ intervention against the expected natural history of VHD. Stress testing should 
 part of the decision-making process.
 6. Interventions (surgery or transcatheter) are indicated in symptomatic patients (spontaneous or exercise induced) in the absence of
 futility. In selected asymptomatic patients, presence of predictors of
-rapid symptom progression justifies early intervention when procedural risk is low. . [............................................................................................................................................................................]
 
 
 7. Heart Valve Centres with multidisciplinary Heart Teams, Heart
@@ -5237,7 +5190,6 @@ Aortic stenosis
 12. Pathophysiology of progression and novel therapeutic targets
 
 for medical treatment.
-13. Further research to evaluate the role of intervention: . [.....................................................................................................................................................................]
 
 
 Prosthetic valves
@@ -5593,7 +5545,6 @@ Includes Document Reviewers and ESC National Cardiac Societies.
 Document Reviewers: Franz-Josef Neumann (ESC Review
 Coordinator) (Germany), Patrick Myers [1] (EACTS Review
 
-. [............................................................................................................................................................................]
 
 
 Achenbach (Germany), Riccardo Asteggiano (Italy), Fabio Barili [1]
@@ -5786,7 +5737,6 @@ doi: 10.1136/heartjnl-2020-318482.
 4. Habib G, Lancellotti P, Antunes MJ, Bongiorni MG, Casalta JP, Del Zotti F,
 Dulgheru R, El Khoury G, Erba PA, Iung B, Miro JM, Mulder BJ, Plonska-Gosciniak
 
-. [............................................................................................................................................................................]
 
 
 Zamorano JL, ESC Scientific Document Group. 2015 ESC Guidelines for the management of infective endocarditis: The Task Force for the Management of
@@ -5999,7 +5949,6 @@ and impact of myocardial fibrosis in aortic stenosis. JACC Cardiovasc Imaging
 34. American College of Cardiology Foundation Task Force on Expert Consensus
 D, Hundley WG, Bluemke DA, Finn JP, Flamm SD, Fogel MA, Friedrich MG, Ho
 VB, Jerosch-Herold M, Kramer CM, Manning WJ, Patel M, Pohost GM, Stillman
-AE, White RD, Woodard PK., ACCF/ACR/AHA/NASCI/SCMR 2010 expert . [............................................................................................................................................................................]
 
 
 consensus document on cardiovascular magnetic resonance: a report of the American
@@ -6149,7 +6098,6 @@ T, Amat-Santos I, Toggweiler S, Cheema AN, Munoz-Garcia AJ, Serra V,
 Giordana F, Veiga G, Jimenez-Quevedo P, Campelo-Parada F, Loretz L, Todaro
 D, Del Trigo M, Hernandez-Garcia JM, Garcia Del Blanco B, Bruno F, de la
 Torre Hernandez JM, Stella P, Tamburino C, Macaya C, Nombela-Franco L.
-Clinical outcomes and prognosis markers of patients with liver disease undergoing transcatheter aortic valve replacement: a propensity score-matched analysis. Circ Cardiovasc Interv 2018;11:e005727. . [............................................................................................................................................................................]
 
 
 67. Abramowitz Y, Kazuno Y, Chakravarty T, Kawamori H, Maeno Y, Anderson D,
@@ -6309,7 +6257,6 @@ Monin JL, Pierard LA, Badano L, Zamorano JL, European Association of
 Echocardiography. European Association of Echocardiography recommendations
 for the assessment of valvular regurgitation. Part 1: aortic and pulmonary regurgitation (native valve disease). Eur J Echocardiogr 2010;11:223�244.
 99. Alashi A, Khullar T, Mentias A, Gillinov AM, Roselli EE, Svensson LG, Popovic
-ZB, Griffin BP, Desai MY. Long-term outcomes after aortic valve surgery . [............................................................................................................................................................................]
 
 
 in patients with asymptomatic chronic aortic regurgitation and preserved LVEF:
@@ -6471,7 +6418,6 @@ for chronic severe aortic regurgitation: a propensity score analysis. J Thorac
 Cardiovasc Surg 2014;148:1913�1920.
 133. Klotz S, Stock S, Sievers HH, Diwoky M, Petersen M, Stierle U, Richardt D.
 Survival and reoperation pattern after 20 years of experience with aortic valvesparing root replacement in patients with tricuspid and bicuspid valves. J Thorac
-Cardiovasc Surg 2018;155:1403�1411 e1401. . [............................................................................................................................................................................]
 
 
 134. Elbatarny M, Tam DY, Edelman JJ, Rocha RV, Chu MWA, Peterson MD, ElHamamsy I, Appoo JJ, Friedrich JO, Boodhwani M, Yanagawa B, Ouzounian M,
@@ -6629,7 +6575,6 @@ stenosis. Circ Cardiovasc Imaging 2018;11:e007146.
 165. Mehrotra P, Jansen K, Flynn AW, Tan TC, Elmariah S, Picard MH, Hung J.
 Differential left ventricular remodelling and longitudinal function distinguishes
 low flow from normal-flow preserved ejection fraction low-gradient severe
-aortic stenosis. Eur Heart J 2013;34:1906�1914. . [............................................................................................................................................................................]
 
 
 166. Tribouilloy C, Rusinaru D, Marechaux S, Castel AL, Debry N, Maizel J,
@@ -6787,7 +6732,6 @@ Engl J Med 2011;364:2187�2198.
 Douglas PS, Anderson WN, Blackstone EH, Kodali SK, Makkar RR, Fontana GP,
 Kapadia S, Bavaria J, Hahn RT, Thourani VH, Babaliaros V, Pichard A, Herrmann
 HC, Brown DL, Williams M, Akin J, Davidson MJ, Svensson LG, PARTNER 1 trial
-Investigators. 5-year outcomes of transcatheter aortic valve replacement or . [............................................................................................................................................................................]
 
 
 surgical aortic valve replacement for high surgical risk patients with aortic stenosis
@@ -6952,7 +6896,6 @@ and meta-analysis. Catheter Cardiovasc Interv 2018;92:1404�1411.
 227. Deharo P, Bisson A, Herbert J, Lacour T, Etienne CS, Porto A, Theron A,
 Collart F, Bourguignon T, Cuisset T, Fauchier L. Transcatheter valve-in-valve
 aortic valve replacement as an alternative to surgical re-replacement. J Am Coll
-Cardiol 2020;76:489�499. . [............................................................................................................................................................................]
 
 
 228. Gozdek M, Raffa GM, Suwalski P, Kolodziejczak M, Anisimowicz L, Kubica J,
@@ -7117,7 +7060,6 @@ Serbout S, Kubala M, Levy F, Marechaux S, Enriquez Sarano M. Excess mortality
 and undertreatment of women with severe aortic stenosis. J Am Heart Assoc
 2021;10:e018816.
 
-258. Smith WTt, Ferguson TB, Jr., Ryan T, Landolfo CK, Peterson ED. Should coronary artery bypass graft surgery patients with mild or moderate aortic stenosis . [............................................................................................................................................................................]
 
 
 undergo concomitant aortic valve replacement? A decision analysis approach to
@@ -7269,7 +7211,6 @@ Habib G, Modena MG, Enriquez-Sarano M, Mitral Regurgitation International
 DAtabase (MIDA) Investigators. Left atrial size is a potent predictor of mortality in mitral regurgitation due to flail leaflets: results from a large international
 multicenter study. Circ Cardiovasc Imaging 2011;4:473�481.
 289. Barbieri A, Bursi F, Grigioni F, Tribouilloy C, Avierinos JF, Michelena HI,
-Rusinaru D, Szymansky C, Russo A, Suri R, Bacchi Reggiani ML, Branzi A, . [............................................................................................................................................................................]
 
 
 Modena MG, Enriquez-Sarano M, Mitral Regurgitation International DAtabase
@@ -7432,7 +7373,6 @@ or medical treatment for secondary mitral regurgitation. N Engl J Med
 2018;379:2297�2306.
 
 324. Cavalcante JL, Kusunose K, Obuchowski NA, Jellis C, Griffin BP, Flamm SD,
-Kwon DH. Prognostic impact of ischemic mitral regurgitation severity and . [............................................................................................................................................................................]
 
 
 myocardial infarct quantification by cardiovascular magnetic resonance. JACC
@@ -7598,7 +7538,6 @@ Valentini F, Benito-Gonzalez T, Fernandez-Vazquez F, Estevez-Loureiro R,
 Berardini A, Conti N, Rapezzi C, Biagini E, Parlow S, Shorr R, Levi A, Manovel
 A, Cardenal-Piris R, Diaz Fernandez J, Shuvy M, Haberman D, Sala A, Alkhouli
 MA, Marini C, Bargagna M, Schiavi D, Denti P, Markovic S, Buzzatti N, Chan V,
-Hynes M, Mesana T, Labinaz M, Pappalardo F, Taramasso M, Hibbert B. . [............................................................................................................................................................................]
 
 
 Transcatheter mitral valve repair in cardiogenic shock and mitral regurgitation:
@@ -7758,7 +7697,6 @@ patients with severe mitral annular calcification. J Am Coll Cardiol
 
 389. Topilsky Y, Maltais S, Medina Inojosa J, Oguz D, Michelena H, Maalouf J,
 Mahoney DW, Enriquez-Sarano M. Burden of tricuspid regurgitation in patients
-diagnosed in the community setting. JACC Cardiovasc Imaging 2019;12:433�442. . [............................................................................................................................................................................]
 
 
 390. Song H, Kim MJ, Chung CH, Choo SJ, Song MG, Song JM, Kang DH, Lee JW,
@@ -7903,7 +7841,6 @@ annuloplasty on tricuspid regurgitation, right ventricular function, and pulmona
 2015;65:1931�1938.
 
 426. Badhwar V, Rankin JS, He M, Jacobs JP, Furnary AP, Fazzalari FL, O’Brien S,
-Gammie JS, Shahian DM. Performing concomitant tricuspid valve repair at the . [............................................................................................................................................................................]
 
 
 time of mitral valve operations is not associated with increased operative mortality. Ann Thorac Surg 2017;103:587�593.
@@ -8060,7 +7997,6 @@ YJ. Mechanical or biologic prostheses for aortic-valve and mitral-valve replacem
 463. Head SJ, Celik M, Kappetein AP. Mechanical versus bioprosthetic aortic valve
 replacement. Eur Heart J 2017;38:2183�2191.
 464. Diaz R, Hernandez-Vaquero D, Alvarez-Cabo R, Avanzas P, Silva J, Moris C,
-Pascual I. Long-term outcomes of mechanical versus biological aortic valve . [............................................................................................................................................................................]
 
 
 prosthesis: systematic review and meta-analysis. J Thorac Cardiovasc Surg
@@ -8221,7 +8157,6 @@ Torp-Pedersen C. Association of warfarin therapy duration after bioprosthetic
 aortic valve replacement with risk of mortality, thromboembolic complications,
 and bleeding. JAMA 2012;308:2118�2125.
 493. Christersson C, James SK, Lindhagen L, Ahlsson A, Friberg O, Jeppsson A,
-Stahle E. Comparison of warfarin versus antiplatelet therapy after surgical bioprosthetic aortic valve replacement. Heart 2020;106:838�844. . [............................................................................................................................................................................]
 
 
 494. Rafiq S, Steinbruchel DA, Lilleor NB, Moller CH, Lund JT, Thiis JJ, Kober L,
@@ -8383,7 +8318,6 @@ Following Transcatheter Aortic Valve Implantation) randomized clinical trial.
 JACC Cardiovasc Interv 2017;10:1357�1365.
 522. Dvir D, Bourguignon T, Otto CM, Hahn RT, Rosenhek R, Webb JG, Treede H,
 Sarano ME, Feldman T, Wijeysundera HC, Topilsky Y, Aupart M, Reardon MJ,
-Mackensen GB, Szeto WY, Kornowski R, Gammie JS, Yoganathan AP, Arbel Y, . [............................................................................................................................................................................]
 
 
 Borger MA, Simonato M, Reisman M, Makkar RR, Abizaid A, McCabe JM, Dahle
@@ -8537,7 +8471,6 @@ leaflet motion after transcatheter aortic-valve replacement. N Engl J Med
 2020;382:130�139.
 
 547. Alkhouli M, Rihal CS, Zack CJ, Eleid MF, Maor E, Sarraf M, Cabalka AK, Reeder
-GS, Hagler DJ, Maalouf JF, Nkomo VT, Schaff HV, Said SM. Transcatheter and . [...................................................................................................................................................]
 
 
 surgical management of mitral paravalvular leak: long-term outcomes. JACC

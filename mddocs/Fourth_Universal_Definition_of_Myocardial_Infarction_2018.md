@@ -150,7 +150,6 @@ coronary intervention (type 4b myocardial infarction) . . . . . . . . . . . . . 
 (type 4c myocardial infarction) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 251
 
 
-. [........................................................................]
 
 Expert consensus document 239
 
@@ -221,7 +220,6 @@ CK-MB Creatine kinase MB isoform
 
 CMR Cardiac magnetic resonance
 CTCA Computed tomographic coronary angiography
-cTn Cardiac troponin . [........................................................................................................................]
 
 
 cTnI Cardiac troponin I
@@ -281,6 +279,9 @@ WHF World Heart Federation
 
 WHO World Health Organization
 
+
+
+![Page 6 Images](Fourth_Universal_Definition_of_Myocardial_Infarction_2018_images/page_006_images.png)
 
 34.1 Echocardiography . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 260
 
@@ -347,6 +348,12 @@ cTn Cardiac troponin
 
 
 
+![Page 10 Images](Fourth_Universal_Definition_of_Myocardial_Infarction_2018_images/page_010_images.png)
+
+
+
+![Page 11 Images](Fourth_Universal_Definition_of_Myocardial_Infarction_2018_images/page_011_images.png)
+
 Expert consensus document 241
 ## 2 Universal definitions of myocardial injury and myocardial infarction: summary
 
@@ -378,7 +385,6 @@ use. [5] The original description, with minor modifications, is still used in
 epidemiological surveys (Figure 1). [6][–][8]
 
 With the introduction of more sensitive cardiac biomarkers, the
-European Society of Cardiology (ESC) and the American College of . [.....................................................................]
 
 
 Cardiology (ACC) collaborated to redefine MI using a biochemical
@@ -415,6 +421,9 @@ with non-cardiac conditions such as renal failure. [15] Therefore, for
 
 
 
+![Page 25 Images](Fourth_Universal_Definition_of_Myocardial_Infarction_2018_images/page_025_images.png)
+
+
 Expert consensus document 243
 
 
@@ -429,7 +438,6 @@ Clinical criteria for MI
 
 The clinical definition of MI denotes the presence of acute myocardial injury detected by abnormal cardiac biomarkers in the setting of evidence of acute myocardial ischaemia.
 
-. [.............................................]
 
 
 reported to occur following injury to non-cardiac tissues. The situation is more complex for cTnT. Biochemical data indicate that injured
@@ -576,7 +584,6 @@ ischaemic symptoms include various combinations of chest, upper
 extremity, mandibular, or epigastric discomfort during exertion or at
 
 
-. [...............................................................................................................................................................]
 
 246 Expert consensus document
 
@@ -649,7 +656,6 @@ The pathophysiological mechanism leading to ischaemic myocardial
 injury in the context of a mismatch between oxygen supply and
 
 
-. [....................................................................................]
 
 Expert consensus document 247
 
@@ -659,7 +665,6 @@ another non-atherosclerotic condition that may occur, especially in
 young women. It is defined as spontaneous dissection of the coronary
 artery wall with accumulation of blood within the false lumen, which
 can compress the true lumen to varying degrees (Figure 4). [58]
-. [................]
 
 All of the clinical information available should be considered in dis
 tinguishing type 1 MI from type 2 MI. The context and mechanisms of
@@ -733,7 +738,6 @@ Type 2 MI and myocardial injury are frequently encountered in clinical practice 
 A conceptual model to facilitate the clinical distinction between acute
 ischaemic myocardial injury with or without an acute atherothrombotic event (type 1 or type 2 MI) vs. conditions without acute ischaemic myocardial injury is displayed in Figure 6. Acute MI requires a
 rising and/or falling pattern of cTn values. Acute myocardial injury
-may also manifest such a pattern but if the injury is related to structural heart disease, the cTn values may be stable and unchanging. . [...................................................................]
 
 
 Type 2 MI and non-ischaemic myocardial injury may coexist. It should
@@ -783,7 +787,6 @@ ECG changes or ventricular fibrillation, but die before blood samples for biomar
 
 examination.
 
-. [..............................................]
 
 ## 8 Coronary procedure-related myocardial injury
 
@@ -828,7 +831,6 @@ values > 20% of the baseline value when it is above the 99th percentile URL but 
 A large proportion of patients have abnormal values of cTn after
 PCI, ranging from �20 – 40% in stable CAD to 40 – 50% in MI. [64] The
 
-. [.........................................................................]
 
 
 normal baseline values or, in patients with elevated pre-procedure
@@ -934,7 +936,6 @@ and very late > 1 year after stent/scaffold implantation. [68]
 ## 11 Restenosis associated with percutaneous coronary intervention (type 4c myocardial infarction)
 
 Occasionally MI occurs and—at angiography, in-stent restenosis, or
-restenosis following balloon angioplasty in the infarct territory—is . [......................................................................]
 
 
 especially cTn appear robust for the detection of procedural myocardial injury and also, in the presence of new myocardial ischaemia, for
@@ -1070,7 +1071,6 @@ evaluation.
 
 In patients where re-infarction is suspected from clinical signs or
 
-. [............................................................................................................................................................................]
 
 
 is recommended. A second sample should be obtained 3–6 h later or
@@ -1213,7 +1213,6 @@ anatomy may be known and this knowledge may be used to interpret
 
 abnormal cTn results. However, further information—such as renal
 
-. [......................................................................................................................................................................]
 
 
 CMR—is often required to better understand the cause of deviant
@@ -1355,7 +1354,6 @@ anaemia, hypotension, and possibly direct toxic effects on the myocardium associ
 experimentally. [18] Thus, baseline elevation of cTn values is common,
 and because they reflect myocardial injury, such elevation is highly
 
-[99] . [...................................................................................................................................................................]
 
 
 Diagnosing MI in patients with CKD and elevated cTn levels may
@@ -1461,7 +1459,6 @@ the downslope of the time–concentration curve is much slower than
 the upslope. These issues need to be taken into account when defining whether or not a changing pattern is present. In addition, it is
 important to make sure that a given change is greater than can be
 anticipated by variability alone. This is defined for conventional cTn
-assays as a change greater than or equal to three times the standard . [......................................................]
 
 
 deviation around the measurement of the individual assay at relevant
@@ -1535,7 +1532,6 @@ Conjoint biological and analytical variation of hs-cTn assays is in
 the range of 50–60%. [123] When values are elevated, analytical varia
 tion is less and a value of 20% can be used to determine that values
 
-. [............................................................................................................................................................................]
 
 
 be difficult to observe over short periods of time in those who
@@ -1691,7 +1687,6 @@ distinguish acute injury from chronic conditions associated with
 structural heart disease that can have chronic increases of cTn values.
 For example, patients with renal failure [99][,][143][,][144] or LV hypertrophy [145]
 
-can have significant chronic increases in cTn values. These increases . [............................................................................................................................................................................]
 
 
 can be marked but do not change acutely during serial sampling.
@@ -1758,7 +1753,6 @@ of acute ischaemia or (rarely) during acute MI with successful reperfusion. Tabl
 acute myocardial ischaemia that may or may not lead to MI. The
 J-point (junction between QRS termination and ST-segment onset) is
 used to determine the magnitude of the ST-segment shift with the
-. [...............................................................................................................................................................]
 
 
 onset of the QRS serving as the reference point. In patients with a
@@ -1888,7 +1882,6 @@ equivocal.
 
 
 
-. [.................................................]
 
 
 Asymptomatic patients who develop new Q wave criteria for MI
@@ -1966,7 +1959,6 @@ following periods of abnormal ventricular activation, which may also
 be caused by transient rate-related conduction disturbances or pacing, may explain these findings. In some patients, the tachycardia may
 result in an insufficient increase in coronary flow to match myocardial
 oxygen demand, resulting in cellular hypoxia and abnormal repolarization. [171][,][172] For these reasons, a patient with new-onset atrial fibril
-. [..........................................................................................................................................................................]
 
 
 depression should not automatically be classified as type 2 MI without
@@ -2062,7 +2054,6 @@ only commonly available methods for assessing viability directly,
 although the relatively low resolution of the images limits them for
 detecting the smallest areas of MI. Phantom studies suggest that myocyte loss as little as 4% of the myocardium can be detected, corresponding to 5 – 10 g of muscle. [180] ECG-gated imaging provides a
 reliable assessment of myocardial motion, thickening, and global function. Evolving radionuclide techniques relevant to the assessment of
-MI include imaging of sympathetic innervation using [123] I-labelled . [.......................................]
 
 
 meta-iodobenzylguanidine, [181] imaging of matrix metalloproteinase
@@ -2127,7 +2118,6 @@ including prior infarction, acute ischaemia, stunning, or hibernation.
 Non-ischaemic conditions such as cardiomyopathy, and inflammatory
 or infiltrative diseases, can also lead to regional loss of viable myocardium or functional abnormality. Therefore, the positive predictive
 
-. [............................................................................................................................................................................]
 
 
 be excluded, and unless a new abnormality is detected or can be presumed to have arisen in the setting of other features of acute MI.
@@ -2246,7 +2236,6 @@ markers, as well as information gleaned from various imaging
 techniques.
 It should be appreciated that the universal definition of MI may be
 
-. [............................................................................................................................................................................]
 
 
 respect to psychological status, life and health insurance, and professional career, as well as driving and pilot licences. The diagnosis is also
@@ -2393,7 +2382,6 @@ Netherlands Society of Cardiology, Peter Damman; Norway:
 Norwegian Society of Cardiology, Vibeke Juliebø; Poland: Polish
 Cardiac Society, Jacek Legutko; Portugal: Portuguese Society of
 Cardiology, Jo€ao Morais; Romania: Romanian Society of
-Russian Federation: Russian . [............................................................................................................................................................................]
 
 
 Society of Cardiology, Alexey Yakovlev; San Marino: San Marino
@@ -2597,7 +2585,6 @@ Budaj A, Kennelly BM, Gore JM, Allegrone J, Granger CB, Gurfinkel EP; GRACE
 Investigators. The diagnostic and prognostic impact of the redefinition of acute
 myocardial infarction: Lessons from the Global Registry of Acute Coronary
 Events (GRACE). Am Heart J 2006;151:654–660.
-32. Weil BR, Suzuki G, Young RF, Iyer V, Canty JM Jr. Troponin release and reversible left ventricular dysfunction following transient pressure overload: Stressinduced myocardial stunning. J Am Cardiol Coll 2018;71:2906–2916. . [............................................................................................................................................................................]
 
 
 33. Turer AT, Addo TA, Martin JL, Sabatine MS, Lewis GD, Gerszten RE, Keeley EC,
@@ -2759,7 +2746,6 @@ Nickenig G, Werner N. The prognostic value of acute and chronic troponin elevati
 White HD. Diagnosis of myocardial infarction and prognostic utility of highsensitivity troponin T after isolated aortic valve replacement. Clin Trials Regul Sci
 Cardiol 2016;16:1–5.
 
-77. Devereaux PJ, Xavier D, Pogue J, Guyatt G, Sigamani A, Garutti I, Leslie K, RaoMelacini P, Chrolavicius S, Yang H, Macdonald C, Avezum A, Lanthier L, Hu W, . [............................................................................................................................................................................]
 
 
 Yusuf S; POISE (PeriOperative ISchemic Evaluation) Investigators. Characteristics
@@ -2925,7 +2911,6 @@ Care 2008;14:543–548.
 
 111. Vatner SF, Baig H, Manders WT, Maroko PR. The effects of coronary artery
 reperfusion on myocardial infarct size calculated from creatine kinase. J Clin
-Invest 1978;61:1048–1056. . [............................................................................................................................................................................]
 
 
 112. Starnberg K, Jeppsson A, Lindahl B, Hammarsten O. Revision of the troponin T
@@ -3085,7 +3070,6 @@ Diagnostic performance of rising, falling, or rising and falling kinetic changes
 high-sensitivity cardiac troponin T in an unselected emergency department population. Eur Heart J Acute Cardiovasc Care 2013;2:314–322.
 147. Amsterdam EA, Wenger NK, Brindis RG, Casey DE Jr, Ganiats TG, Holmes DR
 Jr, Jaffe AS, Jneid H, Kelly RF, Kontos MC, Levine GN, Liebson PR, Mukherjee
-D, Peterson ED, Sabatine MS, Smalling RW, Zieman SJ. 2014 AHA/ACC . [............................................................................................................................................................................]
 
 
 guideline for the management of patients with non-ST-elevation acute coronary
@@ -3222,7 +3206,6 @@ patients with acute myocardial infarction. Heart 2010;96:237–243.
 187. Locca D, Bucciarelli-Ducci C, Ferrante G, La Manna A, Keenan NG, Grasso A,
 
 Barlis P, del Furia F, Prasad SK, Kaski JC, Pennell DJ, di Mario C. New universal
-definition of myocardial infarction applicable after complex percutaneous coronary interventions? JACC Cardiovasc Interv 2010;3:950–958. . [.................................................................................................................................................]
 
 
 188. Schuleri KH, George RT, Lardo AC. Assessment of coronary blood flow with

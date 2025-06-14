@@ -188,7 +188,6 @@ tachycardia . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 9.2.1.2 QRS duration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 668
 
 
-. [.......................................................................................]
 
 ESC Guidelines 657
 
@@ -305,7 +304,6 @@ re-entrant tachycardia . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 disease . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 695
 
-. [............................................................................................................................................................................]
 
 
 12.2 Catheter and surgical ablation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 696
@@ -592,7 +590,6 @@ Figure 13 Atrioventricular nodal re-entrant tachycardia . . . . . . . . . . . . 
 
 Figure 14 Acute therapy of atrioventricular nodal re-entrant
 
-. [............................................................................................................................................................................]
 
 
 List of tables
@@ -781,6 +778,9 @@ HF Heart failure
 ESC Guidelines 659
 
 
+
+![Page 15 Images](Supraventricular_Tachycardia_2019_images/page_015_images.png)
+
 HFrEF Heart failure with reduced ejection fraction
 HPS His�Purkinje system
 
@@ -851,7 +851,6 @@ assisting health professionals in proposing the best management
 strategies for an individual patient with a given condition. Guidelines
 and their recommendations should facilitate decision making of
 health professionals in their daily practice. However, the final deci
-. [............................................................................................................................................................................]
 
 
 responsible health professional(s) in consultation with the patient
@@ -928,6 +927,12 @@ Wording to use
 
 
 
+![Page 22 Images](Supraventricular_Tachycardia_2019_images/page_022_images.png)
+
+
+
+
+![Page 24 Images](Supraventricular_Tachycardia_2019_images/page_024_images.png)
 
 Table 2 Classes of recommendations
 
@@ -941,7 +946,6 @@ text version of the Guidelines, which is freely available via the
 ESC website and hosted on the EHJ website. The National Societies
 of the ESC are encouraged to endorse, translate and implement
 all ESC Guidelines. Implementation programmes are needed
-because it has been shown that the outcome of disease may be . [..........................]
 
 
 favourably influenced by the thorough application of clinical
@@ -959,11 +963,13 @@ consideration of each patient’s health condition and in consultation
 ESC Guidelines 661
 
 
+
+![Page 29 Images](Supraventricular_Tachycardia_2019_images/page_029_images.png)
+
 with that patient or the patient’s caregiver where appropriate and/or
 necessary. It is also the health professional’s responsibility to verify
 the rules and regulations applicable in each country to drugs and devices at the time of prescription.
 ### 2 Introduction
-. [.......................]
 
 Supraventricular arrhythmias are common and patients are often
 symptomatic, requiring management with drugs and electrophysiological procedures. The ESC published management Guidelines for
@@ -1067,6 +1073,9 @@ Continued
 Table 3 Continued
 
 
+
+
+![Page 35 Images](Supraventricular_Tachycardia_2019_images/page_035_images.png)
 
 |Col1|Col2|2003 2019|Col4|Col5|
 |---|---|---|---|---|
@@ -1243,7 +1252,6 @@ alternative form of abnormal impulse initiation involves oscillations of
 |Occasionally, AF with very fast ventricular response may apparently<br>resemble a regular narrow QRS tachycardia.|Occasionally, AF with very fast ventricular response may apparently<br>resemble a regular narrow QRS tachycardia.|
 
 
-. [................................]
 
 
 Table 6 Differential diagnosis of narrow and wide QRS
@@ -1295,7 +1303,6 @@ during pregnancy in women with pre-existing SVT. [18]
 
 In the general population, the prevalence of a WPW pattern on
 
-. [...........................................................................................................]
 
 
 various questionnaires are useful in the audit of ablation techniques.
@@ -1437,7 +1444,6 @@ significant risk factors for coronary artery disease. [43] An electrophysiology 
 Narrow QRS complexes are due to rapid activation of the ventricles
 via the His�Purkinje system (HPS), which suggests that the origin of
 
-. [............................................................................................................................................................................]
 
 
 activation of the His bundle can also occur in high septal VTs, thus
@@ -1572,7 +1578,6 @@ SVTs display RP>_PR (Figure 1). Rarely, recording of U waves during
 typical AVNRT may simulate a long-RP tachycardia. [53]
 
 On EPS, a very short VA interval (<_70 ms) usually indicates typical
-AVNRT, or less commonly focal AT, but has also been reported in . [..............]
 AVRT. [54] For surface ECG measurements, a cut-off interval of 90 ms
 has been shown to be useful and can be used if P waves are visible, [55]
 
@@ -1662,6 +1667,7 @@ AF = atrial fibrillation; AT = atrial tachycardia; AV = atrioventricular; AVN =
 atrioventricular node; AVNRT = atrioventricular nodal re-entrant tachycardia;
 AVRT = atrioventricular re-entrant tachycardia; JET = junctional ectopic
 tachycardia.
+
 
 
 
@@ -1760,7 +1766,6 @@ that suggest ventricular tachycardia rather than supraventricular tachycardia in
 |LBBB morphology|Lead V1: Broad R wave, slurred or<br>notched-down stroke of the S wave,<br>and delayed nadir of S wave<br>Lead V6: Q or QS wave|Lead V1: Broad R wave, slurred or<br>notched-down stroke of the S wave,<br>and delayed nadir of S wave<br>Lead V6: Q or QS wave|
 
 
-. [............................................................]
 
 
 AV = atrioventricular; LBBB = left bundle branch block; RBBB = right bundle
@@ -1826,7 +1831,6 @@ QRS in aVR, and an R/S ratio >1 in V6. [44]
 9.2.1.6 Left bundle branch block morphology
 
 Lead V1: As stated above for RBBB, for the same reasons, the
-presence of a broad R wave, slurred or notched-down stroke of . [.................................................................................]
 
 
 the S wave, and delayed nadir of the S wave are strong predictors
@@ -1939,7 +1943,6 @@ diagnosis
 |Synchronized direct-current cardioversion is<br>recommended when drug therapy fails to con-<br>vert or control the tachycardia.87,88|I|B|B|
 
 
-. [..............................................................]
 
 
 i.v. beta-blockers are contraindicated in the presence of decompensated HF.
@@ -2078,7 +2081,6 @@ immediate saline flush. Large, centrally located (e.g. antecubital) veins
 are likely to deliver more effective drug concentrations to the heart
 
 
-. [............................................................................................................................................................................]
 
 672 ESC Guidelines
 
@@ -2102,6 +2104,7 @@ depends on the haemodynamic stability of the patient
 Recommendations for the acute management of wide
 QRS tachycardia in the absence of an established
 diagnosis
+
 
 
 
@@ -2169,7 +2172,6 @@ Synchronized cardioversion is recommended for any persistent wide
 QRS tachycardia resulting in hypotension, acutely altered mental status, chest pain, acute HF symptoms, or signs of shock. [86][,][87]
 
 
-. [....................................................................]
 
 ESC Guidelines 673
 
@@ -2218,7 +2220,6 @@ activity that is out of proportion with the level of physical, emotional,
 pathological, or pharmacological stress. [139] The tachycardia tends to
 be persistent, and most of the affected patients are young and female,
 
-[140] . [.....................................................................................................................................]
 
 
 mechanism of IST remains poorly understood and is likely to be multifactorial (e.g. dysautonomia, neurohormonal dysregulation, and
@@ -2409,7 +2410,6 @@ P waves. [163]
 an EPS.
 
 
-. [...............................................................................]
 
 ESC Guidelines 675
 
@@ -2471,7 +2471,6 @@ Most studies have reported no influence of sex.
 
 Symptoms may include palpitations, shortness of breath, chest
 
-. [............................................................................................................................................................................]
 
 
 sustained or incessant. Dynamic forms with recurrent interruptions
@@ -2643,7 +2642,6 @@ era. [11][�][13][,][203][�][208]
 
 11.1.2.4 Chronic therapy
 
-. [.......................]
 
 
 Table 11 presents a synopsis of success rates and complications of
@@ -2742,7 +2740,6 @@ AT in the absence of respiratory decompensation, sinus node
 Recommendations for the therapy of multifocal atrial
 tachycardia
 
-Recommendation Class [a] Level [b] . [...............................................................................................]
 
 
 dysfunction, or AV block. There has also been a case report on the
@@ -2854,7 +2851,6 @@ patients: AF may trigger atrial flutter, and after typical flutter ablation
 AF is frequent. [23][,][227][�][229] Typical flutter may also frequently occur in
 patients treated for AF with class IC drugs or amiodarone. In this
 case, flutter rate may be reduced to <200 b.p.m. facilitating 1:1 AV
-conduction. The action of antiarrhythmic drugs on ventricular activation may result in wide QRS tachycardia. [230][�][232] . [......................................................]
 
 
 Beyond symptoms associated with high-rate and loss of atrial kick,
@@ -2984,7 +2980,6 @@ should be restricted to cases of HF or significant structural heart disease.
 11.1.4.1.6 Anticoagulation. Data about the embolic risk of atrial
 flutter have usually been derived in the presence of concomitant
 AF, thus making individualized risk stratification difficult. Left
-atrial (LA) appendage ‘stunning’ and thrombi seem to be lower . [.......................................................................................................................................................................]
 
 
 11.1.4.1.4 Catheter ablation. Catheter ablation is the most effective
@@ -3114,7 +3109,6 @@ or progressive atrial degeneration/fibrosis. [268] Anatomical obstacles
 
 such as the ostia of PVs, and mitral annulus, are often involved.
 
-. [....................................................................]
 
 
 Atypical atrial flutter could also arise from upper loop re-entry in
@@ -3183,7 +3177,6 @@ conditions that provide an explanation for dual conduction and nodal
 re-entrant arrhythmogenesis. [312][�][314] There has also been considerable histological and electrophysiological evidence that the right and
 left inferior extensions of the human AVN, and the atrionodal inputs
 that they facilitate, may provide the anatomical substrate for the slow
-pathway. [315][,][316] Thus, comprehensive models of the tachycardia . [.........................................................................]
 
 
 circuit for all forms of AVNRT based on the concept of atrionodal
@@ -3334,7 +3327,6 @@ may occur in <_7.6% in patients with typical AVNRT. [326][�][328]
 Atypical AVNRT is seen in �6% of all AVNRT cases, [317] and in some
 
 
-. [...........................................................................................]
 
 
 
@@ -3453,7 +3445,6 @@ are derived from mixed populations of SVT, as described in section
 10.1.1 on the acute therapy of SVT in general, but it seems that
 
 
-. [............................................................................................................................................................................]
 
 686 ESC Guidelines
 
@@ -3555,7 +3546,6 @@ junctional tachycardia, amiodarone alone, or with propafenone
 or ivabradine, appears effective. [368][,][376][�][379] For chronic therapy,
 
 
-. [............................................................................................................................................................................]
 
 ESC Guidelines 687
 
@@ -3584,7 +3574,6 @@ thus resulting in the so-called pre-excitation, in combination with
 usually recurrent tachyarrhythmias. [397] During sinus rhythm, a typical pattern in the resting ECG with the following characteristics is
 present: (i) a short PR interval (<_120 ms); (ii) slurred upstroke (or
 
-. [..................................................................]
 
 
 QRS complex (>120 ms). In most cases, APs giving rise to the
@@ -3667,7 +3656,6 @@ travel distances, thus allowing for sufficient recovery of refractoriness of the
 30 - 60% of patients with spontaneous antidromic AVRT, multiple
 APs (manifest or concealed), which could act or not as the retrograde limb during the AVRT, may be detected. Antidromic AVRT
 has the following ECG features, illustrated in Figure 18: (i) a wide
-QRS complex (fully pre-excited) and (ii) an RP interval that is . [.......................................................................]
 
 
 difficult to assess as the retrograde P wave is usually inscribed
@@ -3752,7 +3740,6 @@ retrograde nature of atrial activation. The incessant nature of PJRT
 may result in TCM that usually resolves after successful treatment by
 radiofrequency catheter ablation, particularly in younger
 patients. [407][,][408] Catheter ablation is strongly recommended in symptomatic patients or in cases with impaired LV ejection fraction likely
-related to TCM. . [........................................................................]
 
 
 Other potential causes of long RP tachycardias are sinus tachycardia, AT, atypical AVRT, and JET with 1:1 retrograde conduction.
@@ -3806,7 +3793,6 @@ unlikely due to decremental conduction properties.
 
 Adenosine should be used with caution for the treatment of AVRT
 
-[119][,][120][,][272] AF with fast ventricular . [................................................................]
 
 
 Mapping identifies the proximal and distal insertion of accessory
@@ -3941,6 +3927,7 @@ b Level of evidence.
 
 
 
+
 Figure 20 Acute therapy of pre-excited atrial fibrillation.
 AF = atrial fibrillation; i.v. = intravenous.
 
@@ -3975,7 +3962,6 @@ reported to be significantly higher when cryoenergy is applied. [438]
 Two approaches are available for left-sided pathways: an antegrade
 transseptal and a retrograde aortic approach. There is evidence that
 the transseptal approach, in experienced hands, results in reduced
-radiation and procedure times. [441][,][448] . [.........................................................................................]
 
 
 Figure 21 Chronic therapy of atrioventricular re-entrant tachycardia.
@@ -4098,7 +4084,6 @@ that identify patients with a high-risk AP include a SPERRI <_250 ms,
 AP ERP <_250 ms, multiple APs, and an inducible AP-mediated tachycardia in the baseline state or during isoproterenol infusion, which
 should always be tried. [452][,][460] The options for screening patients who
 do not fall into these groups include the use of EPS as a risk-stratifying
-. [.........................]
 
 
 tool or the use of non-invasive screening with exercise testing, drug
@@ -4171,7 +4156,6 @@ Owing to preceding operations and underlying anatomy, patients
 with tetralogy of Fallot, Ebstein’s anomaly, transposition of the great
 arteries after atrial switch procedure, and complex patients with univentricular hearts and Fontan palliation are especially prone to late
 
-. [...............................................................................................................................................................]
 
 
 tachycardia, and ventricular tachycardia. [488] However, even patients
@@ -4312,7 +4296,6 @@ chronic antiarrhythmic medication in this vulnerable population. [502][�][504]
 12.3.1 Atrial septal defect
 The incidence of atrial arrhythmias in patients with atrial septal defects
 ranges between 5�15%. [508] The exact impact of atrial septal defect closure, especially of late closure, on the risk of developing AT is contro
-. [...............................................................................]
 
 
 mechanism is CTI-dependent tachycardia and this is generally susceptible to catheter ablation. However, CTI-dependent and ‘incisional’ atrial
@@ -4407,7 +4390,6 @@ SVTs, such as PJRT and focal AT. [525][,][526]
 Pharmacokinetics and pharmacodynamics in children are different
 to those in adults; therefore, special attention has to be given when
 
-[527] . [............................................................................................................................................................................]
 
 
 milk can substantially modify the absorption of the drug and, as feeding schedules tend to be erratic, can affect effective drug availability.
@@ -4538,7 +4520,6 @@ of treatments, must be balanced and addressed for the foetus.
 Catheter ablation should therefore be considered before pregnancy
 when possible in patients with a known history of symptomatic
 tachyarrhythmia. Trials evaluating the level of surveillance at delivery
-are needed. . [........................................................................................]
 
 
 As substantive prospective or randomized studies are unavailable,
@@ -4649,7 +4630,6 @@ cardioversion.
 Catheter ablation should be postponed to the second trimester if
 possible, but may be necessary in the case of drug-refractory and
 
-. [............................................................]
 
 
 15.3 Diagnosis
@@ -4784,7 +4764,6 @@ ventricular pre-excitation. Asymptomatic athletes with intermittent pre-excitati
 considered to be at low risk (see section 11.3.11 for reservations),
 but should be further evaluated as they may be eligible for competitive sports activity. In asymptomatic athletes with ventricular
 pre-excitation, invasive risk stratification should be conducted as
-described in section 11.3.11 and catheter ablation should be . [.............................................................................................................]
 
 
 performed in those with high-risk features. [577] Asymptomatic
@@ -4940,7 +4919,6 @@ possible.
  - [Ablate AVNRT, typical or atypical, with lesions in the anatomical]
 area of the nodal extensions, either from the right or left
 
-. [...................................................................................................]
 
 
 
@@ -5058,7 +5036,6 @@ general, is under investigation.
 
 - [Both invasive and non-invasive tests for the risk assessment of]
 patients with asymptomatic pre-excitation have limitations, being
-dependent on the autonomic tone. More accurate risk-stratification models are needed. . [......................................]
 
 
 
@@ -5306,7 +5283,6 @@ genetic predisposition translates into a higher ventricular fibrillation risk
 remains to be seen. Genetic animal models of WPW that express mutations (such as of the gene encoding the AMP-activated protein kinase)
 responsible for a familial form of WPW syndrome with a phenotype
 identical to that of the human syndrome have been developed, and may
-provide insight into the development and properties of the cardiac conduction system and APs. [594] Spontaneous AVNRT has also been . [............................................................................................................................................................................]
 
 
 identified as a potential first clinical manifestation of concealed Brugada
@@ -5420,7 +5396,6 @@ Cardiology, Kristjan Gudmundsson; Ireland: Irish Cardiac Society,
 John Erwin; Israel: Israel Heart Society, Alon Barsheshet; Italy:
 Italian Federation of Cardiology, Roberto De Ponti; Kazakhstan:
 
-. [............................................................................................................................................................................]
 
 
 Kosovo (Republic of): Kosovo Society of Cardiology, Haki Jashari;
@@ -5622,7 +5597,6 @@ years of age in an era of radiofrequency catheter ablation. Int J Cardiol
 22. Skov MW, Rasmussen PV, Ghouse J, Hansen SM, Graff C, Olesen MS, Pietersen
 A, Torp-Pedersen C, Haunsø S, Køber L, Svendsen JH, Holst AG, Nielsen JB.
 Electrocardiographic preexcitation and risk of cardiovascular morbidity and mortality. Results from the Copenhagen ECG Study. Circ Arrhythm Electrophysiol
-2017;10:e004778. . [............................................................................................................................................................................]
 
 
 23. Granada J, Uribe W, Chyou P-H, Maassen K, Vierkant R, Smith PN, Hayes J,
@@ -5768,7 +5742,6 @@ Circulation 1991;83:1987�1994.
 68. Jastrzebski M, Kukla P, Czarnecka D, Kawecka-Jaszcz K. Comparison of five electrocardiographic methods for differentiation of wide QRS-complex tachycardias.
 Europace 2012;14:1165�1171.
 69. Brugada P, Brugada J, Mont L, Smeets J, Andries EW. A new approach to the differential diagnosis of a regular tachycardia with a wide QRS complex. Circulation
-1991;83:1649�1659. . [............................................................................................................................................................................]
 
 
 70. Kindwall KE, Brown J, Josephson ME. Electrocardiographic criteria for ventricular
@@ -5915,7 +5888,6 @@ Circulation 2016;134:486�498.
 
 119. Turley AJ, Murray S, Thambyrajah J. Pre-excited atrial fibrillation triggered by
 intravenous adenosine: a commonly used drug with potentially life-threatening
-adverse effects. Emerg Med J 2008;25:46�48. . [............................................................................................................................................................................]
 
 
 120. Garratt CJ, Griffith MJ, O’Nunain S, Ward DE, Camm AJ. Effects of intravenous
@@ -6070,7 +6042,6 @@ Electrophysiol 2004;15:237�240.
 160. Jacobson JT, Kraus A, Lee R, Goldberger JJ. Epicardial/endocardial sinus node
 ablation after failed endocardial ablation for the treatment of inappropriate
 sinus tachycardia. J Cardiovasc Electrophysiol 2014;25:236�241.
-161. RodrAlvarez PA, Fern� �ıguez-Ma~nero M, Kreidieh B, Al Rifai M, Ibarra-Cortez S, Schurmann P,�andez-Lopez XA, Garc� �ıa-Seara J, Mart�ınez-Sande L, Gonz�alez- . [............................................................................................................................................................................]
 
 
 Juanatey JR, Valderr�abano M. Ablation of inappropriate sinus tachycardia: a systematic review of the literature. JACC Clin Electrophysiol 2017;3:253�265.
@@ -6224,7 +6195,6 @@ G, Bollmann A. In-hospital mortality of patients with atrial arrhythmias: insigh
 from the German-wide Helios hospital network of 161 502 patients and 34 025
 arrhythmia-related procedures. Eur Heart J 2018;39:3947�3957.
 208. Katritsis DG, Zografos T, Siontis KC, Giannopoulos G, Muthalaly RG, Liu Q,
-Latchamsetty R, Varga Z, Deftereos S, Swerdlow C, Callans DJ, Miller JM, . [............................................................................................................................................................................]
 
 
 Morady F, John RM, Stevenson WG. End-points for successful slow pathway
@@ -6384,7 +6354,6 @@ electrophysiological determinants of enhanced conversion efficacy. Circulation
 
 255. Volgman AS, Carberry PA, Stambler B, Lewis WR, Dunn GH, Perry KT,
 VanderLugt JT, Kowey PR. Conversion efficacy and safety of intravenous ibutilide compared with intravenous procainamide in patients with atrial flutter or
-fibrillation. J Am Coll Cardiol 1998;31:1414�1419. . [............................................................................................................................................................................]
 
 
 256. Vos MA, Golitsyn SR, Stangl K, Ruda MY, Van Wijk L, Harry JD, Perry KT,
@@ -6543,7 +6512,6 @@ after circumferential antral ablation of atrial fibrillation. Heart Rhythm
 Ouyang F. Left atrial and pulmonary vein macroreentrant tachycardia associated
 with double conduction gaps: a novel type of man-made tachycardia after circumferential pulmonary vein isolation. Heart Rhythm 2008;5:43�51.
 297. Katritsis D, Wood MA, Shepard RK, Giazitzoglou E, Kourlaba G, Ellenbogen
-KA. Atrial arrhythmias following ostial or circumferential pulmonary vein ablation. J Interv Card Electrophysiol 2006;16:123�130. . [............................................................................................................................................................................]
 
 
 298. Barbhaiya CR, Baldinger SH, Kumar S, Chinitz JS, Enriquez AD, John R,
@@ -6692,7 +6660,6 @@ Wang Z, Po SS. Slow/fast atrioventricular nodal reentrant tachycardia using the
 inferolateral left atrial slow pathway. Circ Arrhythm Electrophysiol 2018;11:e006631.
 340. Rinkenberger RL, Prystowsky EN, Heger JJ, Troup PJ, Jackman WM, Zipes DP.
 Effects of intravenous and chronic oral verapamil administration in patients with
-supraventricular tachyarrhythmias. Circulation 1980;62:996�1010. . [............................................................................................................................................................................]
 
 
 341. Winniford MD, Fulton KL, Hills LD. Long-term therapy of paroxysmal supraventricular tachycardia: a randomized, double-blind comparison of digoxin, propranolol and verapamil. Am J Cardiol 1984;54:1138�1139.
@@ -6846,7 +6813,6 @@ tachycardia. Card Electrophysiol Rev 2002;6:431�435.
 Transcatheter cryothermal ablation of junctional ectopic tachycardia in the normal heart. Heart Rhythm 2006;3:903�907.
 384. Jackowska-Zduniak B, Forys U. Mathematical model of the atrioventricular
 nodal double response tachycardia and double-fire pathology. Math Biosci Eng
-2016;13:1143�1158. . [............................................................................................................................................................................]
 
 
 385. Peiker C, Pott C, Eckardt L, Kelm M, Shin DI, Willems S, Meyer C. Dual atrioventricular nodal non-re-entrant tachycardia. Europace 2016;18:332�339.
@@ -6993,7 +6959,6 @@ follow-up. J Am Coll Cardiol 1987;9:1357�1363.
 430. Boahene KA, Klein GJ, Yee R, Sharma AD, Fujimura O. Termination of acute
 atrial fibrillation in the Wolff-Parkinson-White syndrome by procainamide and
 propafenone: importance of atrial fibrillatory cycle length. J Am Coll Cardiol
-1990;16:1408�1414. . [............................................................................................................................................................................]
 
 
 431. Crijns HJGM, den Heijer P, van Wijk LM, Lie KI. Successful use of flecainide in
@@ -7146,7 +7111,6 @@ pathway location. Am J Cardiol 2012;109:1011�1014.
 470. Beckman KJ, Gallastegui JL, Bauman JL, Hariman RJ. The predictive value of electrophysiologic studies in untreated patients with Wolff-Parkinson-White syndrome. J Am Coll Cardiol 1990;15:640�647.
 471. Bunch TJ, May HT, Bair TL, Anderson JL, Crandall BG, Cutler MJ, Jacobs V,
 Mallender C, Muhlestein JB, Osborn JS, Weiss JP, Day JD. Long-term natural history of adult Wolff�Parkinson�White syndrome patients treated with and
-without catheter ablation. Circ Arrhythm Electrophysiol 2015;8:1465�1471. . [............................................................................................................................................................................]
 
 
 472. Cain N, Irving C, Webber S, Beerman L, Arora G. Natural history of WolffParkinson-White syndrome diagnosed in childhood. Am J Cardiol
@@ -7302,7 +7266,6 @@ BJ, Dearani JA, Groot Nd, Dubin AM, Harris L, Janousek J, Kanter RJ, Karpawich
 PP, Perry JC, Seslar SP, Shah MJ, Silka MJ, Triedman JK, Walsh EP, Warnes CA.
 PACES/HRS Expert Consensus Statement on the Recognition and Management
 of Arrhythmias in Adult Congenital Heart Disease: Developed in partnership
-between the Pediatric and Congenital Electrophysiology Society (PACES) and the . [............................................................................................................................................................................]
 
 
 Heart Rhythm Society (HRS). Endorsed by the governing bodies of PACES, HRS,
@@ -7460,7 +7423,6 @@ exposure in pregnancy and risk of fetal cardiac anomalies. JAMA Intern Med
 554. Duan L, Ng A, Chen W, Spencer HT, Lee MS. Beta-blocker subtypes and risk of
 low birth weight in newborns. J Clin Hypertens (Greenwich) 2018;20:1603�1609.
 555. Bergman JEH, Lutke LR, Gans ROB, Addor MC, Barisic I, Cavero-Carbonell C,
-Garne E, Gatt M, Klungsoyr K, Lelong N, Lynch C, Mokoroa O, Nelen V, . [............................................................................................................................................................................]
 
 
 Neville AJ, Pierini A, Randrianaivo H, Rissmann A, Tucker D, Wiesel A, Dolk H,
@@ -7580,7 +7542,6 @@ revealed by ripple mapping. Arrhythm Electrophysiol Rev 2018;7:261�264.
 585. Luther V, Cortez-Dias N, Carpinteiro L, de Sousa J, Balasubramaniam R,
 Agarwal S, Farwell D, Sopher M, Babu G, Till R, Jones N, Tan S, Chow A, Lowe
 M, Lane J, Pappachan N, Linton N, Kanagaratnam P. Ripple mapping: initial multicenter experience of an intuitive approach to overcoming the limitations of
-3D activation mapping. J Cardiovasc Electrophysiol 2017;28:1285�1294. . [......................................................................................................................]
 
 
 586. Latcu DG, Bun SS, Viera F, Delassi T, El Jamili M, Al Amoura A, Saoudi N. Selection

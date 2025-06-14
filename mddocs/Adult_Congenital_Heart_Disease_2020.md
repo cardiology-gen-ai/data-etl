@@ -136,7 +136,6 @@ infra-hisian conduction delay . . . . . . . . . . . . . . . . . . . . . . . . . 
 in adult congenital heart disease . . . . . . . . . . . . . . . . . . . . . . . . . . . 583
 
 
-. [........................................................................................................]
 
 
 3.4.3.2.2 Risk assessment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 583
@@ -322,7 +321,6 @@ venous connections . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 4.6 Coarctation of the aorta . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 603
 
-. [............................................................................................................................................................................]
 
 
 4.6.2 Clinical presentation and natural history . . . . . . . . . . . . . . . . . 603
@@ -668,7 +666,6 @@ pulmonary artery . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 6.2.1 Shunt lesions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 629
 
-. [............................................................................................................................................................................]
 
 
 6.2.2 Left ventricular outflow tract obstruction and
@@ -858,6 +855,9 @@ pulmonary artery . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 6 Gaps in evidence . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 629
 
 
+
+![Page 14 Images](Adult_Congenital_Heart_Disease_2020_images/page_014_images.png)
+
 6.1 General aspects . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 629
 
 6.1.1 Organization of care and patient evaluation . . . . . . . . . . . . . . 629
@@ -977,7 +977,6 @@ Figure 5 Management of left ventricular outflow tract
 obstruction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 601
 
 Figure 6 Management of coarctation and re-coarctation
-of the aorta . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 605 . [............................................................................................................................................................................]
 
 
 Figure 7 Management of right ventricular outflow tract
@@ -1056,6 +1055,9 @@ EP Electrophysiology/electrophysiological
 ERA Endothelin receptor antagonist
 ESC European Society of Cardiology
 
+
+
+![Page 18 Images](Adult_Congenital_Heart_Disease_2020_images/page_018_images.png)
 
 List of tables
 
@@ -1203,7 +1205,6 @@ SubAS Subaortic stenosis
 
 SupraAS Supravalvular aortic stenosis
 SVC Superior vena cava
-SVT Supraventricular tachycardia . [.........................................................................................................................................................................]
 
 
 TGA Transposition of the great arteries
@@ -1286,7 +1287,6 @@ risk�benefit ratio. The level of evidence and the strength of the recommendati
 graded according to predefined scales, as outlined below.
 The experts of the writing and reviewing panels provided declaration of interest forms for all relationships that might be perceived as
 real or potential sources of conflicts of interest. Their declarations of
-interest were reviewed according to the ESC declaration of interest . [....................................]
 
 
 [rules and can be found on the ESC website (http://www.escardio.org/](http://www.escardio.org/guidelines)
@@ -1356,7 +1356,6 @@ of intervention. In addition, specific aspects of medical treatment for
 conditions such as heart failure, pulmonary hypertension (PH), and
 anticoagulation are addressed.
 These guidelines focus on ACHD, are oriented towards manage
-. [............................................................................................................................................................................]
 
 
 disease, and aortic disease, refer to the relevant separate guideline
@@ -1603,7 +1602,6 @@ ACHD specialists to determine the most appropriate level of care and
 follow-up intervals for each individual patient. [8] Networks of specialist
 centres with general adult care should be established for each catchment area. Indeed, with the growing population of adults with CHD,
 more patients will first present to general cardiologists for acute conditions, such as arrhythmia, heart failure, or endocarditis. In such cases,
-general cardiologists should not delay treatment in haemodynamically . [........................................................]
 
 
 unstable patients but ought to liaise with the patient’s ACHD centre
@@ -1718,7 +1716,6 @@ catheter-based interventions, is of critical importance in the work-up
 of ACHD patients. The aim of analysing patient history is to assess
 present and past symptoms, as well as to look for intercurrent events
 and any changes in medication. The most frequent symptoms
-reported by ACHD patients are exercise intolerance and palpitations. Self-estimated physical capacity corresponds poorly with . [...................................]
 
 
 objective measures of exercise capacity. [14] Therefore, cardiopulmonary exercise testing (CPET) has gained importance for objective
@@ -1808,7 +1805,6 @@ Table 6 Indications for cardiovascular magnetic resonance imaging in ACHD patien
 
 
 
-. [..............................................................]
 
 
 ACHD = adult congenital heart disease; CAD = coronary artery disease; CMR =
@@ -1890,7 +1886,6 @@ CCT has high spatial resolution and rapid acquisition time; it is particularly r
 collateral arteries, and for parenchymal lung disease (Table 6). In
 many institutions, CCT is the preferred imaging modality in planning
 
-. [............................................................................................................................................................................]
 
 
 be assessed, with inferior temporal resolution compared with CMR,
@@ -2041,7 +2036,6 @@ systemic RV. Diuretics mainly control symptoms; whether the longterm use of inhi
 beta blockers influences clinical outcome remains unknown. Also, no
 
 long-term clinical benefit of conventional heart failure treatment has
-been shown in a failing subpulmonary ventricle, although diuretics . [............................................................................................................................................................................]
 
 
 might alleviate symptoms. Treatment of symptomatic patients with a
@@ -2116,7 +2110,6 @@ encountered is late intraatrial reentrant tachycardia (IART), in particular cavo
 150 and 250 beats per minute may lead to rapid AV conduction, haemodynamic compromise, and sudden cardiac death (SCD).
 Monomorphic ventricular tachycardia (VT) also depends on the malformation (Table 7) and type of repair, [34][,][35] with the critical part of the
 macro-reentry circuit typically located within anatomically well-defined
-isthmuses bordered by surgical scars and patch material. In contrast, in . [.........................................]
 
 
 patients with progressive failure of the systemic or subpulmonary ventricle, more complex EP changes may occur. These changes involve ion
@@ -2158,7 +2151,6 @@ Amiodarone may be considered for AT/AF recurrence prevention in
 patients with CHD and systemic ventricular dysfunction, hypertrophy of systemic ventricle, or CAD, in whom catheter ablation fails or
 is otherwise no option. Side effects of amiodarone are frequent and it
 should be used with caution in cyanotic CHD, low body weight, hep
-. [...................................................................................]
 
 atic, thyroid, or pulmonary disease, or prolonged QT interval. Longterm amiodarone therapy is not advised in young CHD patients. [32]
 
@@ -2301,7 +2293,6 @@ PAH-CHD after defect repair. [48] More recently, a nationwide CHD
 Continued
 
 
-. [..............................................................................................]
 
 ESC Guidelines 583
 
@@ -2360,7 +2351,6 @@ PAH associated with small defects resemble the dismal outcomes of
 
 idiopathic PAH, presumably because these conditions are based on a
 
-. [...........................................................................................................]
 
 
 3.4.3.2 Diagnosis
@@ -2448,7 +2438,6 @@ solely dependent on the haemodynamics obtained at cardiac catheterization; [53][
 
 There is no prospective evidence that a treat-and-repair approach
 in patients with PAH-CHD confers long-term benefits. [44][,][55] No prospective data are available on the usefulness of vasoreactivity testing,
-closure test, or lung biopsy for assessment of operability. [53][,][54][,][56][�][60] . [...............................................]
 
 3.4.3.3.5 Pulmonary arterial hypertension-directed medical therapy.
 Advanced therapies benefit patients with Eisenmenger syndrome, [51]
@@ -2589,7 +2578,6 @@ cardiovascular services. [74] Minimum annual numbers of interventions
 
 per centre have been proposed in a recent recommendation
 
-[74] . [............................................................................................................................................................................]
 
 
 3.4.6 Infective endocarditis
@@ -2755,7 +2743,6 @@ effusion, but not BNP, were the strongest predictors for death.
 
  - [Hyperviscosity symptoms include headache, faintness, dizziness,]
 
-. [............................................................................................................................................................................]
 
 
 lips, muscle pain, and weakness (classified moderate when they
@@ -2923,7 +2910,6 @@ section 4.15).
 
 3.4.8.8 Medical therapy
 
- - [Specific PAH treatment: see][ section 3.4.3][.]
 
  - [Arrhythmias: sinus rhythm should be maintained whenever possi-]
 
@@ -2944,7 +2930,6 @@ saturation) and should not be based on conventional
 
 indications.
 
-. [.........................................................................................................]
 
 
 
@@ -3015,7 +3000,6 @@ section 4.15).
 
 3.4.8.8 Medical therapy
 
- - [Specific PAH treatment: see][ section 3.4.3][.]
 
  - [Arrhythmias: sinus rhythm should be maintained whenever possi-]
 
@@ -3129,7 +3113,6 @@ To date, �90% of patients with mild, 75% with moderate, and 40%
 with complex heart defects reach the age of 60 years. [117] These
 proportions are expected to rise further in the upcoming decades.
 Hence, there is a growing population of older persons with CHD
-healthcare needs. These older . [............................................................................................................................................................................]
 
 
 characterized by more comorbidities, inherent age-related risk for
@@ -3299,7 +3282,6 @@ Guidelines on pregnancy and heart disease were published in 2018. [43]
 
 Pre-pregnancy counselling should be provided to all women with
 CHD. Specialist care is best provided in a multidisciplinary team set
-. [............................................................................................................................................................................]
 
 
 ACHD cardiology, obstetrics, and anaesthesia, and where necessary
@@ -3504,7 +3486,6 @@ lesions according to the sex of the affected parent [a]
 
 
 
-. [...........]
 
 
 ASD = atrial septal defect; AVSD = atrioventricular septal defect; ccTGA = congenitally corrected transposition of the great arteries; CHD = congenital heart
@@ -3583,7 +3564,6 @@ shunt or eventually cause shunt reversal, resulting in cyanosis.
 Patients frequently remain asymptomatic until adulthood. However,
 the majority develop symptoms beyond the fourth decade including
 reduced functional capacity, exertional shortness of breath, and palpitations (supraventricular tachyarrhythmias), and less frequently pul
-. [............................................................................................................................................................]
 
 
 overall, but survival is much better than previously assumed. [142] PAP
@@ -3813,7 +3793,6 @@ diameter <_38 mm and sufficient rim of 5 mm except towards the
 aorta). This is the case in �80% of patients. Although it cannot be
 
 
-. [............................................................................................................................................................................]
 
 ESC Guidelines 593
 
@@ -3843,7 +3822,6 @@ a single anomalous pulmonary venous connection of only one pulmonary lobe to res
 4.1.6 Follow-up recommendations
 Follow-up evaluation should include assessment of a residual shunt, RV
 size and function, TR and PAP by echocardiography, and assessment of
-arrhythmias by history, ECG, and � only if indicated � Holter monitoring. Patients repaired at age <25 years without relevant sequelae or . [.........................................................]
 
 
 residua (no residual shunt, normal PAP, normal RV, no arrhythmias) do
@@ -3939,7 +3917,6 @@ The usual clinical presentations in adults include:
 
 shunt size determines the degree of LV volume overload and the
 
-. [............................................................................................................................................................................]
 
 
 
@@ -4147,7 +4124,6 @@ b Level of evidence.
 c LV enlargement with increased stroke volume.
 d There are limited data available for a precise cut-off, but by clinical experience,
 
-. [........................................................................................................................................................................]
 
 
 4.2.5 Follow-up recommendations
@@ -4284,7 +4260,6 @@ years of age.
 4.3.3 Diagnostic work-up
 See section 3.3 for general principles.
 Clinical findings depend on the individual variant (see sections 4.3.1
-and 4.3.2). . [.......................................................................]
 
 
 
@@ -4445,7 +4420,6 @@ ACHD centres. Particular attention should be paid to residual shunt,
 AV valve malfunction, LV and RV enlargement and dysfunction, PAP
 
 
-. [............................................................................................................................................................................]
 
 598 ESC Guidelines
 
@@ -4506,7 +4480,6 @@ b Level of evidence.
 
 c LV enlargement with increased stroke volume.
 d There are limited data available for a precise cut-off, but by clinical experience,
-this would be given by a fall of arterial oxygen saturation <90%. . [............................................................................................................................................................................]
 
 
 In adults, calcification of the PDA may cause a problem for surgical
@@ -4685,7 +4658,6 @@ helpful in AS with reduced stroke volume and impaired LV function (classical low
 |LVOT velocity/aortic<br>valve velocity|>0.50|0.250.50|<0.25|<0.25|
 
 
-. [...................]
 
 
 Table 12 Diagnostic criteria for degree of aortic
@@ -4850,7 +4822,6 @@ before conception. In asymptomatic patients with severe AS and a
 normal exercise test, pregnancy may be possible in selected
 patients. The aorta requires particular attention as BAV-related
 
-. [............................................................................................................................................................................]
 
 
 
@@ -4898,7 +4869,6 @@ SupraAS may also be encountered in the setting of familial homozygous hyperchole
 fibrous diaphragm just distal to the coronary ostia or, most commonly, as an external hourglass deformity with a corresponding luminal narrowing of the aorta, or as diffuse stenosis of the ascending
 aorta. It may be associated with aortic valve abnormalities, hypoplasia
 of the entire aorta, involvement of coronary ostia, or stenosis of
-major branches of the aorta or PAs. . [..............................................................]
 
 
 4.5.2.2 Clinical presentation and natural history
@@ -4981,7 +4951,6 @@ function, and development of symptoms, as well as after surgery to
 detect late restenosis, development of aneurysm (CMR/CCT), and
 the occurrence or progression of CAD. Follow-up should include
 
-. [............................................................................................................................................................................]
 
 
 4.5.2.6 Additional considerations
@@ -5138,7 +5107,6 @@ tion 3.4.6).
 CoA is considered as part of a generalized arteriopathy, and not only
 as narrowing of the aorta. It occurs as a discrete stenosis or as a long,
 
-. [........................................................................................................................................................................]
 
 
 area where the ductus arteriosus inserts, and only in rare cases
@@ -5345,7 +5313,6 @@ re-coarctation of the aorta
 |Catheter treatment (stenting) may be consid-<br>ered in normotensive patientsc with >_50% nar-<br>rowing relative to the aortic diameter at the<br>diaphragm, even if the invasive peak-to-peak gra-<br>dient is <20 mmHg, when technically feasible.|IIb|C|C|
 
 
-. [..................................................................]
 
 
 a Class of recommendation.
@@ -5425,7 +5392,6 @@ ate pregnancy without major problems. [43] In particular, women
 with unrepaired CoA � but also those after repair with arterial
 hypertension, residual CoA, or aortic aneurysms � have an
 
-. [............................................................................]
 
 
 aneurysm during pregnancy and delivery. An excess of miscarriages and hypertensive disorders has been reported [192] (see section 3.5.7).
@@ -5538,7 +5504,6 @@ management.
 include measurements at the annulus, sinus, sinotubular junction, distal ascending, arch, and descending thoracic aortic levels. In adults, measurement at end diastole using the leadingto-leading edge principle is recommended. The values
 obtained should be corrected for the individual’s age, sex, and
 body size using standardized nomograms. [200][,][201] Valvular morphology (mitral valve prolapse, BAV) and function must be
-assessed, as well as the presence of a PDA. LV dimension and . [......................................................................................................................................................................]
 
 
 In Marfan syndrome, the major determinant of type A aortic dissection is the aortic root diameter with increased risk of rupture >_50
@@ -5711,7 +5676,6 @@ For diagnostic work-up see section 4.7.1.3.
 
 To this date, no evidence for medical treatment of aortic dilatation
 
-. [...........................................................................................................................................................]
 
 
 reasonable to consider beta blockers or ARBs as first-line treatment
@@ -5997,7 +5961,6 @@ hypertrophy. Patients with severe stenosis may present with dyspnoea and reduced
 
 dyspnoea and reduced exercise capacity. They are usually recognized in the context of certain syndromes or in patients referred for
 
-. [............................................................................................................................................................................]
 
 
 
@@ -6101,7 +6064,6 @@ outflow tract obstruction
 |Peripheral PS, regardless of symptoms, should be<br>considered for catheter interventional treatment if<br>>50% diameter narrowing, and RVSP >50 mmHg,<br>and/or related reduced lung perfusion is present.|IIa|C|C|
 
 
-. [...........................................]
 
 
 ASD = atrial septal defect; PS = pulmonary stenosis; R�L = right-to-left; RV =
@@ -6164,7 +6126,6 @@ The apical displacement of the TV means that the right heart consists of a morph
 remaining functional RV; the TV is often regurgitant.
 The most frequently associated anomalies include a shunt at the
 atrial level [secundum ASD or patent foramen ovale (PFO)] and
-(concealed) accessory pathways, including Mahaim-type pathways. . [...................................................................]
 
 
 Multiple accessory pathways in conjunction with AT and AF are associated with SCD. Ebstein-like anomaly of the systemic TV is present
@@ -6276,7 +6237,6 @@ Recommendations for intervention in Ebstein anomaly
 |If cyanosis (oxygen saturation at rest <90%) is<br>the leading problem, isolated device closure of<br>ASD/PFO may be considered but requires care-<br>ful evaluation before intervention to exclude<br>induction of RA pressure increase or fall in car-<br>diac output.|IIb|C|C|
 
 
-. [......................................]
 
 
 ASD = atrial septal defect; ECG = electrocardiogram; PFO = patent foramen
@@ -6364,7 +6324,6 @@ aortic elasticity, or type of surgical repair [234] .
 residual longstanding free PR ± RVOTO. Significant TR may
 occur as a consequence of RV dilation, which begets more RV
 dilation. LV dilatation may result from longstanding palliative arterial shunts, residual VSDs, and/or AR. Both RV and LV dysfunction may be due to longstanding cyanosis before repair and/or
-adverse . [............................................................................................................................................................................]
 
 
 ventricular�ventricular interactions, electromechanical dyssynchrony, [235][,][236] and coronary artery abnormalities. A reduced LV
@@ -6515,7 +6474,6 @@ information. [23]
 - [Holter monitoring, event recorder, and EP evaluation are]
 
 required for selected patients (high risk, suspected or clinical
-arrhythmia, and/or before RVOT reoperation). Inducible sustained VT carries prognostic value for clinical VT and SCD. [245] . [.............................................................................]
 
 
 
@@ -6600,7 +6558,6 @@ Recommendations for intervention after repair of tetralogy of Fallot
 Continued
 
 
-. [.............................]
 
 
 CMR = cardiovascular magnetic resonance; ICD = implantable cardioverter
@@ -6691,7 +6648,6 @@ Patients with confluent, good-sized PAs and a pulmonary trunk
 (usually with valvular atresia) are suitable for a Fallot-like repair using
 a transannular patch. Patients with good-sized PAs but without a pulmonary trunk should undergo repair with a RV�PA conduit. Patients
 
-. [...................................................................................................................................................................]
 
 
 reconstruction of the RVOT (without VSD closure), which may
@@ -6875,7 +6831,6 @@ haemodynamics and no history of arrhythmias is low. The risk
 increases with hypoxaemia, PAH, ventricular dysfunction, heart
 failure symptoms, and arrhythmias (see section 3.5.7). As microdeletion 22q11 is fairly common with this defect, patients should
 
-. [.....................................................................................................................................................................]
 
 
 
@@ -7066,7 +7021,6 @@ can be quantified (Qp:Qs). Small baffle leaks not leading to a relevant shunt ar
 systemic RV predicts clinical outcome. [279]
 
 - [Exclusion of superior baffle stenosis or baffle leak (and treat-]
-ment) is essential before PM/ICD implantation or placing new/ . [.......................................................................................................................................................................]
 
 
 In larger series with follow-up of up to 40 years, survival is
@@ -7180,7 +7134,6 @@ Conventional retrograde transaortic route access in adults is usually not succes
 
 electrical stimulation for risk stratification is not useful.
 
- - [Pacemakers: see][ section 3.4.2][.]
 
 Indications for intervention are summarized in the
 
@@ -7323,7 +7276,6 @@ modality but may still have a role if other techniques are not available or lead
 cated in the case of LV dysfunction and suspicion of myocardial
 ischaemia. In the case of severe pulmonary branch stenosis and
 
-. [............................................................................................................................................................................]
 
 
 
@@ -7437,7 +7389,6 @@ The few long-term outcome studies report 20-year survival <60%
 �
 and 20-year event-free survival 20 30%. Replacement of the conduit
 
-. [............................................................................................................................................................................]
 
 
 reoperation. Relief of LVOTO is the second most common, followed
@@ -7631,7 +7582,6 @@ lesions were alive at the age of 40 years; without associated lesions,
 congestive heart failure or die suddenly, presumably due to VT/VF,
 regardless of the presence of advanced heart failure.
 
-. [....................................................................................................]
 
 
 
@@ -7790,7 +7740,6 @@ served RVEF should avoid high-intensity sports and preferably
 not do more than moderate-static and moderate-intensity
 sports. Patients with significant associated lesions and/or
 
-decreased subaortic RV function should be restricted to lowstatic and low-intensity sports. . [.............................................................................]
 
 
 
@@ -7979,7 +7928,6 @@ hepatic IVC with azygos or hemiazygos continuity.
 Detailed anatomic description is beyond the scope of these guidelines and can be found in textbooks. Owing to the lack of data, recommendations are mainly based on expert consensus. [296][�][300] When
 presenting as adults, the vast majority of patients with these conditions will have undergone previous palliation with some type of
 
-. [............................................................................................................................................................................]
 
 
 preferably a Fontan operation or one of its modifications; the latter is
@@ -8226,7 +8174,6 @@ Special considerations and recommendations for intervention in univentricular he
 |Heart transplantation and heart-lung transplan-<br>tation should be considered when there is no<br>conventional surgical option in patients with<br>poor clinical status.|IIa|C|C|
 
 
-. [........................................................]
 
 
 AV = atrioventricular; PA = pulmonary artery; PAP = pulmonary artery pressure;
@@ -8307,7 +8254,6 @@ assessment. [302]
 
 The natural history and outcome of other palliations for hearts
 
-. [.................................................................................................................................................................]
 
 
 undertaken in all patients in whom the haemodynamics are suitable.
@@ -8468,7 +8414,6 @@ of benefit, and practice varies between centres. Anticoagulation
 is indicated in the presence, or with a history, of atrial thrombus,
 atrial arrhythmias, or thromboembolic events. Although NOACs
 
-[79] . [...................................................................................................................................................................]
 
 
 robust prospective efficacy data are lacking and thus these drugs
@@ -8697,7 +8642,6 @@ services.
 Comprehensive assessment is mandatory for patients with manifestations of the ‘failing Fontan’ complex, with particular care to
 
 
-. [............................................................................................................................................................................]
 
 628 ESC Guidelines
 
@@ -8806,7 +8750,6 @@ anomalous coronary arteries
 Continued
 
 
-. [.......................................................................................]
 
 ESC Guidelines 629
 
@@ -8889,7 +8832,6 @@ the different CHD substrates requires further research.
 
  - [The impact of medical PAH therapy on survival of patients with]
 
-. [............................................................................................................................................................................]
 
 
 
@@ -9154,7 +9096,6 @@ more research.
 
  - [Identification] of adult patients with coronary anomalies
 (AAOCA, ACAPA) who are at risk for SCD, and for whom sur
-. [............................................................................................................................................................................]
 
 #### 7 Key messages
 
@@ -9428,7 +9369,6 @@ depends on the underlying disease and presence of risk factors.
 
 obstruction, particularly when the narrowing is elongated, or
 
-. [............................................................................................................................................................................]
 
 
 Therefore, cross-checking with RV pressure estimated from TR
@@ -9661,9 +9601,7 @@ suspected, or complications occur.
 Fontan circulation but there is a high risk of miscarriage and pregnancy should be managed in an ACHD expert centre.
 
 
-. [.............................................]
 
-#### 8 ‘What to do’ and ‘what not to do’ messages from the Guidelines . [..]
 
 
 
@@ -9867,7 +9805,6 @@ Markus Schwerzmann, Center for Congenital Heart Disease,
 Department of Cardiology, University Hospital Inselspital, University
 of Bern, Bern, Switzerland; Lars Sondergaard, Cardiology,
 
-. [..............................................................................................]
 
 
 Author/Task Force Member Affiliations:
@@ -9997,7 +9934,6 @@ to adulthood among patients born with congenital heart disease from 1970 to
 prevalence of congenital heart disease in the general population from 2000 to
 2010. Circulation 2014;130:749�756.
 
-. [............................................................................................................................................................................]
 
 #### 10 References
 
@@ -10174,7 +10110,6 @@ MJ, Stevenson WG, Zeppenfeld K. Re-entry using anatomically determined isthmuses
 Arrhythm Electrophysiol 2015;8:102�109.
 36. Janse MJ. Electrophysiological changes in heart failure and their relationship to
 arrhythmogenesis. Cardiovasc Res 2004;61:208�217.
-. [............................................................................................................................................................................]
 
 
 37. Khairy P, Van Hare GF, Balaji S, Berul CI, Cecchin F, Cohen MI, Daniels CJ, Deal
@@ -10326,7 +10261,6 @@ ML, Kim YY. estimating mortality risk for adult congenital heart surgery: an ana
 Thorac Surg 2015;100:1728�1735; discussion 1735�1726.
 71. O’Brien SM, Clarke DR, Jacobs JP, Jacobs ML, Lacour-Gayet FG, Pizarro C,
 Welke KF, Maruszewski B, Tobota Z, Miller WJ, Hamilton L, Peterson ED,
-Mavroudis C, Edwards FH. An empirically based tool for analyzing mortality . [..........................................................................................................................................................................]
 
 
 associated with congenital heart surgery. J Thorac Cardiovasc Surg
@@ -10486,7 +10420,6 @@ health. J Am Coll Cardiol 2013;62:58�67.
 HW, van Dijk AP, Bouma BJ, Grobbee DE, Mulder BJ. Gender and outcome in
 adult congenital heart disease. Circulation 2008;118:26�32.
 112. D’Alto M, Budts W, Diller GP, Mulder B, Egidy Assenza G, Oreto L, Ciliberti P,
-Bassareo PP, Gatzoulis MA, Dimopoulos K. Does gender affect the prognosis . [.........................................................................................................................................................................]
 
 
 and risk of complications in patients with congenital heart disease in the modern era? Int J Cardiol 2019;290:156�161.
@@ -10652,7 +10585,6 @@ of isolated atrial septal defect. Follow-up at 27 to 32 years. N Engl J Med
 Utens EM, Bogers AJ, Simoons ML. Excellent survival and low incidence of
 arrhythmias, stroke and heart failure long-term after surgical ASD closure at
 young age. A prospective follow-up study of 21-33 years. Eur Heart J
-2003;24:190�197. . [............................................................................................................................................................................]
 
 
 146. Attie F, Rosas M, Granados N, Zabal C, Buendia A, Calderon J. Surgical treatment for secundum atrial septal defects in patients >40 years old. A randomized clinical trial. J Am Coll Cardiol 2001;38:2035�2042.
@@ -10811,7 +10743,6 @@ coarctation of the aorta stent trial. Catheter Cardiovasc Interv 2013;82:503�5
 186. Taggart NW, Minahan M, Cabalka AK, Cetta F, Usmani K, Ringel RE, COAST II
 Investigators. Immediate outcomes of covered stent placement for treatment
 or prevention of aortic wall injury associated with coarctation of the aorta
-(COAST II). JACC Cardiovasc Interv 2016;9:484�493. . [............................................................................................................................................................................]
 
 
 187. Ungerleider RM, Pasquali SK, Welke KF, Wallace AS, Ootaki Y, Quartermain
@@ -10975,7 +10906,6 @@ Vascular Disease. Cardiovascular health in Turner syndrome: a scientific state
 ment from the American Heart Association. Circ Genom Precis Med
 
 2018;11:e000048.
-. [............................................................................................................................................................................]
 
 
 218. Carlson M, Airhart N, Lopez L, Silberbach M. Moderate aortic enlargement and
@@ -11133,7 +11063,6 @@ Heart Assoc 2019;8:e011943.
 
 255. Daily JA, Tang X, Angtuaco M, Bolin E, Lang SM, Collins RT, 2nd. Transcatheter
 versus surgical pulmonary valve replacement in repaired tetralogy of Fallot. Am
-J Cardiol 2018;122:498�504. . [............................................................................................................................................................................]
 
 
 256. Georgiev S, Ewert P, Tanase D, Hess J, Hager A, Cleuziou J, Meierhofer C,
@@ -11292,7 +11221,6 @@ pulmonary valves and valved conduits. J Thorac Cardiovasc Surg
 
 293. Mohammadi S, Belli E, Martinovic I, Houyel L, Capderou A, Petit J, Planche C,
 Serraf A. Surgery for right ventricle to pulmonary artery conduit obstruction:
-risk factors for further reoperation. Eur J Cardiothorac Surg 2005;28:217�222. . [............................................................................................................................................................................]
 
 
 294. Peng LF, McElhinney DB, Nugent AW, Powell AJ, Marshall AC, Bacha EA, Lock
@@ -11407,7 +11335,6 @@ Surg 2011;142:1046�1051.
 Blackstone EH, DeCampli WM, Caldarone CA, Gaynor JW, Kirklin JK, Lorber
 RO, Mery CM, St Louis JD, Molossi S, Brothers JA. Features associated with
 myocardial ischemia in anomalous aortic origin of a coronary artery: a
-. [.................................................................]
 
 
 Congenital Heart Surgeons’ Society study. J Thorac Cardiovasc Surg

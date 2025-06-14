@@ -163,6 +163,9 @@ models .........................................................................
 **3914** ESC Guidelines
 
 
+
+![Page 2 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_002_images.png)
+
 6.4.1. Sex-specific non-traditional cardiovascular disease risk
 modifiers ......................................................................................................... 3939
 6.4.2. Non-traditional cardiovascular disease risk modifiers
@@ -871,6 +874,9 @@ Obesity
 **3918** ESC Guidelines
 
 
+
+![Page 9 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_009_images.png)
+
 TIA Transient ischaemic attack
 
 TRIUMPH Treating Resistant Hypertension Using Lifestyle
@@ -1138,8 +1144,20 @@ ESC Guidelines **3921**
 
 
 
+![Page 41 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_041_images.png)
 
 
+
+![Page 42 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_042_images.png)
+
+
+
+
+![Page 44 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_044_images.png)
+
+
+
+![Page 45 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_045_images.png)
 
 
 
@@ -1161,6 +1179,9 @@ ESC Guidelines **3921**
 
 
 
+
+
+![Page 54 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_054_images.png)
 
 
 
@@ -1210,6 +1231,9 @@ ESC Guidelines **3921**
 
 
 
+![Page 70 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_070_images.png)
+
+
 |It is recommended that treatment of elevated BP and hypertension among older patients aged <85 years who are not moderately to<br>severely frail follows the same guidelines as for younger people, provided BP-lowering treatment is well tolerated.|I|A|
 |---|---|---|
 |When initiating BP-lowering treatment for patients aged ≥85 years, and/or with moderate-to-severe frailty (at any age), long-acting<br>dihydropyridine CCBs or RAS inhibitors should be considered, followed, if necessary, by a low-dose diuretic if tolerated, but preferably not<br>a beta-blocker (unless compelling indications exist) or an alpha-blocker.|IIa|B|
@@ -1229,6 +1253,9 @@ ESC Guidelines **3921**
 **Chronic kidney disease**
 
 
+
+
+![Page 77 Images](Elevated_Blood_Pressure_and_Hypertension_2024_images/page_077_images.png)
 
 In hypertensive patients with CKD and eGFR >20 mL/min/1.73 m [2], SGLT2 inhibitors are recommended to improve outcomes in the
 **I** **A**
@@ -3464,6 +3491,7 @@ CT, computed tomography; eGFR, estimated glomerular filtration rate; MRI, magnet
 
 
 
+
 Figure 13 Summary of primary aldosteronism as a common form of secondary hypertension. AF, atrial fibrillation; HMOD, hypertension-mediated
 organ damage.
 
@@ -3476,6 +3504,8 @@ ESC Guidelines **3953**
 
 Figure 14 Summary of renovascular disease as a common form of secondary hypertension. CT-Angio, computed tomography angiography;
 CV, cardiovascular; FMD, fibromuscular dysplasia; GFR, glomerular filtration rate; MRI, magnetic resonance imaging; RAS, renin–angiotensin system.
+
+
 
 
 
@@ -3664,7 +3694,6 @@ intake of potassium (in addition to lower dietary sodium) should be con-­
 sidered. [348][,][350][,][378] In patients with persistently high sodium intake (>5 g/day)
 
 **3956** ESC Guidelines
-
 
 
 
@@ -5233,6 +5262,7 @@ to administer and has been validated against 5-year risk of death. [596][,][693]
 *Continued*
 
 **3972** ESC Guidelines
+
 
 
 

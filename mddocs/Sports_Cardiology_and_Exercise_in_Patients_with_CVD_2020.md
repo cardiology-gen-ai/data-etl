@@ -131,7 +131,9 @@ risk factors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 and outcomes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
 
 
-. [.......................................................................................................]
+
+
+![Page 2 Images](Sports_Cardiology_and_Exercise_in_Patients_with_CVD_2020_images/page_002_images.png)
 
 
 4.2.5.2 Recommendations for participation in exercise in
@@ -316,7 +318,6 @@ cardiomyopathy . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 5.5.2.4 Resting and ambulatory ECG . . . . . . . . . . . . . . . . . . . . . . . . 58
 
 5.5.2.5 Echocardiography and cardiac magnetic resonance
-imaging . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58 . [............................................................................................................................................................................]
 
 
 5.5.2.6 Exercise testing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
@@ -625,7 +626,6 @@ Figure Central illustration Moderate physical activity should be promoted
 
 in all individuals with cardiovascular disease . . . . . . . . . . . . . . . . . . . . . . . . . 24
 
-. [............................................................................................................................................................................]
 
 
 Figure 2 Sporting discipline in relation to the predominant component
@@ -777,6 +777,9 @@ current guidelines and recommendations . . . . . . . . . . . . . . . . . . . . .
 
 List of tables
 
+
+
+![Page 13 Images](Sports_Cardiology_and_Exercise_in_Patients_with_CVD_2020_images/page_013_images.png)
 
 Table 1 Classes of recommendations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
 
@@ -938,7 +941,6 @@ ASI Aortic size index
 AVNRT Atrioventricular nodal re-entrant tachycardia
 AVRT Atrioventricular re-entrant tachycardia
 BAV Bicuspid aortic valve
-BMI Body mass index . [...........................................................................................................................................................................]
 
 ### Abbreviations and acronyms
 
@@ -1133,7 +1135,6 @@ Guidelines summarize and evaluate available evidence with the aim of
 
 assisting health professionals in proposing the best management
 
-. [..........................................................................................................................................................................]
 
 ### 1. Preamble
 
@@ -1203,6 +1204,12 @@ Wording to use
 
 
 
+![Page 27 Images](Sports_Cardiology_and_Exercise_in_Patients_with_CVD_2020_images/page_027_images.png)
+
+
+
+![Page 28 Images](Sports_Cardiology_and_Exercise_in_Patients_with_CVD_2020_images/page_028_images.png)
+
 
 Table 2 Levels of evidence
 
@@ -1217,7 +1224,6 @@ The task of developing ESC Guidelines also includes the creation
 of educational tools and implementation programmes for the recommendations including condensed pocket guideline versions,
 summary slides, booklets with essential messages, summary cards
 for non-specialists and an electronic version for digital applications
-(smartphones, etc.). These versions are abridged and thus, for . [.................................]
 
 
 more detailed information, the user should always access to the full
@@ -1250,8 +1256,10 @@ the rules and regulations applicable in each country to drugs and devices at the
 
 Exercise recommendations and eligibility criteria for sports participation in competitive athletes with cardiovascular disease (CVD) were
 
-. [............................................]
 
+
+
+![Page 36 Images](Sports_Cardiology_and_Exercise_in_Patients_with_CVD_2020_images/page_036_images.png)
 
 European Society of Cardiology (ESC) in 2005 [1] and some aspects
 were subsequently updated in 2018 and 2019. [2,3] The overarching
@@ -1321,7 +1329,6 @@ physician should be documented in the medical report.
 
 Higher levels of PA and fitness are associated with lower all-cause
 
-. [............................................................................................................................................................................]
 
 
 known malignancies. [7][�][16] Despite the substantial health benefits provided by regular PA, intense exercise may paradoxically act as a trigger for life-threatening ventricular arrhythmias (VAs) in the presence
@@ -1436,7 +1443,6 @@ athletes. In US college athletes, males had a higher risk than females
 (1 in 38 000 vs. 1 in 122 000), and black athletes had a 3.2 times higher
 risk than white athletes (1 in 21 000 vs. 1 in 68 000). [17] Male basketball
 
-. [............................................................................................................................................................................]
 
 
 basketball players had a risk of 1 in 5300. [17] Based on available studies
@@ -1563,7 +1569,6 @@ or maintain one or more components of physical fitness. [83]
 Physical fitness may be expressed by five major components
 (Figure 1): [83] a morphological component (body mass relative to
 
-. [................................................................................................]
 
 
 visceral fat, bone density, and flexibility); [84] a muscular component
@@ -1651,7 +1656,6 @@ Absolute intensity refers to the rate of energy expenditure during
 exercise and is usually expressed in kcal/min or metabolic equivalents
 
 
-. [.......................................................................................................................................................................]
 
 
 (METs). [84,88] Relative exercise intensity refers to a fraction of an individual’s maximal power (load) that is maintained during exercise and
@@ -1734,7 +1738,6 @@ the former approach, individuals typically complete all of the sets
 for a given exercise per muscle group before moving to another
 exercise and muscle group. In the latter approach, individuals typically perform one set of a given muscle group and then rotate to
 another exercise and muscle group until the full set of exercises in
-completed per muscle group. One to three sets of 8�15 . [..........................................................................................]
 
 
 repetitions should be performed including flexion and extension
@@ -1814,7 +1817,6 @@ activities (including symptoms, ECG abnormalities, arrhythmias, or
 abnormal BP response). Based on the exercise testing results, the
 physician may indicate the intensity, mode, and duration of exercise
 that appears most suitable to the individual patient (see Table 4).
-For power sports or resistance training, additionally maximal muscular testing is warranted in order to determine 1 RM or 5 RM. . [................................................................................................................]
 
 
 Percentage of these values, number of repetitions, and number of
@@ -2244,7 +2246,6 @@ those at high or very high risk planning to undertake high-intensity
 
 Table 5 Cardiovascular risk categories
 
-. [......................................................................................]
 
 
 exercise as well as selected individuals planning to undertake
@@ -2333,7 +2334,6 @@ increases in training volume, contribute to musculoskeletal
 injuries. [125][�][127] Therefore, it may be reasonable to consider that
 obese individuals should limit high-volume weight-bearing exercises on a hard surface (i.e. <2 h/day) until a considerable
 
-. [.........................................................................................]
 
 
 Figure 4 Proposed algorithm for cardiovascular assessment in asymptomatic individuals aged >35-years-old with risk factors for cardiovascular disease and
@@ -2392,7 +2392,6 @@ sports such as shooting [see World Anti-Doping Association
 or lower aerobic exercise capacity. [131] Diuretics are prohibited in
 all competitive sports. [135] Angiotensin-converting enzyme (ACE)
 inhibitors, angiotensin II receptor blockers, and calcium antagonists are the preferred drugs of choice in exercising individuals. It
-is noteworthy that the use of non-selective non-steroidal . [.............................................................................................................................................................]
 
 
 inflammatory drugs for musculoskeletal pain may contribute to
@@ -2504,7 +2503,6 @@ than the volume of exercise; individuals who exercise at moderate or
 high intensity have a lower risk of developing metabolic impairment
 compared with those who have a similar energy expenditure at a
 
-[160,163] . [...............................................................................................................................................................]
 
 
 The effects on muscle insulin sensitivity are observed with a relatively low volume of exercise (400 kcal/week) in previously sedentary
@@ -2640,7 +2638,6 @@ factors, [191,192] also preserving cognitive function. [187][�][190] Important
 exercise helps to preserve neuromuscular competence, [193,194] thus
 maintaining balance and coordination, which reduces the risk of
 
-[195,196] . [.......................................................................................................................................................................]
 
 
 4.3.2 Risk stratification, inclusion/exclusion criteria
@@ -2766,7 +2763,6 @@ spontaneous coronary artery dissection (SCAD), [221] are also associated with my
 Physical inactivity is a risk factor for CAD, but somewhat paradoxically, vigorous physical exertion transiently increases the risk for
 AMI [66] and SCD. [216] Overall, the benefits of regular exercise greatly
 outweigh the Ex-R risk, even in individuals with CCS. Moderate- to
-### . [...........................................................] [ 5. Exercise in clinical settings] vigorous-intensity exercise is strongly associated with a reduced
 
 
 
@@ -2849,7 +2845,6 @@ provides information on exercise capacity, heart rate, and BP
 response, and detection of exercise-induced arrhythmias, [2] but has a
 
 
-. [................................................................................................................................]
 
 
 Table 9 Borderline or uninterpretable ECG findings
@@ -2973,7 +2968,6 @@ Table 10 Factors determining risk of adverse events during intensive exercise an
 disease
 
 
-. [..................................................................]
 
 ESC Guidelines 41
 
@@ -3066,7 +3060,6 @@ coronary syndrome
 |All sports activities should be considered, at an<br>individually adapted intensity level in low-risk<br>individuals with CCS.|IIa|C|C|
 
 
-. [...................................................................................................]
 
 
 CAD = coronary artery disease; CCS = chronic coronary syndrome.
@@ -3110,7 +3103,6 @@ in symptomatic individuals. Prior to successful correction,
 participation in sports, other than low-intensity skill sports, is
 discouraged regardless of symptoms. We are unable to
 provide exercise or sport recommendations for older patients
-. [............]
 
 
 (>40 years) with AOCA, due to the paucity of studies.
@@ -3187,7 +3179,6 @@ with myocardial bridging
 |Competitive sports are not recommended in<br>individuals with myocardial bridging and persis-<br>tent ischaemia or complex cardiac arrhythmias<br>during maximal exercise stress testing.|III|C|C|
 
 
-. [............................................................................................................]
 
 
 a Class of recommendation.
@@ -3302,7 +3293,6 @@ loss and deconditioning without excessive stress on the heart. [270,274]
 The training intensity can preferably be set at the level of resistance
 
 
-. [.................................................................................]
 
 
 Table 12 Optimal exercise training dose for patients
@@ -3368,7 +3358,6 @@ apply to high-intensity endurance, mixed and power sports with high
 Recommendations for exercise prescription in heart
 failure with reduced or mid-range ejection fraction
 
-. [................................................................................................]
 
 
 demands, especially in older patients. No restrictions should apply
@@ -3548,7 +3537,6 @@ sport in individuals with heart failure with preserved
 ejection fraction
 
 
-. [......................................................................................................................]
 
 
 |Recommendations|Classa|Levelb|Col4|
@@ -3614,7 +3602,6 @@ increased chronotropic state induced by exercise may accelerate
 valve dysfunction. The ensuing effects on chronic stenotic or
 regurgitant lesions may cause compensatory cardiac hypertrophy,
 impaired ventricular function, myocardial ischaemia, cardiac
-arrhythmias, and possibly SCD. . [............................................................................................................................................................................]
 
 
 5.3.1.1 General principles in assessment and risk stratification of individuals with valvular heart disease prior to leisure exercise or competitive
@@ -3820,7 +3807,6 @@ scar, [319] in individuals with severe AR. Furthermore, the whole thora
 BP = blood pressure; LVEF = left ventricular ejection fraction. cic aorta can be visualized during the same examination.
 ab Class of recommendation.Level of evidence. Asymptomatic individuals with mild and moderate AR may particic For mixed valvular disease, the recommendation for the predominant lesion pate in all sports. Asymptomatic individuals with severe AR, moder(stenotic or regurgitant) should be followed. ately dilated LV, and good LV systolic function may participate in
 
-[............................................................................................]
 
 
 
@@ -3844,7 +3830,6 @@ should be followed.
 Recommendations for exercise and participation in recreational/leisure-time sports in asymptomatic individuals with aortic stenosis
 
 
-. [............................................................................................]
 
 
 
@@ -3891,7 +3876,6 @@ Bicuspid aortic valve (BAV) is a common congenital abnormality with
 �
 a prevalence of 1 2% in the general population. [320] BAV may be
 associated with AS or AR and increased risk for ascending aortic
-aneurysm or dissection, and SCD. [28,321] Compared with Marfan . [.....................................................]
 
 
 syndrome, the risk of aortopathy is lower; nonetheless BAV is much
@@ -3972,7 +3956,6 @@ LV function, systolic pulmonary artery pressure (sPAP), and the presence or abse
 and MR may be associated with an enlarged LV cavity; however, an
 enlarged LV that is disproportionate to the level of exercise may be
 suggestive of severe MR and an indication to refrain from competitive
-or leisure sports involving moderate- or high-intensity exercise. . [................................]
 
 
 Asymptomatic individuals with mild or moderate MR may compete in all sports if they have good functional capacity, preserved LV
@@ -4056,7 +4039,6 @@ with LV dilatation, ischaemic stroke, and AF occurred at a rate of
 0.5% per annum and were more common in older athletes with baseline mitral valve disjunction or VAs.
 
 Individuals with MVP should be evaluated with an exercise test and
-24-hour ECG. Individuals with inferior T-wave inversion or . [................................................................................................]
 
 
 ventricular premature beats arising from the LV should undergo a
@@ -4111,7 +4093,6 @@ and recreational exercise of moderate or high intensity. Individuals
 with AF should be anticoagulated and avoid contact/collision sport. In
 cases of balloon mitral valvuloplasty with good results (i.e. MVA > 2.0
 cm [2] ) regular exercise and competitive sport may be considered in
-asymptomatic individuals with good functional capacity. . [.......................................]
 
 
 Mild TR is common in athletes and accompanied by physiological
@@ -4221,7 +4202,6 @@ regarding the risks of competitive athletics in patients after surgical
 correction; however, even after aortic root replacement, patients
 with MFS and other HTAD remain at risk of aortic complications.
 
-. [............................................................................................................]
 
 
 effects of a 3-week rehabilitation training programme in 19 MFS
@@ -4336,7 +4316,6 @@ young patients with cardiomyopathies who aspire to exercise. When
 advising such individuals, it is essential to strike a balance between
 protecting patients from the potentially adverse effects of exercise
 
-. [............................................................................................................................................................................]
 
 
 5.5.1 Hypertrophic cardiomyopathy
@@ -4483,7 +4462,6 @@ not be performed for exercise risk stratification.
 5.5.1.9 ESC risk score in HCM
 
 The ESC risk score uses seven variables (age, syncope, family
-history of SCD from HCM, maximal LV wall thickness, left atrial . [...................................................................................................................................................................]
 
 
 diameter, LV outflow obstruction, NSVT) to assess the risk
@@ -4656,7 +4634,6 @@ Recommendations for exercise and sports participation
 in individuals with hypertrophic cardiomyopathy
 
 
-. [............................................................................................................................................................................]
 
 
 
@@ -4727,7 +4704,6 @@ Ambulatory ECG monitoring is important for detecting VAs.
 Every effort should be made for the monitoring period to
 include the proposed exercise session. The presence of NSVT or
 significant burden of ventricular ectopy (>_1000/24 h), even in
-asymptomatic individuals, confers an increased risk of fatal . [...............................................................]
 arrhythmias. [392,393,397]
 
 5.5.2.5 Echocardiography and cardiac magnetic resonance imaging
@@ -4913,7 +4889,6 @@ an important tool for the diagnosis and risk stratification of DCM.
 Continued
 
 
-. [....................................................................................................]
 
 60 ESC Guidelines
 
@@ -5012,7 +4987,6 @@ prognostic factor in the long term. [28,434]
 Continued
 
 
-. [........................................................................]
 
 ESC Guidelines 61
 
@@ -5066,7 +5040,6 @@ AHA recommend abstinence from moderate- to high-intensity
 exercise for a period of 3 6 months, [459,460] although the precise
 timing for return to competitive or recreational sports involving
 
-. [.........................................................................................................................................................................]
 
 
 presence of inflammation on T2-weighted images and LGE uptake
@@ -5203,7 +5176,6 @@ myocarditis
 |Participation in moderate- to high-intensity exer-<br>cise, including competitive sports, is not recom-<br>mended for individuals with constrictive<br>pericarditis.|III|C|
 
 
-. [..................................................................................................]
 
 
 Recommendations for exercise in individuals with
@@ -5380,7 +5352,6 @@ has similar acute success rates in athletes and non-athletes. [495] If the
 
 PSVT is only sporadic and transient and not associated with haemodynamic consequences, even when it develops during exercise, or in
 
-. [..................................................................................................................]
 
 
 excludes non-intermittent latent pre-excitation. Pre-excitation may be
@@ -5522,7 +5493,6 @@ underlying heart disease, the presence of which would confer an
 unfavourable prognosis even in asymptomatic individuals. Specific
 characteristics of the PVCs, including morphology (origin from the
 
-. [............................................................................................................................................................................]
 
 
 Recommendations for exercise and sports participation
@@ -5657,7 +5627,6 @@ ECG = electrocardiogram; PVC = premature ventricular contractions; VT = ventricu
 a Class of recommendation.
 b Level of evidence.
 
-. [.......................................................................................................................................................]
 
 
 5.6.5 Long QT syndrome
@@ -5783,7 +5752,6 @@ Recommendations for exercise in Brugada syndrome
 Recommendations for exercise in long QT syndrome
 
 
-. [.................................................................................]
 
 
 
@@ -5881,7 +5849,6 @@ sports activities after implantation. Therefore, shared decision making
 is appropriate when deciding whether or not to continue sports and
 the level of participation with an ICD.
 
-. [...............................................................................................................................................]
 
 
 However, three important considerations come into play. First, if
@@ -6053,7 +6020,6 @@ of conditions with widely varying physiological consequences.
 Individualized assessment is essential before advising on sports participation. This requires detailed understanding of the congenital heart
 
 
-. [.......................................................................................................................................................................]
 
 70 ESC Guidelines
 
@@ -6109,7 +6075,6 @@ disease
 The guidelines for exercise prescription in adolescents and adults
 with CHD use a structured methodology described by Budts et al. [597]
 
-This can be modified for use in the assessment of athletes with CHD. . [............................................................................................................................................................................]
 
 
 Stage 1. A full history and physical examination are carried out.
@@ -6256,7 +6221,6 @@ intensity level is advised (dotted arrow).
 72 ESC Guidelines
 
 
-Arrhythmias may be the first sign of underlying haemodynamic deterioration and new-onset arrhythmias should lead to a full haemody. [......]
 namic assessment. Detailed guidelines for the assessment and
 treatment of arrhythmias in CHD are available. [612] In the athlete,
 arrhythmia therapy may be complicated by the need to minimize the
@@ -6405,7 +6369,6 @@ be given a personalized exercise prescription.
 Outcomes in exercising individuals with cardiovascular diseases. The natural history and absolute risk of conditions associated
 with SCD in athletes identified through CV screening is largely
 
-. [............................................................................................................................................................................]
 
 
 Prospective outcomes data, including the occurrence of major CV
@@ -6525,7 +6488,6 @@ in females.
 Apart from a lower incidence of exercise-related SCD, there
 appear to be sex differences related to the diseases predisposing to
 
-. [............................................................................................................................................................................]
 
 
 HCM. In the US National Registry, females comprised only 3% of the
@@ -6620,7 +6582,6 @@ exercising at high altitude in an unacclimatized state are not
 recommended.
 
 Finally, females represent the largest population of obese individuals worldwide and females with T2DM have a higher prevalence of
-. [............]
 
 
 cardiovascular complications and death compared with men. In this
@@ -6833,7 +6794,6 @@ b Level of evidence.
 Supplementary Data with additional Supplementary Figures, Tables,
 and text complementing the full text are available on the European
 Heart Journal website and via the ESC website at www.escardio.org/
-guidelines. . [.................]
 
 ### 11. Appendix
 
@@ -6901,7 +6861,6 @@ Diederick E. Grobbee (Netherlands), Sigrun Halvorsen (Norway),
 Gerhard Hindricks (Germany), Bernard Iung (France), Peter Ju¨ni
 (Canada), Hugo A. Katus (Germany), Ulf Landmesser (Germany),
 Christophe Leclercq (France), Maddalena Lettino (Italy), Basil S.
-Lewis (Israel), Be´la Merkely (Hungary), Christian Mueller . [............................................................................................................................................................................]
 
 
 (Switzerland), Steffen E. Petersen (United Kingdom), Anna Sonia
@@ -7039,7 +6998,6 @@ Myers J. Cardiorespiratory fitness and cancer incidence in men. Ann Epidemiol
 
 15. Powell KE, King AC, Buchner DM, Campbell WW, DiPietro L, Erickson KI,
 Hillman CH, Jakicic JM, Janz KF, Katzmarzyk PT, Kraus WE, Macko RF, Marquez
-DX, McTiernan A, Pate RR, Pescatello LS, Whitt-Glover MC. The Scientific . [..........................................................................................................................................................................]
 
 
 Foundation for the Physical Activity Guidelines for Americans, 2nd Edition. J Phys
@@ -7202,7 +7160,6 @@ arrest in high school student athletes on school campus. Heart Rhythm
 Aetiology of sudden cardiac death in athletes in the United Kingdom: a pathological study. Heart 2009;95:1409�1414.
 54. Suarez-Mier MP, Aguilera B, Mosquera RM, Sanchez-de-Leon MS. Pathology of
 sudden death during recreational sports in Spain. Forensic Sci Int
-2013;226:188�196. . [............................................................................................................................................................................]
 
 
 55. Ullal AJ, Abdelfattah RS, Ashley EA, Froelicher VF. Hypertrophic cardiomyopathy
@@ -7376,7 +7333,6 @@ N, Reilly JJ, Saxton JM, Stamatakis E. The ABC of physical activity for health: 
 consensus statement from the British Association of Sport and Exercise
 Sciences. J Sports Sci 2010;28:573�591.
 95. Warburton DER, Nicol CW, Bredin SSD. Health benefits of physical activity: the
-evidence. CMAJ 2006;174:801�809. . [............................................................................................................................................................................]
 
 
 96. Thomaes T, Thomis M, Onkelinx S, Goetschalckx K, Fagard R, Lambrechts D,
@@ -7539,7 +7495,6 @@ Erdine S, Farsang C, Funck-Brentano C, Gerc V, Germano G, Gielen S, Haller
 H, Hoes AW, Jordan J, Kahan T, Komajda M, Lovic D, Mahrholdt H, Olsen MH,
 Ostergren J, Parati G, Perk J, Polonia J, Popescu BA, Reiner Z, Ryden L et alet al
 2013 ESH/ESC Guidelines for the management of arterial hypertension: the
-Task Force for the management of arterial hypertension of the European . [............................................................................................................................................................................]
 
 
 Society of Hypertension (ESH) and of the European Society of Cardiology
@@ -7700,7 +7655,6 @@ intensity and incidence of metabolic syndrome: the SUN Project. Am J Prev Med
 
 164. Dube JJ, Allison KF, Rousson V, Goodpaster BH, Amati F. Exercise dose and
 insulin sensitivity: relevance for diabetes prevention. Med Sci Sports Exerc
-2012;44:793�799. . [............................................................................................................................................................................]
 
 
 165. da Silva DE, Grande AJ, Roever L, Tse G, Liu T, Biondi-Zoccai G, de Farias JM.
@@ -7869,7 +7823,6 @@ postmenopausal women with elevated blood pressure: a randomized controlled trial
 much? How intense? On top of what? Annu Rev Public Health 2011;32:349�365.
 207. Borjesson M, Urhausen A, Kouidi E, Dugmore D, Sharma S, Halle M,
 Heidbu¨chel H, Bjo¨rnstad HH, Gielen S, Mezzani A, Corrado D, Pelliccia A,
-Vanhees L. Cardiovascular evaluation of middle-aged/senior individuals engaged . [............................................................................................................................................................................]
 
 
 in leisure-time sport activities: position stand from the Sections of Exercise
@@ -8023,7 +7976,6 @@ Heart Association Exercise, Cardiac Rehabilitation, and Prevention Committee,
 the Council on Clinical Cardiology; the Councils on Cardiovascular Nursing,
 Epidemiology and Prevention, and Nutrition, Physical Activity, and Metabolism;
 and the American Association of Cardiovascular and Pulmonary Rehabilitation.
-Circulation 2007;115:2675�2682. . [............................................................................................................................................................................]
 
 
 243. Verschueren S, Eskes AM, Maaskant JM, Roest AM, Latour CHM, Op Reimer
@@ -8185,7 +8137,6 @@ Heart 2010;96:2025�2031.
 276. Williams MA, Haskell WL, Ades PA, Amsterdam EA, Bittner V, Franklin
 
 BA, Gulanick M, Laing ST, Stewart KJ. Resistance exercise in individuals
-with and without cardiovascular disease: 2007 update: a scientific . [............................................................................................................................................................................]
 
 
 statement from the American Heart Association Council on Clinical
@@ -8347,7 +8298,6 @@ D’Ascenzi F, Di Paolo FM, Edvardsen T, Gati S, Galderisi M, Heidbuchel H,
 
 Nchimi A, Nieman K, Papadakis M, Pisicchio C, Schmied C, Popescu BA, Habib
 G, Grobbee D, Lancellotti P. European Association of Preventive Cardiology
-(EAPC) and European Association of Cardiovascular Imaging (EACVI) joint . [............................................................................................................................................................................]
 
 
 position statement: recommendations for the indication and interpretation of
@@ -8522,7 +8472,6 @@ Calkins H, Estes NAM, Link MS, Maron BJ, Marcus F, Scheinman M, Wilkoff BL,
 Zipes DP, Berul CI, Cheng A, Jordaens L, Law I, Loomis M, Willems R, Barth C,
 Broos K, Brandt C, Dziura J, Li F, Simone L, Vandenberghe K, Cannom D.
 Safety of sports for athletes with implantable cardioverter-defibrillators: longterm results of a prospective multinational registry. Circulation
-2017;135:2310�2312. . [............................................................................................................................................................................]
 
 
 360. Pelliccia A, Lemme E, Maestrini V, Di Paolo FM, Pisicchio C, Di Gioia G, Caselli
@@ -8677,7 +8626,6 @@ G, Basso C, Calkins H, James CA. Comparison of features of fatal versus nonfatal
 D, Boriani G, Ricci R, Piccini JP, Dalal D, Santini M, Buja G, Iliceto S, Estes NAM
 3rd, Wichter T, McKenna WJ, Thiene G, Marcus FI. Prophylactic implantable
 defibrillator in patients with arrhythmogenic right ventricular cardiomyopathy/
-dysplasia and no prior ventricular fibrillation or sustained ventricular tachycardia. Circulation 2010;122:1144�1152. . [............................................................................................................................................................................]
 
 
 393. Orgeron GM, James CA, Te Riele A, Tichnell C, Murray B, Bhonsale A, Kamel
@@ -8834,7 +8782,6 @@ AT, Bonne G. Mutation in lamin A/C sensitizes the myocardium to exercise
 induced mechanical stress but has no effect on skeletal muscles in mouse.
 
 Neuromuscul Disord 2016;26:490�499.
-. [............................................................................................................................................................................]
 
 
 426. Pasotti M, Klersy C, Pilotto A, Marziliano N, Rapezzi C, Serio A, Mannarino S,
@@ -9002,7 +8949,6 @@ contemporary cohort of patients with acute myocarditis. Circulation
 2018;138:1088�1099.
 
 463. Alessandro Z, Martina PM, Ilaria R, Manuel DL, Angela S, Alice N, Kalliopi P,
-Federico M, Stefania R, Benedetta G, Giorgio DC, Patrizio S, Luis S, Giampiero . [............................................................................................................................................................................]
 
 
 P, Elia DM, Antonio P, Cristina B, Maurizio S, Barbara B, Sabino I, Gaetano T,
@@ -9174,7 +9120,6 @@ findings in top athletes, athletic students and control subjects. Cardiology
 1994;84:42�50.
 
 502. Zorzi A, Mastella G, Cipriani A, Berton G, Del Monte A, Gusella B, Nese A,
-Portolan L, Sciacca F, Tikvina S, Tollot S, Trovato D, Iliceto S, Schiavon M, . [............................................................................................................................................................................]
 
 
 Corrado D. Burden of ventricular arrhythmias at 12-lead 24-hour ambulatory
@@ -9329,7 +9274,6 @@ reduced contractility. PLoS One 2012;7:e42037.
 539. Baranchuk A, Nguyen T, Ryu MH, Femenia F, Zareba W, Wilde AAM, Shimizu
 W, Brugada P, Perez-Riera AR. Brugada phenocopy: new terminology and proposed classification. Ann Noninvasive Electrocardiol 2012;17:299�314.
 540. Bayes de Luna A, Brugada J, Baranchuk A, Borggrefe M, Breithardt G,
-Goldwasser D, Lambiase P, Riera AP, Garcia-Niebla J, Pastore C, Oreto G, . [............................................................................................................................................................................]
 
 
 McKenna W, Zareba W, Brugada R, Brugada P. Current electrocardiographic
@@ -9497,7 +9441,6 @@ Athens 2004 to Sochi 2014. Br J Sports Med 2017;51:238�243.
 McGee G, Sable CA, Srivastava D, Webb CL. Genetic basis for congenital heart
 defects: current knowledge: a scientific statement from the American Heart
 Association Congenital Cardiac Defects Committee, Council on Cardiovascular
-Disease in the Young. Circulation 2007;115:3015�3038. . [............................................................................................................................................................................]
 
 
 579. Correia JD, da Rosa EB, Silveira DB, Grapiglia CG, Canabarro ST,
@@ -9631,7 +9574,6 @@ aortic dilation in patients with coarctation of the aorta: evaluation with duals
 611. Loomba RS, Buelow MW, Aggarwal S, Arora RR, Kovach J, Ginde S.
 Arrhythmias in adults with congenital heart disease: what are risk factors for
 specific arrhythmias? Pacing Clin Electrophysiol 2017;40:353�361.
-. [.........................................................................................................]
 
 
 612. Khairy P, Van Hare GF, Balaji S, Berul CI, Cecchin F, Cohen MI, Daniels CJ,

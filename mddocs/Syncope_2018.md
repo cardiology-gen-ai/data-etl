@@ -123,7 +123,6 @@ based on risk stratification . . . . . . . . . . . . . . . . . . . . . . . . . .
 blood pressure monitoring. . . . . . . . . . . . . . . . . . . . . . . . . . . . 1904
 
 
-. [........................................................................................]
 
 
 4.2.4 Electrocardiographic monitoring (non-invasive
@@ -295,8 +294,10 @@ sudden cardiac death . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 5.6.3 Hypertrophic cardiomyopathy . . . . . . . . . . . . . . . . . . . . . . . . 1926
 
 5.6.4 Arrhythmogenic right ventricular cardiomyopathy. . . . . . 1926
-5.6.5 Patients with inheritable arrhythmogenic disorders. . . . . 1926 . [.........................................................................................................................................................................]
 
+
+
+![Page 5 Images](Syncope_2018_images/page_005_images.png)
 
 5.6.5.1 Long QT syndrome. . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1926
 
@@ -586,7 +587,6 @@ TLOC Transient loss of consciousness
 
 TNG Trinitroglycerin
 VA Ventricular arrhythmia
-. [...........................................................................................................................................................................]
 
 
 VF Ventricular fibrillation
@@ -638,6 +638,9 @@ ESC Guidelines 1887
 
 
 
+![Page 10 Images](Syncope_2018_images/page_010_images.png)
+
+
 
 These versions are abridged and thus, if needed, one should always
 refer to the full-text version, which is freely available via the ESC website and hosted on the EHJ website. The National Societies of the ESC
@@ -651,7 +654,6 @@ disseminating them and implementing them into clinical practice.
 Health professionals are encouraged to take the ESC Guidelines fully
 into account when exercising their clinical judgment, as well as in the determination and the implementation of preventive, diagnostic, or therapeutic medical strategies. However, the ESC Guidelines do not
 override in any way whatsoever the individual responsibility of health
-professionals to make appropriate and accurate decisions in consideration of each patient’s health condition and in consultation with that . [.....................................................]
 
 
 patient or the patient’s caregiver where appropriate and/or necessary. It
@@ -682,7 +684,6 @@ practice (‘We have the knowledge, we need to teach it’). Thanks to the
 [and thanks to the Web Practical Instructions advice is given on how](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehy071)
 to evaluate patients with loss of consciousness (LOC), and how to
 perform and interpret tests properly; whenever possible, we provide
-tracings, videos, flow charts, and checklists. . [......................................]
 
 
 The document aims to be patient-orientated and focused on therapy, and to reduce the risk of recurrence and the life-threatening
@@ -715,7 +716,6 @@ most important new/revised concepts are summarized in Figure 1.
 acterized by a rapid onset, short duration, and spontaneous complete recovery.
 
 Syncope shares many clinical features with other disorders; it
-therefore presents in many differential diagnoses. This group of disorders is labelled TLOC. . [...................................................................]
 
 
 
@@ -800,7 +800,6 @@ Systemic BP is the product of cardiac output and total peripheral
 resistance; a fall in either can cause syncope. However, in syncope,
 both mechanisms often act together to a varying degree.
 There are three primary causes of a low total peripheral resistance. The first is decreased reflex activity causing vasodilatation
-through withdrawal of sympathetic vasoconstriction: this is the . [.......................................................................................]
 
 
 ‘vasodepressive type’ of reflex syncope, seen in the outer ring in
@@ -833,6 +832,7 @@ ESC Guidelines 1891
 
 
 
+![Page 30 Images](Syncope_2018_images/page_030_images.png)
 
 
 
@@ -895,7 +895,6 @@ The clinical features characterizing TLOC are usually derived from history takin
 
 
 
-. [................]
 
 
 with possible TLOC, history taking should first establish whether there
@@ -931,7 +930,6 @@ trauma, epileptic seizures, psychogenic TLOC, and/or rare causes)
 are absent. Practical instructions for history taking are given in sec
 [tions 3 and 4 of the Web Practical Instructions.](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehy071)
 
-When epileptic seizures or psychogenic attacks are likely, appropriate steps should be taken. By using a detailed clinical history, physicians can differentiate syncope from other forms of TLOC in . [..........................................................]
 
 
 approximately 60% of cases. [12] For non-syncopal TLOC, refer to sec
@@ -974,7 +972,6 @@ OH or reflex syncope.
 - [Blood tests when clinically indicated, e.g. haematocrit or haemo-]
 globin when haemorrhage is suspected, oxygen saturation and
 blood gas analysis when hypoxia is suspected, troponin when cardiac ischaemia-related syncope is suspected, or D-dimer when
-pulmonary embolism is suspected, etc. . [.....................]
 
 
 Even if there is no independent gold/reference standard to diagnose syncope, there is strong consensus that the initial evaluation may lead to certain or highly likely diagnosis when the
@@ -1011,7 +1008,6 @@ When a diagnosis is nearly certain or highly likely, no further evaluation is ne
 cases, the initial evaluation may suggest a diagnosis when the features
 listed in Table 5 are present, or otherwise is unable to suggest any
 diagnosis.
-. [............................................................................................................................................................................]
 
 
 
@@ -1111,7 +1107,6 @@ of novel care pathways and organizational approaches, such as ED observation uni
 
 offer safe and effective alternatives to admission in the cases
 listed in Table 7. Based on a consensus document, [40] a single-centre
-experience consisting of a short stay in the ED under observation of . [.......................]
 
 
 <_48 h coupled with fast-tracking to a syncope unit reduced the admission rate to 29%. [77] Among patients not admitted, 20% were discharged after a short observation in the ED, 20% were fast-tracked to
@@ -1160,7 +1155,6 @@ exceptional in patients <40 years of age. [90] The specificity of the
 test increases if spontaneous syncope is reproduced during CSM.
 Syncope was induced in only 5% of asymptomatic persons aged
 
-[89] . [.......................................................................................]
 
 
 syndrome (CSS) requires the reproduction of spontaneous symptoms and, in addition, that patients have syncope of unknown origin compatible with a reflex mechanism. In such circumstances,
@@ -1224,7 +1218,6 @@ and clinical features of spontaneous syncope compatible with
 a reflex mechanism. The quality of evidence is moderate and is
 given by studies of ECG correlation between CSM and sponta
 
-. [.............]
 
 
 neous events, and indirectly by studies of efficacy of cardiac
@@ -1264,7 +1257,6 @@ Automatic arm-cuff devices, which are programmed to repeat and
 confirm measurements when discrepant values are recorded, are at
 
 
-. [...........................................................]
 
 
 a disadvantage due to the rapidly falling BP during OH. With a sphygmomanometer, more than four measurements per minute cannot
@@ -1344,7 +1336,6 @@ the relative contribution of bradycardia and hypotension to syncope
 [Instructions section 6.3.15), and to distinguish between VVS and PPS](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehy071#supplementary-data)
 (see section 4.2.5).
 The clinical situation corresponding to tilt-induced syncope is that
-which is triggered by prolonged standing. The test should be . [.....................................................................]
 
 
 considered: (i) to confirm a diagnosis of reflex syncope in patients in
@@ -1470,7 +1461,6 @@ defect. Tilt testing should now be considered a means of
 exposing a hypotensive tendency rather than being diagnostic of
 
 
-. [............................................................................................................................................................................]
 
 ESC Guidelines 1905
 
@@ -1508,7 +1498,6 @@ In-hospital monitoring (in bed or by telemetry) is warranted in
 patients with high-risk clinical features (defined in Table 6) suggesting
 arrhythmic syncope, especially if the monitoring is applied immediately after syncope. Although the diagnostic yield of ECG monitoring
 varies from 1.9–17.6%, [158][–][160] it is justified by the need to avoid
-immediate risk to the patient. . [.........................................]
 
 
 4.2.4.2 Holter monitoring
@@ -1572,7 +1561,6 @@ was much less likely to be associated with an arrhythmia than
 syncope. Similar findings were subsequently observed with ILR
 use expanded in an early phase of evaluation in patients with
 recurrent syncope of uncertain origin, in the absence of highrisk criteria and structural heart disease, [176][,][180][–][183] and in suspected reflex syncope. [184][–][186] In particular, an asystolic pause
-was present during syncope in about 50% of these patients. . [....................................................................................................................................................]
 
 
 4.2.4.4 Smartphone applications
@@ -1708,7 +1696,6 @@ ESC Guidelines 1907
 For PNES, a video-electroencephalogram (EEG) forms the highest
 level of diagnostic probability. [204] For syncope and PPS, video can play
 a similar, probably underused, role (see section 7). Adding video
-recording to a tilt table test adds the ability to review clinical signs in . [.................]
 
 
 relation to BP and HR objectively and repeatedly, thus helping to distinguish VVS from PPS. This approach has revealed new pathophysiological insights in syncope. [9] Attaching the camera to the tilt table
@@ -1757,7 +1744,6 @@ tachycardia.
 Diagnostic criteria: 4.2.6.1 Asymptomatic sinus bradycardia: suspected sinus arrest causing syncope
 The pre-test probability of bradycardia-related syncope is relatively
 
-. [............................................................................................................................................................................]
 
 
 sinoatrial block, usually documented by 12-lead ECG or ECG monitoring. The prognostic value of a prolonged sinus node recovery time
@@ -1894,7 +1880,6 @@ The purinergic signalling system, including adenosine and its
 receptors, has been proposed to be involved in unexplained
 syncope without prodrome. [4][,][226] A low plasma adenosine level is
 associated with paroxysmal AV block or CSS, whereas a high
-level is seen in those with a hypotensive/vasodepressive tendency . [................................]
 
 
 and VVS. In parallel, the adenosine/adenosine triphosphate
@@ -1933,7 +1918,6 @@ OH, [113][,][230][,][231] whereas atrial natriuretic peptide may be reduced in
 POTS. [113] At present, the use of cardiovascular biomarkers in the
 diagnosis of syncope awaits more evidence and verification in independent cohorts.
 
-. [...................................................................]
 
 
 4.2.7.3 Immunological biomarkers
@@ -2069,7 +2053,6 @@ cardial ischaemia or infarction with the same indications as for
 patients without syncope.
 
 
-. [......................................................................................................................]
 
 1912 ESC Guidelines
 
@@ -2097,7 +2080,6 @@ the highly selected population with reflex syncope who are referred to
 specialized syncope units may need such additional treatment. [186] In general, no therapy is appropriate for every form of reflex syncope. The
 most important discriminant for the choice of therapy is age. A decision
 pathway for the selection of a specific therapy according to age, severity
-of syncope, and clinical forms is summarized in Figure 9. . [............................................]
 
 
 5.2.1 Education and lifestyle modifications
@@ -2125,7 +2107,6 @@ probably the most likely reason for the decrease in syncope
 [(see Supplementary Data Table 10). An example of a patient instruction](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehy037#supplementary-data)
 [sheet can be found in the Web Practical Instructions section 9.1: European](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehy071)
 Society of Cardiology information sheet for patients affected by reflex
-syncope. . [....................]
 
 
 Despite the lack of controlled studies, there is strong consensus
@@ -2189,7 +2170,6 @@ most controlled trials reported no significant effect. [268][–][272]
 
 Moreover, this treatment is hampered by the low compliance of
 
-. [............................................................................................................................................................................]
 
 
 There is sufficient evidence from multiple trials that tilt training has little efficacy in reducing recurrence of syncope in
@@ -2337,7 +2317,6 @@ of 1.11 per month during 13 months of no treatment to 0 per month
 during 20 months of theophylline treatment.
 Low-norepinephrine phenotype. A mismatch between sympathetic
 
-. [............................................................................................................................................................................]
 
 
 orthostatic VVS. [287] Norepinephrine transport inhibitors (reboxetine
@@ -2472,7 +2451,6 @@ Two variables are well known to hamper the efficacy of pacing therapy in CSS: th
 section 5) and the association with positivity of tilt testing. Patients
 who have positive tilt tests have a three-fold greater probability of
 syncope recurrence after dual chamber pacing than those with negative tilt tests [293][,][295] ; thus, when tilt testing is positive, caution must be
-recommended over pacemaker implantation. . [.............................................................................................]
 
 
 5.2.6.3 Evidence from trials in patients with tilt-induced vasovagal
@@ -2570,7 +2548,6 @@ ECG documentation of asystolic pause due to sinus arrest or AV
 block. [286]
 
 In a small multicentre trial [227] performed in 80 highly selected elderly patients with unexplained unpredictable syncope who had a pos
-. [......................................................................................................................................................................]
 
 
 dual-chamber cardiac pacing significantly reduced the 2-year syncope
@@ -2725,7 +2702,6 @@ also help identify supine or nocturnal hypertension in treated patients.
 The expansion of extracellular volume is an important goal. In the
 absence of hypertension, patients should be instructed to have a sufficient
 
-. [.....................................................]
 
 
 chloride. [310] Rapid ingestion of cool water is reported to be effective in
@@ -2801,7 +2777,6 @@ randomized placebo-controlled trials. [324][–][326]
 The desirable effects of midodrine outweigh the undesirable
 effects. The quality of evidence is moderate and further research
 
-. [..............................................................................................]
 
 
 5.3.8 Fludrocortisone
@@ -2960,7 +2935,6 @@ Current management strategies in patients with syncope due to
 intrinsic cardiac bradycardia are summarized in Figure 13.
 
 
-. [.........................................................................................................................................................................]
 
 1922 ESC Guidelines
 
@@ -2991,7 +2965,6 @@ patients had syncope recurrence after pacemaker implantation in
 0–7% of cases [188][,][217] . This strategy was safe; however, this Task Force
 recognizes that in the ‘real world’, an empirical pacemaker may be
 acceptable in selected patients at high risk of traumatic recurrence
-(e.g. elderly patients with unpredictable syncopes) and that an individual risk–benefit evaluation is warranted (Figure 14). . [.......................................................................................]
 
 
 Even if the quality of evidence is moderate, there is strong consensus that in patients with bifascicular BBB with a positive EPS
@@ -3025,7 +2998,6 @@ In patients with paroxysmal AV nodal re-entrant tachycardia, AV reentrant tachyc
 associated with syncope, catheter ablation is the first-choice treatment. In these patients, the role of drug therapy is limited to being a
 bridge to ablation or being used when ablation has failed. In patients
 with syncope associated with atrial fibrillation or atypical left atrial
-flutter, the decision should be individualized. . [.......................]
 
 
 5.4.2.2 Paroxysmal ventricular tachycardia
@@ -3045,7 +3017,6 @@ with VT can be found in the 2015 ESC Guidelines for VA and the prevention of SCD
 An ICD is indicated in patients with syncope and depressed cardiac
 function, and VT or VF without correctable cause. Although ICD
 may not prevent syncope recurrence in these patients, [31][,][348] it is indicated to reduce the risk of SCD (refer to the 2015 ESC Guidelines
-for VA and the prevention of SCD [46] ). An ICD is also indicated in . [....................]
 
 
 patients with syncope and previous myocardial infarction who have
@@ -3092,7 +3063,6 @@ severe aortic stenosis, acute myocardial infarction/ischaemia, HCM,
 cardiac masses (atrial myxoma, ball thrombus, etc.), pericardial disease/tamponade, congenital anomalies of the coronary arteries, prosthetic valve dysfunction, pulmonary embolus, acute aortic dissection,
 and pulmonary hypertension (see section 4.1.1). Structural cardiac or
 cardiopulmonary disease can be present in some patients with syncope, and its incidence increases in older patients. The mere presence
-of heart disease does not imply that syncope is related to the underlying cardiac disorder. Some of these patients have typical reflex syn- . [........................................]
 cope; in others, such as those with inferior myocardial infarction or
 aortic stenosis, the underlying cardiac disease may play a role in triggering or potentiating a reflex mechanism, and—finally—the underlying cardiac disease may be the substrate for conduction disturbances,
 supraventricular arrhythmia, or VA that causes syncope.
@@ -3171,7 +3141,6 @@ considered in patients with unexplained syncope with systolic impair
 ment but without a current indication for ICD to reduce the risk of
 
 sudden death.
-. [...............................]
 
 5.6.3 Hypertrophic cardiomyopathy
 Unexplained syncope is an independent predictor for SCD and
@@ -3243,7 +3212,6 @@ history of sudden cardiac arrest, 1.9% per year with syncope, and
 0.5% per year in asymptomatic patients. [353] However, in a second
 study, the rate of appropriate ICD shocks was similar in asymptomatic
 patients and in those with syncope, a difference possibly explained by
-. [...................]
 patient selection and a high rate of non-arrhythmic syncope. [355]
 
 
@@ -3329,7 +3297,6 @@ of BP with antihypertensive medications (e.g. if focal neurology is mistakenly a
 to a further increase of the risk of syncope and neurologic events. [386]
 
 Despite the lack of large controlled trials and an overall mod
-. [.......................................................]
 
 
 may not necessarily be the attributable cause of events. [378][–][380]
@@ -3465,7 +3432,6 @@ cause.
 
  - [Discriminating benign from serious causes is made primarily by]
 
-. [......................................................................................................................................................................]
 
 
 
@@ -3638,7 +3604,6 @@ Cognitive behavioural therapy is the usual treatment of PNES and
 PPS, if attacks remain present after explanation. One pilot randomized treatment trial, conducted in PNES, [406] showed that psychological therapy provided more attack reduction than no treatment or
 treatment with sertraline. There are currently no trials on PPS.
 
-. [............................................................................................................................................................................]
 
 ### 8. Neurological causes and mimics of syncope
 
@@ -3784,7 +3749,6 @@ There are no reliable reports of isolated LOC without focal neurological symptom
 A TIA related to a carotid artery does not usually cause TLOC. An
 exception concerns orthostatic TIAs, concerning a combination of
 multiple stenoses of cerebral arteries and OH. This may rarely result
-in repetitive, orthostatic, short-lasting, and stereotyped TIAs. [423][,][424] . [...................................]
 
 
 A TIA of the vertebrobasilar system can cause LOC, but there are
@@ -3818,7 +3782,6 @@ falls. [387] A specific condition also labelled drop attacks concerns
 middle-aged women (rarely men) who suddenly find themselves
 falling. [428] They usually remember hitting the floor and can stand
 
-. [....................................................]
 
 up immediately afterwards.
 
@@ -3904,7 +3867,6 @@ ESC Guidelines 1933
 interested in establishing a syncope unit in their hospital so that they
 can meet the standards proposed by the ESC, the EHRA, and the
 Heart Rhythm Society. The following is the context and evidence for
-recommendations regarding syncope units (Table 11). . [...........]
 
 
 9.1.1 Definition of a syncope unit
@@ -3927,7 +3889,6 @@ intolerance.
 
 9.1.3 Goal of a syncope unit
 Although the benefit of a syncope unit or a syncope specialist in the
-different healthcare systems has not been exposed to rigorous . [......................................]
 
 
 scientific or economic scrutiny, the consensus is that a dedicated
@@ -3993,7 +3954,6 @@ to usual practice and improved outcomes (i.e. <5% readmissions
 
 for syncope and <20% of paced patients with recurrence at
 
-. [......................................................................]
 
 
 9.2 The clinical nurse specialist in the
@@ -4086,7 +4046,6 @@ Although the skill mix of a clinical nurse specialist has not been
 exposed to rigorous scientific or economic scrutiny, the consensus is that the clinical nurse specialist should have the necessary skills to deliver assessment and treatment for syncope and
 TLOC. Further research is required to establish the benefits.
 
-. [..............................................]
 
 ### 10. Key messages
 
@@ -4232,7 +4191,6 @@ systolic BP of 140 mmHg in old hypertensive patients.
 
 � Pacemaker implantation in old patients with dominant
 
-. [..........................................................................................................................................................................]
 
 
 16. In patients with OH, select one or more of the following additional
@@ -4420,7 +4378,6 @@ therapy. The consequence of the spontaneous decrease is that any therapy for syn
 is, making the results of observational data on therapy questionable in
 the absence of a control group. No therapy can be effective for all
 
-. [....................................................................................]
 
 
 Therefore, there is strong urgent need for RCTs on the efficacy of:
@@ -4599,7 +4556,6 @@ with tracings, videos, flow charts, and checklists—are available on the
 [European Heart Journal website and via the ESC Website at www.](http://www.escardio.org/guidelines)
 [escardio.org/guidelines.](http://www.escardio.org/guidelines)
 
-. [.............................]
 
 ### 14. Appendix
 
@@ -4670,7 +4626,6 @@ Cardiovascular Society, P. Boon Lim.
 1. Mosqueda-Garcia R, Furlan R, Tank J, Fernandez-Violante R. The elusive pathophysiology of neurally mediated syncope. Circulation 2000;102:2898–2906.
 2. Morillo CA, Eckberg DL, Ellenbogen KA, Beightol LA, Hoag JB, Tahvanainen
 KU, Kuusela TA, Diedrich AM. Vagal and sympathetic mechanisms in patients
-with orthostatic vasovagal syncope. Circulation 1997;96:2509–2513. . [............................................................................................................................................................................]
 
 
 3. Alboni P, Alboni M. Vasovagal syncope. Heidelberg: Springer; 2015. p3–17.
@@ -4880,7 +4835,6 @@ Cardiology (AEPC). Eur Heart J 2015;36:2793–2867.
 47. Soteriades ES, Evans JC, Larson MG, Chen MH, Chen L, Benjamin EJ, Levy D.
 Incidence and prognosis of syncope. N Engl J Med 2002;347:878–885.
 48. Ricci F, Fedorowski A, Radico F, Romanello M, Tatasciore A, Di Nicola M,
-Zimarino M, De Caterina R. Cardiovascular morbidity and mortality related to . [..........................................................................................................................................................................]
 
 
 orthostatic hypotension: a meta-analysis of prospective observational studies.
@@ -5037,7 +4991,6 @@ meta-analysis. Am J Med 2014;127:1126.e13–25.
 2015;175:1065–1067.
 
 88. Thiruganasambandamoorthy V, Kwong K, Wells GA, Sivilotti ML, Mukarram M,
-Rowe BH, Lang E, Perry JJ, Sheldon R, Stiell IG, Taljaard M. Development of the . [.........................................................................................................................................................................]
 
 
 Canadian Syncope Risk Score to predict serious adverse events after emergency department assessment of syncope. CMAJ 2016;188:E289–E298.
@@ -5196,7 +5149,6 @@ tilt-testing: hypotensive susceptibility rather than diagnosis. Eur Heart J
 133. Taneja I, Marney A, Robertson D. Aortic stenosis and autonomic dysfunction:
 co-conspirators in syncope. Am J Med Sci 2004;327:281–283.
 134. Thomson HL, Morris-Thurgood J, Atherton J, Frenneaux M. Reduced cardiopulmonary baroreflex sensitivity in patients with hypertrophic cardiomyopathy.
-J Am Coll Cardiol 1998;31:1377–1382. . [............................................................................................................................................................................]
 
 
 135. Brignole M, Menozzi C, Gianfranchi L, Oddone D, Lolli G, Bertulla A. Neurally
@@ -5358,7 +5310,6 @@ investigation of unexplained syncope: insights from a micro-costing analysis of
 the observational PICTURE registry. Europace 2015;17:1141–1148.
 179. Brignole M, Vardas P, Hoffman E, Huikuri H, Moya A, Ricci R, Sulke N, Wieling
 W, Auricchio A, Lip GY, Almendral J, Kirchhof P, Aliot E, Gasparini M,
-Braunschweig F, Lip GY, Almendral J, Kirchhof P, Botto GL, EHRA Scientific . [............................................................................................................................................................................]
 
 
 Documents Committee. Indications for the use of diagnostic implantable and
@@ -5524,7 +5475,6 @@ syncope in the electrophysiologic study versus electrocardiographic monitoring
 patients with syncope associated with coronary artery disease and a nondiagnostic electrophysiologic evaluation. Am J Cardiol 1999;83:1334–1337.
 220. Sroubek J, Probst V, Mazzanti A, Delise P, Hevia JC, Ohkubo K, Zorzi A,
 Champagne J, Kostopoulou A, Yin X, Napolitano C, Milan DJ, Wilde A, Sacher
-F, Borggrefe M, Ellinor PT, Theodorakis G, Nault I, Corrado D, Watanabe I, . [............................................................................................................................................................................]
 
 
 Antzelevitch C, Allocca G, Priori SG, Lubitz SA. Programmed ventricular stimulation for risk stratification in the Brugada syndrome: a pooled analysis.
@@ -5690,7 +5640,6 @@ Ambrosius WT. A Randomized Trial of Intensive versus Standard Blood
 Pressure Control. N Engl J Med 2015;373:2103–2116.
 262. Brignole M, Menozzi C, Gaggioli G, Musso G, Foglia-Manzillo G, Mascioli G,
 Fradella G, Bottoni N, Mureddu R. Effects of long-term vasodilator therapy in
-patients with carotid sinus hypersensitivity. Am Heart J 1998;136:264–268. . [..........................................................................................................................................................................]
 
 
 263. Kim KH, Cho JG, Lee KO, Seo TJ, Shon CY, Lim SY, Yun KH, Sohn IS, Hong YJ,
@@ -5841,7 +5790,6 @@ Uncertain Etiology 3 (ISSUE-3) Investigators. Benefit of pacemaker therapy in
 patients with presumed neurally mediated syncope and documented asystole is
 greater when tilt test is negative: an analysis from the third International Study
 on Syncope of Uncertain Etiology (ISSUE-3). Circ Arrhythm Electrophysiol
-2014;7:10–16. . [.........................................................................................................................................................................]
 
 
 303. Baron-Esquivias G, Morillo CA, Moya-Mitjans A, Martinez-Alday J, Ruiz-Granell
@@ -6012,7 +5960,6 @@ and syncope of unexplained origin: the PRESS study. Circ Arrhythm Electrophysiol
 
 345. Englund A, Bergfeldt L, Rehnqvist N, Astrom H, Rosenqvist M. Diagnostic value
 of programmed ventricular stimulation in patients with bifascicular block: a prospective study of patients with and without syncope. J Am Coll Cardiol
-1995;26:1508–1515. . [............................................................................................................................................................................]
 
 
 346. Morady F, Higgins J, Peters RW, Schwartz AB, Shen EN, Bhandari A, Scheinman
@@ -6170,7 +6117,6 @@ Med Dir Assoc 2016;17:193–199.
 Cammen TJ. Withdrawal of fall-risk-increasing drugs in older persons: effect on
 tilt-table test outcomes. J Am Geriatr Soc 2007;55:734–739.
 382. Ruwald MH, Hansen ML, Lamberts M, Hansen CM, Nume AK, Vinther M,
-Kober L, Torp-Pedersen C, Hansen J, Gislason GH. Comparison of incidence, . [............................................................................................................................................................................]
 
 
 predictors, and the impact of co-morbidity and polypharmacy on the risk of
@@ -6295,7 +6241,6 @@ for positional cerebral ischemia due to common carotid artery occlusion.
 Report of three cases. Neurosurg Focus 2003;14:e7.
 424. Dobkin BH. Orthostatic hypotension as a risk factor for symptomatic occlusive
 cerebrovascular disease. Neurology 1989;39:30–34.
-425. Savitz SI, Caplan LR. Vertebrobasilar disease. N Engl J Med 2005;352:2618–2626. . [..............................................................................................]
 
 
 426. Thijs RD, Kruit MC, van Buchem MA, Ferrari MD, Launer LJ, van Dijk JG.

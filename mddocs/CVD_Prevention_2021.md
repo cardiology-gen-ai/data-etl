@@ -108,7 +108,6 @@ Keywords Guidelines - prevention - personalized - population - risk estimation -
 3.2.1.2 Blood pressure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3242
 
 
-. [............................................]
 
 
 3.2.1.3 Cigarette smoking . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3242
@@ -254,7 +253,6 @@ freedom of choice . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 4.2. Optimizing cardiovascular risk management . . . . . . . . . . . . . . . . 3268
 
-. [............................................................................................................................................................................]
 
 
 3.3.1. Psychosocial factors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3258
@@ -584,7 +582,6 @@ governmental and non-governmental level . . . . . . . . . . . . . . . . . . . . 
 
 6.3. Cerebrovascular diseases . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3296
 
-. [............................................................................................................................................................................]
 
 
 6.5. Chronic kidney disease . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3298
@@ -801,6 +798,9 @@ governmental and non-governmental level . . . . . . . . . . . . . . . . . . . . 
 6. Risk management of disease-specific cardiovascular disease . . . . . 3294
 
 
+
+![Page 18 Images](CVD_Prevention_2021_images/page_018_images.png)
+
 6.1. Coronary artery disease . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3294
 
 6.2. Heart failure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3295
@@ -916,7 +916,6 @@ cardiovascular disease risk thresholds across age groups . . . . . . . . . . 325
 
 Figure 6 Flow chart of cardiovascular disease risk and risk factor
 
-. [............................................................................................................................................................................]
 
 
 Tables
@@ -1190,7 +1189,6 @@ HFpEF Heart failure with preserved ejection fraction
 HFrEF Heart failure with reduced ejection fraction
 HIV Human immunodeficiency virus
 HMOD Hypertension-mediated organ damage
-. [...........................................................................................................................................................................]
 
 
 HR Hazard ratio
@@ -1339,7 +1337,6 @@ ESC carries out the EURObservational Research Programme of
 international registries of cardiovascular diseases and interventions
 which are essential to assess diagnostic/therapeutic processes, use of
 
-. [......................................................................................................................................................................]
 
 
 providing a better understanding of medical practice in Europe and
@@ -1446,7 +1443,6 @@ or therapeutic medical strategies. However, the ESC Guidelines do
 not override in any way whatsoever the individual responsibility of
 health professionals to make appropriate and accurate decisions in
 consideration of each patient’s health condition and in consultation
-with that patient or the patient’s caregiver where appropriate and/or . [................................]
 
 
 necessary. It is also the health professional’s responsibility to verify
@@ -1461,6 +1457,9 @@ ESC Guidelines 3235
 
 
 
+
+
+![Page 45 Images](CVD_Prevention_2021_images/page_045_images.png)
 
 
 Figure 1 Central Illustration. ASCVD = atherosclerotic cardiovascular disease; CKD = chronic kidney disease; COPD = chronic obstructive pulmonary
@@ -1483,7 +1482,6 @@ The present guidelines have been developed to support healthcare
 professionals in their efforts to reduce the burden of ASCVD in both
 individual patients, as well as at a population level. The previous
 European Guidelines on CVD prevention in clinical practice were
-in 2016. [2] Recent in of . [............................................]
 
 
 cardiovascular disease (CVD) risk and treatment benefit, as well as
@@ -1561,7 +1559,6 @@ regional differences in budgets and costs associated with both interventions and
 have financial implications, either in terms of costs for individual
 patients and/or in terms of budget impact. Some of these recommendations pertain to diagnosis (e.g. large-scale use of expensive imaging
 
-. [............................................................................................................................................................................]
 
 
 expensive drugs, such as novel lipid-lowering or anti-diabetic drugs).
@@ -1924,7 +1921,6 @@ to achieve such change. [21]
 lute risk of ASCVD and the absolute reduction in LDL-C, so
 
 
-. [........................................................................................................................................................................]
 
 ESC Guidelines 3243
 
@@ -1990,7 +1986,6 @@ and this has also been recognized in the guidelines.
 
 Examples of specific topics regarding physiological, pathological,
 
-. [............................................................................................................................................................................]
 
 
 studied include left ventricular (LV) ejection fraction (LVEF), adverse
@@ -2181,7 +2176,6 @@ such an approach. [66][,][67] We do, however, emphasize that stopping
 assessment of treatment goals and/or treatment routinely after the
 first step is inappropriate. The evidence-based ultimate targets of
 treatment intensification are optimal from the perspective of CVD
-risk reduction and are to be considered in all patients. . [......................................................]
 
 
 3.2.3.2 Risk estimation in apparently healthy people
@@ -2376,7 +2370,6 @@ Armenia, Azerbaijan, Belarus, Bulgaria, Egypt, Georgia, Kyrgyzstan,
 Latvia, Lebanon, Libya, Lithuania, Montenegro, Morocco, Republic of
 Moldova, Romania, Russian Federation, Serbia, Syria, The Former
 Yugoslav Republic (Macedonia), Tunisia, Ukraine, and Uzbekistan. A
-multiplier approach has been used for converting CVD mortality . [.................................................................]
 
 
 can be accessed in the ESC CVD Risk app (freely available from app
@@ -2435,7 +2428,6 @@ section 4.6.
 In the 50�69-year age range, a 10-year CVD mortality risk threshold of 5% estimated with the previously used SCORE algorithm corresponds, on average, to a 10-year fatal and non-fatal CVD risk
 threshold of 10% estimated with SCORE2, as approximately the
 same number of people are above the risk threshold and would qualify for treatment. [68]
-. [.........................................................................]
 
 
 
@@ -2529,7 +2521,6 @@ people 50 69 years of age
 Stopping smoking, lifestyle recommendations, and SBP <160 mmHg
 are recommended for all (Figure 6). A 10-year CVD risk (fatal and nonfatal ASCVD events) >_10% is generally considered ‘very high risk’, and
 treatment of CVD risk factors is recommended. A 10-year CVD risk of
-5 to <10% is considered ‘high risk’, and treatment of risk factors should . [................................]
 
 
 be considered, taking CVD risk modifiers, lifetime risk and treatment
@@ -2573,7 +2564,6 @@ is recommended. A 10-year CVD risk of 2.5 to <7.5% is considered
 ‘high risk’, and treatment of risk factors should be considered, taking
 CVD risk modifiers, lifetime risk and treatment benefit (in low- and
 
-. [.................................................................................................]
 
 
 moderate-risk regions), and patient preferences into account. A 10year CVD risk <2.5% is considered ‘low-to-moderate risk’, and would
@@ -2724,7 +2714,6 @@ UK. However, we recommend cautious use of these calculators,
 since both are based on older cohort data [89][,][90] (Figure 8).
 
 
-. [...........................................................................................................................................................................]
 
 
 Recommendations for CVD risk estimation
@@ -2807,9 +2796,7 @@ very old people. In young people, lifetime risk might be more informative, as 10
 risk factors. In older persons, specific risk estimation is required, taking competing non-CVD mortality into account. [78] Direct translation
 
 
-. [...............................................................................................................]
 
-**.** **[...........................................................]**
 
 |Recommendation|Classa|Levelb|ESC 2021|
 |---|---|---|---|
@@ -2926,7 +2913,6 @@ much smaller than the (independent) RRs reported for these modifiers in the lite
 
 Taking the above into account, we summarize the literature on
 
-. [........................................................................................................................................]
 
 
 3.3.1. Psychosocial factors
@@ -3095,7 +3081,6 @@ Estimates are that 12�27% of middle-aged individuals have an
 ankle brachial index (ABI) <0.9, around 50�89% of whom do not
 have typical claudication. [124] An individual patient data metaanalysis concluded that the reclassification potential of ABI was
 limited, perhaps with the exception of women at intermediate
-risk. [125] . [............................................................................................................................................................................]
 
 
 3.3.3.6 Echocardiography
@@ -3210,7 +3195,6 @@ The aetiology of ASCVD has a genetic component, but this information is not curr
 polygenic risk scores for risk stratification could increase the use of
 genetics in prevention. [143][�][145] For ASCVD, there is, however, a lack
 
-. [....................................]
 
 
 A family history of premature CVD is simple, inexpensive information that can trigger comprehensive risk assessment in individuals
@@ -3320,7 +3304,6 @@ The short-term attributable effects on mortality are linked primarily to exposur
 1.0% increase of all-cause mortality for an increment of 10 lg/m [3] in
 
 
-. [.......................................................................................................................................]
 
 
 ESC Guidelines 3261
@@ -3379,7 +3362,6 @@ Continued
 
 
 
-. [...........................................................................................................................................................................]
 
 
 
@@ -3464,7 +3446,6 @@ Furthermore, persons with CKD are also exposed to other nontraditional ASCVD ris
 inflammation, oxidative stress, and promotors of vascular calcification.
 CKD and kidney failure not only increase the risk of CAD, they also
 
-[204] . [............................................................................................................................................................................]
 
 
 3.4.2. Atrial fibrillation
@@ -3611,7 +3592,6 @@ and mortality (see section 6.2).
 In patients with cancer, there is an overlap between cancer and
 ASCVD risk factors, with shared biological mechanisms and genetic
 
-. [............................................]
 
 
 beneficial in reducing both CVD as well as cancer risk. Moreover, the
@@ -3698,7 +3678,6 @@ is increased during the 3 months after an acute exacerbation. [243]
 The high prevalence of CVD in COPD patients may be explained
 by the fact that both diseases share common risk factors, such as
 
-[244] Metabolic . [............................................................................................................................................................................]
 
 
 syndrome and reduced PA is present in 34% of COPD patients, with
@@ -3870,7 +3849,6 @@ active treatment or prevention of periodontitis improves, clinical prognosis req
 Migraine is a highly prevalent condition affecting around 15% of the
 general population. [278] There are two main types of migraine—
 
-. [............................................................................................................................................................................]
 
 
 migraine with aura, which accounts for about one-third of all
@@ -4043,7 +4021,6 @@ conventional risk factors. The risk of developing DM is also elevated
 
 �
 in these women (RR 1.6 2.0). [314][,][319] Both preterm (RR 1.6) and stillbirth (RR 1.5) have been associated with a moderate increase in risk
-of CVD. [316] . [............................................................................................................................................................................]
 
 
 Finally, gestational DM confers a sharply elevated risk of future
@@ -4220,7 +4197,6 @@ women. [52][,][346][�][351]
 
 4.2. Optimizing cardiovascular risk
 
-. [..................................................................]
 
 
 4.2. Optimizing cardiovascular risk
@@ -4298,7 +4274,6 @@ it. [360] Approximately 9% of cases of ASCVD in Europe can be attributed to poor
 poor doctor-patient relationship, lack of disease acceptance, beliefs
 
 
-. [.........................................................................................................]
 
 
 
@@ -4353,7 +4328,6 @@ level is recommended. When older adults or individuals with chronic
 conditions cannot achieve 150 min of moderate-intensity PA a week,
 they should be as active as their abilities and conditions
 allow. [371][�][375][,][384][,][385] PA accumulated in bouts of even <10 min is
-associated with favourable outcomes, including mortality. [371][,][390] . [..............................................................................................]
 
 
 4.3.1.1 Physical activity prescription
@@ -4441,7 +4415,6 @@ Recommendations for nutrition and alcohol
 
 
 Continued
-. [...................]
 
 
 Recommendations for nutrition and alcohol
@@ -4563,9 +4536,7 @@ A reduction in sodium intake may reduce SBP by, on average, 5.8
 mmHg in hypertensive, and 1.9 mmHg in normotensive patients. [410]
 
 
-. [.......................................................................]
 
-. [...................................................................................................]
 
 ESC Guidelines 3271
 
@@ -4608,7 +4579,6 @@ times a week is associated with a 6% lower risk of stroke. [440] The
 highest risk was observed in the range of no or very low intakes.
 
 Several meta-analyses and a recent Cochrane review showed no
-benefits of fish oils on CV outcomes and/or mortality, [441][�][443] . [.....................................................................................................]
 
 
 4.3.2.4.2. Nuts. A meta-analysis of prospective cohort studies suggested that daily consumption of 30 g of (mixed) nuts was associated
@@ -4814,9 +4784,7 @@ IIa B
 Continued
 
 
-. [....................]
 
-. [......................................................................................................................................................]
 
 ESC Guidelines 3273
 
@@ -4835,7 +4803,6 @@ interventions
 
 Recommendations for mental healthcare and psychosocial interventions at the individual level
 
-**.** **[..................]** [................................................................]
 
 
 A very effective treatment option for extreme obesity or obesity
@@ -4931,7 +4898,6 @@ SUPRIM (Secondary Prevention in Uppsala Primary Health Care
 project), patients in the intervention group had a 41% lower rate of
 
 
-. [.........................................................................................]
 
 
 
@@ -5033,9 +4999,7 @@ Electronic cigarettes (e-cigarettes) simulate combustible cigarettes
 by heating nicotine and other chemicals into a vapour. E-cigarettes
 
 
-**.** **[.]** [..........................................................................................................................................]
 
-. [................................]
 
 
 deliver nicotine without most of the tobacco chemicals, and are
@@ -5153,7 +5117,6 @@ all drugs are tolerated or available/affordable, treatment should focus
 on achieving LDL-C levels as close as possible to the given goals.
 Treatment should be a shared decision-making process between
 
-. [............................................................................................................................................................................]
 
 
 
@@ -5330,7 +5293,6 @@ be excluded before beginning treatment, as treatment of underlying
 disease may improve hyperlipidaemia without requiring lipidlowering therapy. This is particularly true for hypothyroidism.
 Secondary dyslipidaemias can also be caused by alcohol abuse, DM,
 Cushing’s syndrome, diseases of the liver and kidneys, as well as by
-drugs (e.g. corticosteroids). In addition, lifestyle optimization is crucial . [........................]
 in all patients with higher than optimal lipid levels.
 
 
@@ -5381,7 +5343,6 @@ Recommendations for pharmacological low-density lipoprotein cholesterol lowering
 (for recommendations for persons aged �70 years, see
 respective recommendations tables).
 
-. [..........................................................................................]
 
 |Recommendations|Classa|Levelb|
 |---|---|---|
@@ -5523,7 +5484,6 @@ Rhabdomyolysis is extremely rare. As statins are prescribed on a
 long-term basis, possible interactions with other drugs deserve particular and continuous attention, as many patients will receive
 
 
-. [............................................................................................................................................................................]
 
 3280 ESC Guidelines
 
@@ -5542,7 +5502,6 @@ outcome studies proving that nutraceuticals can prevent CVD morbidity or mortali
 Recommendations for drug treatments of patients with
 hypertriglyceridaemia.
 
-. [................................................................]
 
 
 An evidence-based approach to the use of lipid-lowering nutraceuticals could improve the quality of the treatment, including therapy adherence, and achievement of the LDL-C goal in clinical
@@ -5629,7 +5588,6 @@ General recommendations for lipid-lowering treatment in older
 patients are summarized below.
 
 
-. [...........................................................................................................]
 
 
 
@@ -5749,9 +5707,7 @@ with moderate-to-severe chronic kidney disease (Kidney
 Disease Outcomes Quality Initiative stages 3 5).
 
 
-. [...................................................................................................................]
 
-. [......................................................]
 
 
 
@@ -5777,7 +5733,6 @@ Adapted from [3]
 Summary of recommendations for the clinical management of hypertension
 
 
-. [......................................................................................................................................]
 
 
 
@@ -5859,7 +5814,6 @@ This section covers recommendations for the diagnosis and treatment of hypertens
 care. More detail and guidance for complex cases/tertiary care are
 available in the 2018 ESC/European Society of Hypertension (ESH)
 
-**.** **[....................................]** Guidelines for the management of arterial hypertension. [4]
 
 ESC Guidelines 3283
 
@@ -5888,7 +5842,6 @@ unattended automated office BP measurements. [4]
 
 4.7.2.3 Ambulatory blood pressure monitoring
 
-. [.....................................................................]
 
 
 dictor of hypertension-mediated organ damage (HMOD) and clinical
@@ -6067,7 +6020,6 @@ home blood pressure monitoring; HMOD = hypertension-mediated organ
 damage.
 
 
-. [...............................................................................]
 
 
 
@@ -6205,9 +6157,7 @@ municated before instituting treatment (Figure 6 and section 3.2.3.6).
 In many such cases, the absolute lifetime benefit per 10-mmHg
 
 
-. [......................................................................]
 
-. [..................................................................................................] **[.]**
 
 3286 ESC Guidelines
 
@@ -6284,7 +6234,6 @@ Compared to previous ESC/ESH Hypertension Guidelines, [4] we
 changed the cut-off for identifying who is ’older’ from 65 to 70 years
 for reasons of consistency with other parts of the current guidelines.
 Although a single age cut-off is provided, it is important to stress that
-biological age influences this threshold in clinical practice. For . [..........................]
 
 
 example, a very fit 75-year-old person may qualify for a treatment
@@ -6329,7 +6278,6 @@ Recommended drug therapy and treatment algorithm: five
 major classes of BP-lowering drug therapy have shown benefit in
 reducing CV events; angiotensin-converting enzyme (ACE) inhibitors,
 angiotensin receptor blockers (ARBs), beta-blockers, calcium channel blockers (CCBs), and thiazide or thiazide-like diuretics. [582] A recommended treatment algorithm based on best available evidence,
-pragmatic considerations (e.g. combination pill availability), and pathophysiological reasoning is shown in Figure 16. [4] A combination of an . [.........................................................................................................]
 
 
 CKD and eGFR <45 mL/min/m [2] and blood potassium levels >4.5
@@ -6434,7 +6382,6 @@ lowering BP in resistant hypertension when added to existing treatment; however,
 Recommendations for the treatment of patients with
 diabetes mellitus
 
-. [.................................................................]
 
 |Recommendations|Classa|Levelb|
 |---|---|---|
@@ -6560,7 +6507,6 @@ and preferences.
 
 Four trials of dipeptidyl peptidase-4 inhibitors [607][�][610] in patients
 with DM and existing ASCVD or at high risk demonstrated non
-. [............................................................................................................................................................................]
 
 
 4.8.1.2 Glycaemic control
@@ -6633,7 +6579,6 @@ medications.
 
 GLP-1RAs reduce MACE, CV death, and all-cause mortality by
 
-. [...........................................................................................................................]
 
 
 (EASD) consensus report, [592] recommend that metformin should be
@@ -6746,7 +6691,6 @@ Continued
 
 
 Recommendations for antithrombotic therapy
-. [...............................................]
 
 
 
@@ -6850,9 +6794,7 @@ LEAD, clopidogrel showed a slight superiority for ischaemic
 events with respect to aspirin, with a similar safety profile. [620]
 
 
-. [................................................................]
 
-. [...........................................................................................................]
 
 
 Subgroup analysis suggested a greater benefit of clopidogrel in
@@ -6910,7 +6852,6 @@ CR is a comprehensive, multidisciplinary intervention not just including exercis
 psychosocial support. [358] Prevention and rehabilitation programmes
 after ASCVD events or revascularization reduce CV hospitalizations,
 myocardial infarction, CV mortality and, in some programmes, all
-. [..........................................................................................................]
 
 
 Recommendations for cardiac rehabilitation
@@ -7017,7 +6958,6 @@ in minutes) exceeds 1000 [638]
 addressed and treated. [642]
 
 
-. [.................................................................]
 
 
 
@@ -7078,7 +7018,6 @@ the population level
 Population-level interventions aim to alter the societal environment,
 modify certain social determinants of health, and provide incentives
 to encourage changes in individual behaviour and exposure to risk factors. Social determinants of health include socioeconomic status (education, occupation, and income), wealth inequalities, neighbourhood
-and urban design, and social networks, to name but a few. Healthcare . [............................................................................................................................................................................]
 
 
 professionals play an important role in advocating evidence-based
@@ -7168,7 +7107,6 @@ construction of new houses and schools in areas remote from highways and polluti
 and promotion of public transport should also be encouraged. The
 urgency of accepting what might appear as ‘comfort sacrifices’ for distant
 health benefits, and the transitory high costs of reorganizing entire sec
-. [......................................................................................]
 
 
 Indoor air pollution and exposure to noise must also be highlighted.
@@ -7269,7 +7207,6 @@ disease
 
 
 Continued
-. [.......................................................................................]
 
 
 
@@ -7350,7 +7287,6 @@ inhibitors (ARNIs), [707][�][710] beta-blockers, [711][�][717] and mineraloc
 reduce the risk of HF hospitalizations. [690] These drugs also reduce the
 
 
-. [...................................................................................]
 
 
 Recommendations regarding pharmacological and nonpharmacological interventions for patients with symp
@@ -7361,7 +7297,6 @@ ejection fraction <40%) with proven benefits on clinical
 outcomes, including cardiovascular morbidity and
 mortality.
 
-. [........................................................................................]
 
 |Recommendations|Classa|Levelb|
 |---|---|---|
@@ -7464,7 +7399,6 @@ beta-blocker, and an MRA, to reduce the risk of
 hospitalizations (all-cause and HF). [729]
 
 
-. [...............................................]
 
 
 6.3. Cerebrovascular diseases
@@ -7511,7 +7445,6 @@ stroke, [745] but more major haemorrhagic events. In patients with noncardioembo
 superior to aspirin and carry a higher bleeding risk. [752][,][753] In the absence
 of a definite cause of ischaemia and a presumed occult cardioembolic
 
-. [...................................................................................................................]
 
 
 IIb B
@@ -7555,7 +7488,6 @@ Evidence of cerebrovascular lesions (e.g. white matter hyperintensities, lacunes
 history is a relatively common finding at neuroimaging, especially in
 older patients. Silent cerebrovascular disease is a marker of increased
 risk of stroke. [763][,][764] Arterial hypertension, DM, and cigarette smok
-. [..............................................................]
 
 
 Recommendations for BP and lipid management are congruent to
@@ -7582,7 +7514,6 @@ no studies addressing the best treatment options for silent cerebral
 ischaemia. [765]
 
 
-. [.............................................................................................................]
 
 
 6.4. Lower extremity artery disease
@@ -7752,7 +7683,6 @@ tion 4.8.
 b Class of recommendation.
 
 c Level of evidence.
-. [................................................................]
 
 
 
@@ -7767,7 +7697,6 @@ c Level of evidence.
 
 
 
-. [.........................................................................................................]
 
 
 6.6. Atrial fibrillation
@@ -7911,7 +7840,6 @@ ities and women have more non-CVD comorbidities (in particular
 more depression). [822][,][826][,][827]
 
 
-. [............................................................................................................................................................................]
 
 3300 ESC Guidelines
 
@@ -8020,7 +7948,6 @@ and CAD.
 
 infections and ASCVD.
 
-. [............................................................................................................................................................................]
 
 
 
@@ -8338,7 +8265,6 @@ risk.
 although there is an increased risk of diabetic ketoacidosis with
 such therapies.
 
-. [............................................................................................................................................................................]
 
 
 Type 1 diabetes mellitus
@@ -8550,7 +8476,6 @@ improve clinical outcomes in symptomatic patients with HFrEF.
 Cerebrovascular diseases
 
  - [Ischaemic events are mainly caused by atherothrombosis, cardi-]
-oembolism, or small vessel disease, whereas intracerebral . [............................................................................................................................................................................]
 
 
 haemorrhage is mostly caused by hypertensive angiopathy or
@@ -8847,7 +8772,6 @@ mortality?
 
 - [Stroke risk prediction for low-risk AF patients.]
 
-. [............................................................................................................................................................................]
 
 
 
@@ -9136,7 +9060,6 @@ investigation, especially in primary care.
 
 people, and for newer interventions, more evidence of the
 effects of lipid-modifying treatments on overall mortality is
-needed in the form of long-term post-trial follow-up in RCTs. . [............................................................................................................................................................................]
 
 
 Erectile dysfunction
@@ -9376,7 +9299,6 @@ Cerebrovascular disease
 - [The optimal target level of LDL-C.]
 
 - [Optimal treatment for patients with silent cerebrovascular]
-disease. . [..........................................................................]
 
 
 Heart failure
@@ -9743,7 +9665,6 @@ assess the delivery of evidence-based care. Thus, and in line with
 other ESC Clinical Practice Guidelines, the process of developing and
 defining QIs for CVD prevention has been initiated during the writing
 of this guideline and the results will be published in a separate
-document. . [................................................................................................]
 
 ### 11 Supplementary data
 
@@ -9836,7 +9757,6 @@ Graham (Ireland), Catriona Jennings (Ireland), Torben Jorgensen
 (Germany), Madalena Lettino (Italy), Basil S. Lewis (Israel), Ale�s
 Linhart (Czech Republic), Maja-Lisa Løchen (Norway), Konstantinos
 
-. [............................................................................................................................................................................]
 
 
 (Switzerland), John William McEvoy (Ireland), Paul McGreavy
@@ -9991,7 +9911,6 @@ Narkiewicz K, Ruschitzka F, Schmieder RE, Shlyakhto E, Tsioufis C, Aboyans V,
 Desormais I, ESC Scientific Document Group. 2018 ESC/ESH Guidelines for the
 management of arterial hypertension. Eur Heart J 2018;39:3021�3104.
 
-. [............................................................................................................................................................................]
 
 ### 14. References
 
@@ -10189,7 +10108,6 @@ Razavi H, Rehfuess EA, Rehm JT, Ritz B, Rivara FP, Roberts T, Robinson C,
 Rodriguez-Portales JA, Romieu I, Room R, Rosenfeld LC, Roy A, Rushton L,
 Salomon JA, Sampson U, Sanchez-Riera L, Sanman E, Sapkota A, Seedat S, Shi P,
 Shield K, Shivakoti R, Singh GM, Sleet DA, Smith E, Smith KR, Stapelberg NJ,
-Steenland K, Stockl H, Stovner LJ, Straif K, Straney L, Thurston GD, Tran JH, Van . [............................................................................................................................................................................]
 
 
 Dingenen R, van Donkelaar A, Veerman JL, Vijayakumar L, Weintraub R,
@@ -10351,7 +10269,6 @@ population-level cohort study. Lancet Diabetes Endocrinol 2016;4:588�597.
 65. International Society of Nephrology. KDIGO 2020 Clinical Practice Guideline for
 [Diabetes Management in Chronic Kidney Disease. https://kdigo.org/wp-content/](https://kdigo.org/wp-content/uploads/2020/10/KDIGO-2020-Diabetes-in-CKD-GL.pdf)
 [uploads/2020/10/KDIGO-2020-Diabetes-in-CKD-GL.pdf (4 June 2021).](https://kdigo.org/wp-content/uploads/2020/10/KDIGO-2020-Diabetes-in-CKD-GL.pdf)
-. [............................................................................................................................................................................]
 
 
 66. Cersosimo E, Johnson EL, Chovanes C, Skolnik N. Initiating therapy in patients
@@ -10522,7 +10439,6 @@ Science 2011;333:1393�1400.
 95. Zipkin DA, Umscheid CA, Keating NL, Allen E, Aung K, Beyth R, Kaatz S, Mann
 DM, Sussman JB, Korenstein D, Schardt C, Nagi A, Sloane R, Feldstein DA.
 Evidence-based risk communication: a systematic review. Ann Intern Med
-2014;161:270�280. . [............................................................................................................................................................................]
 
 
 96. Karmali KN, Persell SD, Perel P, Lloyd-Jones DM, Berendsen MA, Huffman MD.
@@ -10675,7 +10591,6 @@ men: the Cooper Center Longitudinal Study. Circulation 2012;125:3092�3098.
 Thromb Vasc Biol 2013;33:2261�2266.
 
 135. Ripatti S, Tikkanen E, Orho-Melander M, Havulinna AS, Silander K, Sharma A,
-Guiducci C, Perola M, Jula A, Sinisalo J, Lokki ML, Nieminen MS, Melander O, . [............................................................................................................................................................................]
 
 
 Salomaa V, Peltonen L, Kathiresan S. A multilocus genetic risk score for coronary heart disease: case-control and prospective cohort analyses. Lancet
@@ -10846,7 +10761,6 @@ coronary syndromes: a systematic review and meta-analysis. Acta Cardiol
 2017;72:655�661.
 
 168. Ma WQ, Sun XJ, Wang Y, Han XQ, Zhu Y, Liu NF. Does body mass index truly
-affect mortality and cardiovascular outcomes in patients after coronary revascularization with percutaneous coronary intervention or coronary artery bypass . [............................................................................................................................................................................]
 
 
 graft? A systematic review and network meta-analysis. Obes Rev
@@ -10996,7 +10910,6 @@ fibrillation and risks of cardiovascular disease, renal disease, and death: syst
 206. Emdin CA, Wong CX, Hsiao AJ, Altman DG, Peters SA, Woodward M,
 Odutayo AA. Atrial fibrillation as risk factor for cardiovascular disease and
 death in women compared with men: systematic review and meta-analysis of
-cohort studies. BMJ 2016;532:h7013. . [............................................................................................................................................................................]
 
 
 207. Lane DA, Skjoth F, Lip GYH, Larsen TB, Kotecha D. Temporal Trends in
@@ -11154,7 +11067,6 @@ Clin Oncol 2016;34:2743�2749.
 C. Cardiovascular Disease Among Survivors of Adult-Onset Cancer: A
 Community-Based Retrospective Cohort Study. J Clin Oncol
 2016;34:1122�1130.
-. [............................................................................................................................................................................]
 
 
 238. Chen W, Thomas J, Sadatsafavi M, FitzGerald JM. Risk of cardiovascular comorbidity in patients with chronic obstructive pulmonary disease: a systematic
@@ -11318,7 +11230,6 @@ CP, Fevre EM, Finucane MM, Flaxman S, Flood L, Foreman K, Forouzanfar MH,
 Fowkes FG, Franklin R, Fransen M, Freeman MK, Gabbe BJ, Gabriel SE, Gakidou
 E, Ganatra HA, Garcia B, Gaspari F, Gillum RF, Gmel G, Gosselin R, Grainger R,
 Groeger J, Guillemin F, Gunnell D, Gupta R, Haagsma J, Hagan H, Halasa YA,
-Hall W, Haring D, Haro JM, Harrison JE, Havmoeller R, Hay RJ, Higashi H, Hill . [............................................................................................................................................................................]
 
 
 C, Hoen B, Hoffman H, Hotez PJ, Hoy D, Huang JJ, Ibeanusi SE, Jacobsen KH,
@@ -11481,7 +11392,6 @@ Cardiology of the European Society of Cardiology. Eur J Prev Cardiol
 
 313. Alexander M, Loomis AK, van der Lei J, Duarte-Salles T, Prieto-Alhambra D,
 Ansell D, Pasqua A, Lapi F, Rijnbeek P, Mosseveld M, Avillach P, Egger P,
-Dhalwani NN, Kendrick S, Celis-Morales C, Waterworth DM, Alazawi W, . [............................................................................................................................................................................]
 
 
 Sattar N. Non-alcoholic fatty liver disease and risk of incident acute myocardial
@@ -11648,7 +11558,6 @@ Clinical Encounter. JAMA 2020;323:70�81.
 357. Michie S, van Stralen MM, West R. The behaviour change wheel: a new method
 for characterising and designing behaviour change interventions. Implement Sci
 2011;6:42.
-. [............................................................................................................................................................................]
 
 
 358. Ambrosetti M, Abreu A, Corra U, Davos CH, Hansen D, Frederix I, Iliou MC,
@@ -11815,7 +11724,6 @@ Association between muscular strength and mortality in men: prospective
 cohort study. BMJ 2008;337:a439.
 395. Volaklis KA, Halle M, Meisinger C. Muscular strength as a strong predictor of
 mortality: A narrative review. Eur J Intern Med 2015;26:303�310.
-. [............................................................................................................................................................................]
 
 
 396. Chastin SFM, De Craemer M, De Cocker K, Powell L, Van Cauwenberg J, Dall
@@ -11975,7 +11883,6 @@ Aleksandrova K, Tjonneland A, Halkjaer J, Overvad K, Weiderpass E, Skeie G,
 Parr CL, Quiros JR, Agudo A, Sanchez MJ, Amiano P, Cirera L, Ardanaz E,
 Khaw KT, Tong TYN, Schmidt JA, Trichopoulou A, Martimianaki G, Karakatsani
 A, Palli D, Agnoli C, Tumino R, Sacerdote C, Panico S, Bueno-de-Mesquita B,
-Verschuren WMM, Boer JMA, Vermeulen R, Ramne S, Sonestedt E, van . [............................................................................................................................................................................]
 
 
 Guelpen B, Holgersson PL, Tsilidis KK, Heath AK, Muller D, Riboli E, Gunter
@@ -12135,7 +12042,6 @@ Weight and Improving Cardiovascular Risk Profile: CARDIVEG Study
 (Cardiovascular Prevention With Vegetarian Diet). Circulation 2018;137:1103�1113.
 459. Huang RY, Huang CC, Hu FB, Chavarro JE. Vegetarian Diets and Weight
 Reduction: a Meta-Analysis of Randomized Controlled Trials. J Gen Intern Med
-2016;31:109�116. . [............................................................................................................................................................................]
 
 
 460. Reynolds A, Mann J, Cummings J, Winter N, Mete E, Te Morenga L.
@@ -12298,7 +12204,6 @@ combat tobacco addiction: Cochrane update of 2013 reviews. Addiction
 
 500. Eisenberg MJ, Windle SB, Roy N, Old W, Grondin FR, Bata I, Iskander A,
 Lauzon C, Srivastava N, Clarke A, Cassavar D, Dion D, Haught H, Mehta SR,
-Baril JF, Lambert C, Madan M, Abramson BL, Dehghani P, EVITA Investigators. . [............................................................................................................................................................................]
 
 
 Varenicline for Smoking Cessation in Hospitalized Patients With Acute
@@ -12461,7 +12366,6 @@ Inactivating mutations in NPC1L1 and protection from coronary heart disease.
 N Engl J Med 2014;371:2072�2082.
 529. Cho L, Rocco M, Colquhoun D, Sullivan D, Rosenson RS, Dent R, Xue A, Scott
 R, Wasserman SM, Stroes E. Clinical Profile of Statin Intolerance in the Phase 3
-GAUSS-2 Study. Cardiovasc Drugs Ther 2016;30:297�304. . [............................................................................................................................................................................]
 
 
 530. Ray KK, Wright RS, Kallend D, Koenig W, Leiter LA, Raal FJ, Bisch JA,
@@ -12628,7 +12532,6 @@ Sink KM, Wadley VG, Whelton PK, Whittle J, Woolard NF, Wright JT, Jr.,
 Pajewski NM, SPRINT Research Group. Intensive vs Standard Blood Pressure
 Control and Cardiovascular Disease Outcomes in Adults Aged >/=75 Years: A
 Randomized Clinical Trial. JAMA 2016;315:2673�2682.
-. [............................................................................................................................................................................]
 
 
 558. Thomopoulos C, Parati G, Zanchetti A. Effects of blood pressure lowering on
@@ -12790,7 +12693,6 @@ bodyweight and glycaemia in early type 2 diabetes (DIADEM-I): an open-label,
 parallel-group, randomised controlled trial. Lancet Diabetes Endocrinol
 2020;8:477�489.
 
-587. UK Prospective Diabetes Study (UKPDS) Group. Intensive blood-glucose control with sulphonylureas or insulin compared with conventional treatment and . [............................................................................................................................................................................]
 
 
 risk of complications in patients with type 2 diabetes (UKPDS 33). Lancet
@@ -12958,7 +12860,6 @@ N, Raubenheimer PJ, Shaw JE, Sheu WH, Temelkova-Kurktschiev T, REWIND
 Investigators. Dulaglutide and cardiovascular outcomes in type 2 diabetes
 (REWIND): a double-blind, randomised placebo-controlled trial. Lancet
 2019;394:121�130.
-. [............................................................................................................................................................................]
 
 
 616. Marx N, Davies MJ, Grant PJ, Mathieu C, Petrie JR, Cosentino F, Buse JB.
@@ -13113,7 +13014,6 @@ Bauman A, Redfern J, Neubeck L. Telehealth interventions for the secondary
 prevention of coronary heart disease: A systematic review and meta-analysis.
 Eur J Cardiovasc Nurs 2019;18:260�271.
 649. Verschueren S, Eskes AM, Maaskant JM, Roest AM, Latour CHM, Op Reimer
-WS. The effect of exercise therapy on depressive and anxious symptoms in . [............................................................................................................................................................................]
 
 
 patients with ischemic heart disease: A systematic review. J Psychosom Res
@@ -13279,7 +13179,6 @@ infarction in patients presenting with ST-segment elevation of the European
 Society of Cardiology (ESC). Eur Heart J 2018;39:119�177.
 679. Neumann FJ, Sousa-Uva M, Ahlsson A, Alfonso F, Banning AP, Benedetto U,
 Byrne RA, Collet JP, Falk V, Head SJ, Juni P, Kastrati A, Koller A, Kristensen SD,
-Niebauer J, Richter DJ, Seferovic PM, Sibbing D, Stefanini GG, Windecker S, . [............................................................................................................................................................................]
 
 
 Yadav R, Zembala MO, ESC Scientific Document Group. 2018 ESC/EACTS
@@ -13438,7 +13337,6 @@ KL, Janosi A, Thorgeirsson G, Dunselman PH, Gullestad L, Kuch J, Herlitz J,
 Rickenbacher P, Ball S, Gottlieb S, Deedwania P. Effects of controlled-release
 
 metoprolol on total mortality, hospitalizations, and well-being in patients with
-heart failure: the Metoprolol CR/XL Randomized Intervention Trial in . [.........................................................................................................................................................................]
 
 
 congestive heart failure (MERIT-HF). MERIT-HF Study Group. JAMA
@@ -13602,7 +13500,6 @@ in nonvalvular atrial fibrillation. N Engl J Med 2011;365:883�891.
 744. ESPRIT Study Group, Halkes PH, van Gijn J, Kappelle LJ, Koudstaal PJ, Algra A.
 Aspirin plus dipyridamole versus aspirin alone after cerebral ischaemia of
 arterial origin (ESPRIT): randomised controlled trial. Lancet
-2006;367:1665�1673. . [............................................................................................................................................................................]
 
 
 745. Sacco RL, Diener HC, Yusuf S, Cotton D, Ounpuu S, Lawton WA, Palesch Y,
@@ -13763,7 +13660,6 @@ Diseases of the European Society of Cardiology (ESC) and of the European
 Society for Vascular Surgery (ESVS), Aboyans V, Ricco JB, Bartelink MEL, Bjorck
 M, Brodmann M, Cohnert T, Collet JP, Czerny M, De Carlo M, Debus S,
 Espinola-Klein C, Kahan T, Kownator S, Mazzolai L, Naylor AR, Roffi M, Rother
-J, Sprynger M, Tendera M, Tepe G, Venermo M, Vlachopoulos C, Desormais I. . [............................................................................................................................................................................]
 
 
 2017 ESC Guidelines on the Diagnosis and Treatment of Peripheral Arterial
@@ -13927,7 +13823,6 @@ Fibrillation 2013;5:789.
 
 812. Khan H, Kella D, Rauramaa R, Savonen K, Lloyd MS, Laukkanen JA.
 Cardiorespiratory fitness and atrial fibrillation: A population-based follow-up
-study. Heart Rhythm 2015;12:1424�1430. . [............................................................................................................................................................................]
 
 
 813. Linz D, McEvoy RD, Cowie MR, Somers VK, Nattel S, Levy P, Kalman JM,
@@ -14029,7 +13924,6 @@ Pak HN, Potpara T, Saenz LC, Van Gelder IC, Varosy P, Gale CP, Dagres N,
 Reviewers, Boveda S, Deneke T, Defaye P, Conte G, Lenarczyk R, Providencia
 R, Guerra JM, Takahashi Y, Pisani C, Nava S, Sarkozy A, Glotzer TV, Martins
 Oliveira M. Quality indicators for the care and outcomes of adults with atrial
-fibrillation. Europace 2021;23:494�495. . [...............................]
 
 
 835. Wallentin L, Gale CP, Maggioni A, Bardinet I, Casadei B. EuroHeart: European

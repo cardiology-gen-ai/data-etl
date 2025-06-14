@@ -215,6 +215,9 @@ control, and exercise therapy ..................................................
 4.1.2.3. Diet and alcohol ..................................................................... 3456
 
 
+
+![Page 2 Images](Chronic_Coronary_Syndromes_2024_images/page_002_images.png)
+
 4.1.2.4. Mental health ........................................................................... 3456
 
 4.1.2.5. Physical activity and sedentary behaviour .................... 3456
@@ -1124,12 +1127,18 @@ and co-ordinates the preparation of new guidelines and is responsible
 
 
 
+![Page 21 Images](Chronic_Coronary_Syndromes_2024_images/page_021_images.png)
+
+
 ESC Guidelines **3423**
 
 Table 2 **Levels of evidence**
 
 
 
+
+
+![Page 25 Images](Chronic_Coronary_Syndromes_2024_images/page_025_images.png)
 
 
 for the approval process. In addition to review by the CPG Committee,
@@ -1324,8 +1333,17 @@ ESC Guidelines **3425**
 
 
 
+![Page 34 Images](Chronic_Coronary_Syndromes_2024_images/page_034_images.png)
 
 
+
+
+![Page 36 Images](Chronic_Coronary_Syndromes_2024_images/page_036_images.png)
+
+
+
+
+![Page 38 Images](Chronic_Coronary_Syndromes_2024_images/page_038_images.png)
 
 
 
@@ -1356,6 +1374,9 @@ Table 3 **New major recommendations in 2024**
 |Symptoms like chest pain triggered by emotional stress; dyspnoea or dizziness on exertion; pain in the arms, jaw, neck, or upper back; or<br>fatigue should be considered as potential angina equivalents.|IIa|B|
 
 
+
+![Page 44 Images](Chronic_Coronary_Syndromes_2024_images/page_044_images.png)
+
 **Basic biochemistry in the initial diagnostic management of individuals with suspected chronic coronary syndrome—** ***Section 3***
 
 - Additionally, high-sensitivity C-reactive protein and/or fibrinogen plasma levels should be considered. **IIa** **B**
@@ -1383,6 +1404,9 @@ Ambulatory ECG monitoring should be considered in subjects with suspected vasosp
 
 **disease** — **coronary computed tomography angiography, if available and supported by local expertise—** ***Section 3***
 
+
+
+![Page 49 Images](Chronic_Coronary_Syndromes_2024_images/page_049_images.png)
 
 In individuals with suspected CCS and low or moderate (>5%–50%) pre-test likelihood of obstructive CAD, CCTA is recommended to
 
@@ -1453,6 +1477,9 @@ In addition:
 
 
 
+![Page 66 Images](Chronic_Coronary_Syndromes_2024_images/page_066_images.png)
+
+
 |To rule out obstructive CAD in individuals with low or moderate (>5%–50%) pre-test likelihood, CCTA is recommended as the preferred<br>diagnostic modality.|I|B|
 |---|---|---|
 |CCTA is recommended in individuals with low or moderate (>5%–50%) pre-test likelihood of obstructive CAD if functional imaging for<br>myocardial ischaemia is not diagnostic.|I|B|
@@ -1460,8 +1487,14 @@ In addition:
 |In patients with a known intermediate coronary artery stenosis in a proximal or mid coronary segment on CCTA, CT-based FFR may be<br>considered.|IIb|B|
 
 
+
+![Page 68 Images](Chronic_Coronary_Syndromes_2024_images/page_068_images.png)
+
 **Definition of high risk of adverse events**
 
+
+
+![Page 69 Images](Chronic_Coronary_Syndromes_2024_images/page_069_images.png)
 
 
 
@@ -3496,6 +3529,7 @@ to re-estimate the likelihood of obstructive CAD. [139][,][165][,][141][,][154]
 
 Further diagnostic testing can also be deferred in patients reclassified
 based on CACS from a low to a very low (<5%) likelihood of
+
 
 
 
@@ -6879,7 +6913,6 @@ of the concentration infused or of the injected dose. If necessary, the
 
 
 
-
 Figure 13 Diagnostic algorithm for patients with angina/ischaemia with non-obstructive coronary arteries. Ach, acetylcholine; ANOCA, angina with
 non-obstructive coronary arteries; CAD, coronary artery disease; CCS, chronic coronary syndrome; CCTA, coronary computed tomography angiog-­
 raphy; CFR, coronary flow reserve; ECG, electrocardiogram; echo, echocardiography; FFR, fractional flow reserve; GDMT, guideline-directed medical
@@ -7671,6 +7704,7 @@ Making changes to unhealthy lifestyles and controlling risk factors can
 be a daunting task as these are usually longstanding habits and patterns
 
 **3490** ESC Guidelines
+
 
 
 

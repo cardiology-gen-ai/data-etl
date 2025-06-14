@@ -208,6 +208,9 @@ implantation ...................................................................
 7.2.5. Catheter ablation ............................................................................ 3358
 
 
+
+![Page 2 Images](Atrial_Fibrillation_2024_images/page_002_images.png)
+
 7.2.6. Anticoagulation in patients undergoing catheter ablation 3359
 
 7.2.7. Endoscopic and hybrid AF ablation ........................................ 3360
@@ -962,6 +965,9 @@ A transthoracic echocardiogram is recommended in patients with an AF diagnosis w
 
 
 
+
+![Page 30 Images](Atrial_Fibrillation_2024_images/page_030_images.png)
+
 |Diuretics are recommended in patients with AF, HF, and congestion to alleviate symptoms and facilitate better AF management.|I|C|
 |---|---|---|
 |Appropriate medical therapy for HF is recommended in AF patients with HF and impaired LVEF to reduce symptoms and/or HF<br>hospitalization and prevent AF recurrence.|I|B|
@@ -1008,6 +1014,9 @@ ESC Guidelines **3323**
 
 
 
+![Page 37 Images](Atrial_Fibrillation_2024_images/page_037_images.png)
+
+
 
 |A thorough diagnostic work-up should be considered in patients taking an oral anticoagulant and presenting with ischaemic stroke or<br>thromboembolism to prevent recurrent events, including assessment of non-cardioembolic causes, vascular risk factors, dosage, and<br>adherence.|IIa|B|
 |---|---|---|
@@ -1048,6 +1057,12 @@ reverse the antithrombotic effect.
 
 
 
+![Page 50 Images](Atrial_Fibrillation_2024_images/page_050_images.png)
+
+
+
+
+![Page 52 Images](Atrial_Fibrillation_2024_images/page_052_images.png)
 
 |Direct oral anticoagulants are recommended in preference to VKAs in eligible patients with AF undergoing cardioversion for<br>thromboembolic risk reduction.|I|A|
 |---|---|---|
@@ -5477,7 +5492,6 @@ tigated the effect on clinical outcomes in prolonged screening for AF. [5][,][6]
 
 In the STROKESTOP trial (Systematic ECG Screening for Atrial
 Fibrillation Among 75 Year Old Subjects in the Region of Stockholm
-
 
 
 

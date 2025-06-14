@@ -88,6 +88,9 @@ detailed discussion of the data that have provided the basis of the guidelines.
 disease ................................................................................................................. 3640
 
 
+
+![Page 2 Images](Pulmonary_Hypertension_2022_images/page_002_images.png)
+
 4.3. Group 3, pulmonary hypertension associated with lung
 
 diseases and/or hypoxia .............................................................................. 3640
@@ -1345,15 +1348,18 @@ ESC/ERS Guidelines 3629
 N In patients with IPAH/HPAH/DPAH who present at
 
 
+
+![Page 80 Images](Pulmonary_Hypertension_2022_images/page_080_images.png)
+
 intermediate–low risk of death while receiving ERA/
-
-PDE5i therapy, switching from PDE5i to riociguat may be
-
-considered
 
 
 IIb
 
+
+PDE5i therapy, switching from PDE5i to riociguat may be
+
+considered
 
 
 
@@ -2391,7 +2397,6 @@ V/Q defects may be found in patients with lung disease (i.e. group
 3 PH). Non-matched perfusion defects similar to those seen in
 
 3644 ESC/ERS Guidelines
-
 
 
 

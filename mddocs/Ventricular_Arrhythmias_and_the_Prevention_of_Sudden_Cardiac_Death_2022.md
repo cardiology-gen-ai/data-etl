@@ -93,6 +93,9 @@ risk stratification ............................................................
 4.3. Population vs. individual risk prediction .................................. 4012
 
 
+
+![Page 2 Images](Ventricular_Arrhythmias_and_the_Prevention_of_Sudden_Cardiac_Death_2022_images/page_002_images.png)
+
 4.4. Risk calculators for sudden cardiac death and review of the
 
 methodology ................................................................................................ 4012
@@ -1052,6 +1055,9 @@ Table 2 Levels of evidence
 
 
 
+![Page 24 Images](Ventricular_Arrhythmias_and_the_Prevention_of_Sudden_Cardiac_Death_2022_images/page_024_images.png)
+
+
 programmes, alongside the key messages from the guidelines, to improve quality of care and clinical outcomes.
 The Members of this task force were selected by the ESC to represent professionals involved with the medical care of patients
 with this pathology. The selection procedure aimed to ensure that
@@ -1302,6 +1308,9 @@ ESC Guidelines 4007
 
 
 
+![Page 79 Images](Ventricular_Arrhythmias_and_the_Prevention_of_Sudden_Cardiac_Death_2022_images/page_079_images.png)
+
+
 
 
 
@@ -1323,6 +1332,9 @@ ESC Guidelines 4007
 
 
 
+
+![Page 90 Images](Ventricular_Arrhythmias_and_the_Prevention_of_Sudden_Cardiac_Death_2022_images/page_090_images.png)
+
 |In patients with haemodynamically not-tolerated sustained VT<br>or VF during the acute phase of myocarditis, ICD implantation<br>before hospital discharge should be considered.|IIa|
 |---|---|
 |In post-myocarditis patients with recurrent, symptomatic VT,<br>AAD treatment should be considered.|IIa|
@@ -1337,6 +1349,9 @@ ESC Guidelines 4007
 |In patients with haemodynamically well-tolerated SMVT<br>occurring in the chronic phase of myocarditis, preserved LV<br>function and a limited scar amenable to ablation, catheter<br>ablation may be considered as an alternative to ICD therapy,<br>after discussion with the patient and provided that established<br>endpoints have been reached.b|IIb|
 |Catheter ablation, in specialized centres, may be considered in<br>cardiac sarcoidosis ICD recipients with recurrent, symptomatic<br>SMVT, or ICD shocks for SMVT, in whom AADs are<br>ineffective, contraindicated, or not tolerated.|IIb|
 
+
+
+![Page 91 Images](Ventricular_Arrhythmias_and_the_Prevention_of_Sudden_Cardiac_Death_2022_images/page_091_images.png)
 
 |Congenital heart disease|Col2|
 |---|---|
@@ -3202,7 +3217,6 @@ ESC Guidelines 4039
 
 
 
-
 Figure 13 Algorithm for evaluation before initiation and follow-up of patients requiring drugs associated with QT prolongation. ECG, electrocardiogram; LV, left ventricular; N, No; Y, Yes. [a] [http://www.crediblemeds.org.](http://www.crediblemeds.org) [b] If strong indication and no alternative treatment, consult a specialist. [c] According
 to the 2020 ESC Guidelines for the diagnosis and management of atrial fibrillation. [348]
 
@@ -4234,7 +4248,6 @@ ESC Guidelines 4051
 
 
 
-
 Figure 17 Algorithm for the management of patients with idiopathic premature ventricular complexes/ventricular tachycardia and non-apparent structural heart disease. CCB, calcium channel blocker; CMR, cardiac magnetic resonance; ECG, electrocardiogram; LVEF, left ventricular ejection fraction; N, No;
 PVC, premature ventricular complex; RVOT, right ventricular outflow tract; SHD, structural heart disease; VT, ventricular tachycardia; Y, Yes. [a] Non-apparent
 SHD is defined by lack of significant abnormalities in physical examination, basal ECG, and echocardiogram. [b] Atypical presentation: e.g. older age, right bundle
@@ -4243,8 +4256,6 @@ ECG or confirmed during electrophysiological evaluation. [e] Consider re-evaluat
 
 Table 9 Summary of the recommendations for the treatment of patients with frequent idiopathic premature ventricular complexes/ventricular tachycardia or premature ventricular complex-induced cardiomyopathy
 
-
-
 |Col1|Ablation|Beta-blocker|CCB|Flecainide|Amiodarone|
 |---|---|---|---|---|---|
 |RVOT/fascicular PVC/VT:<br>Symptomatic, normal LV function|Class I|Class IIa|Class IIa|Class IIa|Class III|
@@ -4252,6 +4263,7 @@ Table 9 Summary of the recommendations for the treatment of patients with freque
 |RVOT/fascicular PVC/VT:<br>LV dysfunction|Class I|Class IIa|Class IIIa|Class IIab|Class IIa|
 |PVC/VT other than RVOT/fascicular:<br>LV dysfunction|Class I|Class IIa|Class IIIa|Class IIab|Class IIa|
 |PVC:<br>Burden .20%, asymptomatic, normal LV function|Class IIb||||Class III|
+
 
 
 CCB, calcium channel blocker; LV, left ventricular; PVC, premature ventricular complex; RVOT, right ventricular outflow tract; VT, ventricular tachycardia.
@@ -4339,6 +4351,7 @@ PVCs. [625] In one study, flecainide reduced the PVC burden from
 36% to 10% and resulted in LVEF increase from 37% to 49%. [626]
 
 ESC Guidelines 4053
+
 
 
 
@@ -6050,6 +6063,7 @@ b Level of evidence.
 
 
 
+
 Figure 27 Algorithm for the management of patients with idiopathic ventricular fibrillation. ICD, implantable cardioverter defibrillator; PVC, premature
 ventricular complex.
 
@@ -6076,16 +6090,6 @@ extra-cardiac manifestation.
 comprising:
 
 
-This panel of experts has confirmed the diagnostic criteria proposed in the previous version of the guidelines: a QTc ≥480 ms or
-a LQTS risk score .3 [937] (Table 10) for clinical diagnosis (Figures
-29 and 30). In the presence of arrhythmic syncope or CA, a QTc
-≥460 ms is sufficient to consider a diagnosis of LQTS. A challenge
-for the clinician is establishing the duration of the QT interval in patients with broad QRS complexes (e.g. in the presence of ventricular
-pacing or ventricular conduction defects). In this setting, a formula
-has been proposed that adjusts QT by QRS duration. [938] While
-measuring the QT, the patient moving briskly from recumbent to
-
-
 –
 (a) Andersen Tawil Syndrome (LQT7), increasingly considered
 its own entity. [933][,][934]
@@ -6095,6 +6099,15 @@ QT, syndactyly, cardiac malformations, autism spectrum disorder and dysmorphism.
 
 (3) Autosomal-recessive LQTS (Jervell and Lange–Nielsen
 Syndrome), combining extreme QT prolongation with congenital deafness. [936]
+
+This panel of experts has confirmed the diagnostic criteria proposed in the previous version of the guidelines: a QTc ≥480 ms or
+a LQTS risk score .3 [937] (Table 10) for clinical diagnosis (Figures
+29 and 30). In the presence of arrhythmic syncope or CA, a QTc
+≥460 ms is sufficient to consider a diagnosis of LQTS. A challenge
+for the clinician is establishing the duration of the QT interval in patients with broad QRS complexes (e.g. in the presence of ventricular
+pacing or ventricular conduction defects). In this setting, a formula
+has been proposed that adjusts QT by QRS duration. [938] While
+measuring the QT, the patient moving briskly from recumbent to
 
 ESC Guidelines 4075
 
@@ -6299,6 +6312,7 @@ b Level of evidence.
 
 c [http://www.crediblemeds.org](http://www.crediblemeds.org)
 d Arrhythmic syncope or haemodynamically non-tolerated VA.
+
 
 
 
@@ -6826,6 +6840,8 @@ b Level of evidence.
 7.2.7. Short QT syndrome
 Short QT syndrome (SQTS) is a rare genetic disorder characterised by a short QT interval, premature AF and VF in the context of a structurally normal heart. [1061] It has been associated
 with gain of function mutations in KCNH2, KCNQ1 and loss of
+
+
 
 
 

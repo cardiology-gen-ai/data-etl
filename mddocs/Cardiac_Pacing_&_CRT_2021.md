@@ -151,7 +151,9 @@ considered for permanent cardiac pacing therapy . . . . . . . . . . . . . . . . 
 3.4.2 Epicardial pacing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
 
 
-. [........................................................]
+
+![Page 2 Images](Cardiac_Pacing_&_CRT_2021_images/page_002_images.png)
+
 
 ESC Guidelines 3
 
@@ -268,7 +270,6 @@ system pacing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 cardioverter defibrillator who need upgrade to cardiac
 
-. [............................................................................................................................................................................]
 
 
 6.5 Pacing in patients with reduced left ventricular ejection
@@ -599,7 +600,6 @@ Recommendations for pacing in patients with
 
 bundle branch block . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
 
-. [.........................................................................................................................................................................]
 
 
 Recommendations for cardiac pacing in patients
@@ -715,6 +715,9 @@ aortic valve implantation . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 10.2 Specific complications . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
 
+
+
+![Page 14 Images](Cardiac_Pacing_&_CRT_2021_images/page_014_images.png)
 
 10.2.1 Lead complications . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
 
@@ -908,7 +911,6 @@ APAF Ablate and Pace in Atrial Fibrillation
 
 (trial)
 ATP Antitachycardia pacing
-AV Atrioventricular . [.........................................................................................................................................................................]
 
 
 List of figures
@@ -1147,7 +1149,6 @@ RVA Right ventricular apical
 RVOT Right ventricular outflow tract
 RVS Right ventricular septum
 S. aureus Staphylococcus aureus
-. [...........................................................................................................................................................................]
 
 
 SAR Specific absorption rate
@@ -1230,7 +1231,6 @@ of interest that arose during the writing period were notified to the
 ESC and updated. The Task Force received its entire financial support
 from the ESC without any involvement from the healthcare industry.
 The ESC CPG supervises and coordinates the preparation of
-new guidelines. The Committee is also responsible for the . [...................................]
 
 
 endorsement process of these Guidelines. The ESC Guidelines
@@ -1271,7 +1271,6 @@ the rules and regulations applicable in each country to drugs and devices at the
 Pacing is an important part of electrophysiology and of cardiology in
 general. Whereas some of the situations requiring pacing are clear and
 have not changed over the years, many others have evolved and have
-been the subject of extensive recent research, such as pacing after syncope (section 5), pacing following transcatheter aortic valve implanta- **.** **[....]** [....................................................................................]
 
 ### 2 Introduction
 
@@ -1303,7 +1302,6 @@ Surgery, the European Association of Percutaneous Cardiovascular
 Interventions, the ESC Working Group on Myocardial and
 
 
-. [........................................................................]
 
 
 Pericardial Diseases, as well as the Association of Cardiovascular
@@ -1505,7 +1503,6 @@ Continued
 Continued
 
 
-. [...........................................................................................................................................................................]
 
 
 ESC Guidelines 11
@@ -1584,7 +1581,6 @@ Continued
 
 
 Continued
-. [......................................................................................................................................................]
 
 
 
@@ -1637,7 +1633,6 @@ Continued
 Continued
 
 
-. [....................................................................................................................................]
 
 
 ESC Guidelines 13
@@ -1714,9 +1709,7 @@ since 2013
 Continued
 
 
-. [.................................................................................................................................................]
 
-. [.......................] **[..]**
 
 
 AF = atrial fibrillation; AVB = atrioventricular block; AVJ = atrioventricular junction; CRT = cardiac resynchronization therapy; HFrEF = heart failure with
@@ -1771,7 +1764,6 @@ age of 65 years.
 3.2 Natural history
 High-degree atrioventricular block (AVB) and sinus node dysfunction
 (SND) are the most common indications for permanent pacemaker
-therapy. Conservatively treated (i.e. non-paced) patients with highdegree AVB have notably poorer survival compared with . [...................................................................]
 
 
 pacemaker-treated patients. [9][�][12] In contrast, SND follows an unpredictable course, and there is no evidence to show that pacemaker
@@ -1796,6 +1788,7 @@ on their underlying cause and can be broadly categorized into intrinsic and extr
 electrical impulse initiation and propagation of the conduction
 
 ESC Guidelines 15
+
 
 
 
@@ -1829,7 +1822,6 @@ therapy. This may be challenging in patients with competing mechanisms for their
 persistent bradycardia and patients with intermittent [with or
 without electrocardiographic (ECG) documentation] bradycardia. Persistent bradycardia usually indicates an intrinsic disease in
 the sinus node tissue or the atrioventricular (AV) conduction system, whereas intermittent bradycardia can be a result of a wide
-variety of intrinsic and extrinsic pathological processes, as illustrated in Figure 2. [26][�][31] . [..........................................................................]
 
 
 3.4 Types and modes of pacing: general
@@ -1905,7 +1897,6 @@ The sinus node modulates the heart rate during different types and
 loads of exercise (i.e. physical exercise, emotions, postural change,
 and fever) proportional to the metabolic demand. Rate-responsive
 
-. [............................................................................................................................................................................]
 
 
 heart rate during emotional or physical activity by sensing body
@@ -2169,7 +2160,6 @@ Table 7 Continued
 Continued
 
 
-. [...........................................................................................................................................................................]
 
 
 AV = atrioventricular; AVB = atrioventricular block; AVJ = atrioventricular junction; SND = sinus node dysfunction.
@@ -2240,7 +2230,6 @@ the frequency and nature of the symptoms (Table 8).
 Table 8 Choice of ambulatory electrocardiographic
 monitoring depending on symptom frequency
 
-Every week 7-day Holter ECG/external loop recorder/ . [..................................................................................]
 
 
 Ambulatory ECG identifies defects of sinus automaticity, which
@@ -2264,7 +2253,6 @@ monitoring depending on symptom frequency
 
 
 
-. [.........................................................................................]
 
 
 Exercise testing can be used to diagnose symptomatic chronotropic incompetence, defined as an inability to increase the heart rate
@@ -2408,9 +2396,7 @@ diagnose myocarditis in a young person with AVB, endocarditis,
 hyperkalaemia, digitalis levels, and hypercalcaemia). [89][�][94]
 
 
-. [.................................................]
 
-. [..................................................................................................................] **[.]**
 
 
 a Class of recommendation.
@@ -2514,9 +2500,7 @@ bradyarrhythmias vs. the benefit of cardiac pacing is needed.
 Recommendation for sleep evaluation
 
 
-. [...........................................]
 
-. [...............................................................................................................................]
 
 
 4.3.7 Tilt testing
@@ -2592,7 +2576,6 @@ EPS in the context of bradycardia evaluation is to identify abnormal
 sinus node function or the anatomical location of the cardiac conduc
 �
 tion disorders (in the AVN or in the His Purkinje system distal to
-the AVN). . [.............................]
 
 
 In patients with syncope and sinus bradycardia, the pre-test
@@ -2676,7 +2659,6 @@ response to exercise, reported as chronotropic incompetence.
 5.1.1.1 Sinus node dysfunction
 In general, pacing for asymptomatic SND has never been shown to
 
-. [.........................................................................................................................................................................]
 
 
 be considered as an appropriate indication for permanent pacing
@@ -2842,7 +2824,6 @@ with only 177 patients suggested a reduced risk of AF with AAIR. [147]
 
 However, the most recent DANish Multicenter Randomized Trial on
 
-. [......................................................................................................................................................................]
 
 
 Syndrome (DANPACE), which enrolled 1415 patients followed for a
@@ -2978,7 +2959,6 @@ its efficacy in reducing the progression to permanent AF was validated in an RCT
 In this trial, [164] the primary composite outcome at 2 years (death,
 cardiovascular hospitalizations, or permanent AF) was significantly
 reduced in patients with a device combining ATP and algorithms for
-minimizing RV pacing [36% relative risk reduction compared with . [.....................]
 
 
 conventional DDD(R)]. The positive effect on the primary endpoint
@@ -3079,7 +3059,6 @@ asymptomatic. Syncope and dizziness are mainly observed in highdegree and comple
 symptoms are more common in chronic AVB with permanent bradycardia, but can also be observed in first-degree AVB with a very prolonged PR interval. Given the commonly advanced age at onset of
 
 
-. [............................................................................................................................................................................]
 
 ESC Guidelines 27
 
@@ -3096,7 +3075,6 @@ consistently shown superiority in terms of quality of life or morbidity
 patients with AVB in these trials. In a meta-analysis of 20 crossover
 trials, DDD was associated with an improved exercise capacity compared with ventricular pacing. However, the effect was driven by
 non-rate-modulated ventricular pacemakers, and no benefit was
-observed from the comparison of DDD with VVIR pacing. [182] . [....................................................]
 
 
 5.2.2 Pacing mode and algorithm selection
@@ -3168,7 +3146,6 @@ a potentially reversible cause, bradycardia or inappropriate chronotropic respon
 cardiac pacing. Any high-degree or infranodal block is also an indication for pacing, even in the absence of symptoms. In the absence of
 
 
-. [..................................................................................................................]
 
 
 
@@ -3212,12 +3189,6 @@ abnormalities caused by delayed or blocked conduction of the
 His�Purkinje system: BBB, fascicular block in isolation or in combination with BBB, and non-specific intraventricular delay. Bifascicular
 
 block is defined as LBBB or the combination of RBBB and with left
-anterior or posterior fascicular block. . [..............................................................]
-
-
-5.3.1.2 Bundle branch block, unexplained syncope, and abnormal electrophysiological study
-Electrophysiological assessment includes measurement of the
-HV at baseline, with stress by incremental atrial pacing or by
 
 
 Isolated fascicular block and BBB are rarely associated with symptoms; however, their presence may be a marker for underlying structural heart disease. The presence or absence of symptoms referable
@@ -3233,6 +3204,11 @@ those with low EF, syncope is a risk factor for death. [211]
 Unfortunately, ventricular-programmed stimulation does not seem
 to identify these patients correctly; therefore, an ICD or a defibrillator with CRT (CRT-D) is indicated in patients with BBB and LVEF
 <35% for the prevention of SCD (Figure 6). [63]
+
+5.3.1.2 Bundle branch block, unexplained syncope, and abnormal electrophysiological study
+Electrophysiological assessment includes measurement of the
+HV at baseline, with stress by incremental atrial pacing or by
+
 
 
 
@@ -3295,9 +3271,7 @@ In patients with neuromuscular diseases, cardiac pacing should be
 considered, as any degree of fascicular block can progress unpredictably, even in the absence of symptoms (see section 8.5).
 
 
-. [........................................................................]
 
-. [......................................................................] **[.]**
 
 |Recommendations|Classa|Levelb|ESC 2021|
 |---|---|---|---|
@@ -3361,7 +3335,6 @@ detailed description of the diagnostic pathway and indications for
 pacing, and provide the evidence from trials that support such recommendations. Figure 7 summarizes the suggested decision pathway.
 The algorithm shown in Figure 7 has been prospectively validated
 in a multicentre pragmatic study, which showed a low recurrence
-. [.....................................................]
 
 
 rate of syncope with pacing of 15% at 2 years, significantly lower
@@ -3377,7 +3350,6 @@ response that would be less likely to respond to permanent cardiac
 pacing. Patients with hypotensive susceptibility need measures
 directed to counteract hypotensive susceptibility in addition to cardiac pacing (e.g. physical counterpressure manoeuvres, discontinuation/reduction of hypotensive drugs, and administration of
 fludrocortisone or midodrine).
-
 
 
 
@@ -3424,7 +3396,6 @@ response (defined as bradycardia <40 b.p.m. lasting >10 s or asystole
 >3 s). [226] During the 24-month follow-up, syncope recurred in 4 (9%)
 patients treated with a DDD pacemaker with closed loop stimulation
 
-. [...................................................................................]
 
 
 vs. in 21 (46%) patients who had received a sham pacemaker programmed off (P = 0.0001). In a propensity score-matched comparison study, [229] the 5-year actuarial syncope-free rate was 81% in the
@@ -3471,7 +3442,6 @@ patients with tilt-induced vasovagal syncope, DDD was used mostly
 with a rate-drop response feature that provides rapid DDD if the
 device detects a rapid decrease in heart rate. A comparison between
 DDD closed-loop stimulation and conventional DDD has been performed by means of a crossover design in two small studies. Both
-studies showed fewer syncope recurrences with closed-loop stimula- . [....................................................]
 
 
 5.4.2 Pacing mode and algorithm selection
@@ -3564,7 +3534,6 @@ an attempt to document a spontaneous relapse instead of embarking
 on empiric cardiac pacing. [62]
 
 
-. [..................................................................................................................]
 
 ESC Guidelines 33
 
@@ -3632,7 +3601,6 @@ IV. [37][,][39][,][40][,][254][�][266] In contrast, there is rather limited ev
 
 benefit in patients with NYHA functional class I and ischaemic cardiomyopathy. [40][,][265] In the Multicenter Automatic Defibrillator
 Implantation with Cardiac Resynchronization Therapy (MADIT
-[265] . [............................................................................................................................................................................]
 
 
 had an ischaemic cardiomyopathy. At 7-year follow-up, the subgroup
@@ -3761,7 +3729,6 @@ mortality compared with ICD therapy, suggesting a bidirectional significant inte
 recommendation. [279]
 
 The results of the MADIT-CRT, REVERSE, and RAFT trials suggest
-that in patients with LBBB, there is likely to be potential benefit in all . [............................................................]
 
 
 The results of the MADIT-CRT, REVERSE, and RAFT trials suggest
@@ -3806,7 +3773,6 @@ and corrected QT), it is conceivable that QRS duration also has to
 reflect sex difference.
 
 
-. [...............................................................................................................]
 
 
 ECG criteria of intraventricular conduction disturbance, LBBB, and
@@ -3905,7 +3871,6 @@ adequate biventricular pacing (97, 94, and 97%, respectively). [307]
 Importantly, AVJ ablation did not improve survival for patients in AF
 treated with CRT compared with those treated with rate-slowing
 drugs when an adequate biventricular pacing was achieved either
-with ablation (97%) or with drugs (94%). [308] . [............................................................................................................................................................................]
 
 
 In conclusion, despite the weak evidence due to lack of large,
@@ -3991,7 +3956,6 @@ in 20 patients (38%) in the drug control arm (HR 0.38; P = 0.013). The
 results were mostly driven by a reduction in hospitalization for HF.
 The HR was 0.18 (P = 0.01) in patients with LVEF <_35% and 0.62 (P =
 0.36) in those with LVEF >35%. Furthermore, patients undergoing AVJ
-ablation and CRT had a 36% reduction in the specific symptoms and . [............................................]
 
 
 physical limitations of AF at 1-year follow-up (P = 0.004). In contrast to
@@ -4029,7 +3993,6 @@ Recommendations for cardiac resynchronization
 therapy in patients with persistent or permanent atrial
 fibrillation
 
-. [.....................................................................................................................]
 
 
 Recommendations for cardiac resynchronization
@@ -4125,7 +4088,6 @@ Several studies have demonstrated the deleterious effect of chronic
 RV pacing with respect to an increased risk of HF symptoms or
 
 
-. [......................................................]
 
 
 
@@ -4195,7 +4157,6 @@ therapy
 The mortality benefit of CRT-D over CRT-P is still unclear, mostly
 because no head to head RCTs have been designed to compare
 
-. [............................................................................................................................................................................]
 
 
 over CRT-P by reducing arrhythmic death, it does also add ICDspecific risks such as lead failure and inappropriate shocks, as well as
@@ -4333,7 +4294,6 @@ b Level of evidence.
 cardiac resynchronization therapy: role
 of imaging techniques
 The role of cardiac imaging in selecting HF patients for CRT has
-been evaluated mostly in observational analyses. Cardiac dyssynchrony, [384][�][386] myocardial scar, [387][,][388] and site of latest activation . [.........................................................................................................................................................................]
 
 
 of the LV in relation to the LV lead position [389][,][390] have been associated with response to CRT. LVEF is the only parameter included in
@@ -4442,7 +4402,6 @@ harmful effects of RVS pacing compared with RVA pacing have been
 [shown on relevant clinical endpoints (Supplementary Table 9).](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehab364#supplementary-data)
 Current evidence does not support systematically recommending
 
-. [.....................................................................................]
 
 
 7.2 His bundle pacing
@@ -4618,7 +4577,6 @@ support that any percentage of RV pacing can be considered as defining a true li
 pacing is harmful. Observational data indicate that patients with HBP
 
 
-. [............................................................................................................................................................................]
 
 ESC Guidelines 43
 
@@ -4659,9 +4617,7 @@ HBP may be considered as an alternative to RV
 pacing in patients with AVB and LVEF >40%,
 
 
-. [................................]
 
-. [.........................................................................................................................................]
 
 
 who are anticipated to have >20% ventricular
@@ -4741,7 +4697,6 @@ especially for younger patients (e.g. with a life expectancy >20 years).
 Recommendations for using leadless pacing (leadless
 pacemaker)
 
-. [...............................................................................]
 
 
 Recommendations for using leadless pacing (leadless
@@ -4810,7 +4765,6 @@ infarction. [458][�][460][,][462][,][463] New-onset intraventricular conductio
 Sinus bradycardia and AVB at presentation can be vagally mediated and may respond to atropine. [455][,][468] Revascularization is
 
 
-. [.........................................................................................]
 
 
 
@@ -4883,7 +4837,6 @@ Such leads can interfere with the function of a repaired tricuspid valve
 or tricuspid valve prosthesis.
 Placing an epicardial RV lead at the time of tricuspid valve surgery
 
-. [.......................................................................................................................................................]
 
 
 or third-degree AVB. There have been doubts about the long-term
@@ -5022,9 +4975,7 @@ ical tricuspid valve replacement
 III C
 
 
-. [.........................]
 
-. [................................................................................................................................................] **[.]**
 
 
 
@@ -5138,7 +5089,6 @@ heart disease
 
 Permanent pacing in patients with moderate or complex CHD
 should be performed in centres with a multidisciplinary team and
-expertise in CHD-related device therapy. Generally, decision-making . [............................................................................................................................................................................]
 
 
 for pacemaker therapy in patients with CHD is based on expert con
@@ -5343,9 +5293,7 @@ treatment of choice for patients with obstructive HCM.
 Continued
 
 
-. [......................................]
 
-. [......................................................................................................................]
 
 50 ESC Guidelines
 
@@ -5448,9 +5396,7 @@ periods can cause 2:1 AVB; sudden rate changes can trigger torsadesde-pointes ta
 sympathetic triggers of torsades-de-pointes may cause bradycardia.
 
 
-. [.....................................................................................................................]
 
-. [.....................................................]
 
 
 
@@ -5458,7 +5404,6 @@ ESC Guidelines 51
 
 
 8.6.3 Dilated cardiomyopathy with lamin A/C mutation
-Mutations in the LMNA gene, which encodes lamin A and C intermediate filaments of the nuclear envelope, cause a variety of inherited . [........]
 diseases defined as ‘laminopathies’. [605][�][607] According to the type of
 mutation, they can lead to isolated cardiac disorders or additional
 systemic or musculoskeletal disorders such as the Emery�Dreifuss
@@ -5560,7 +5505,6 @@ Mitochondrial cytopathies are a heterogeneous group of hereditary
 disorders, in which cardiomyopathies, conduction defects, and ventricular arrhythmias are the most common cardiac
 
 
-. [.................................................................................................................................................................]
 
 52 ESC Guidelines
 
@@ -5618,7 +5562,6 @@ according to the relevant guidelines.
 Vaginal delivery carries no extra risks in a mother with congenital
 complete heart block, unless contraindicated for obstetric reasons. [635] For women who have a stable, narrow complex junctional
 escape rhythm, pacemaker implantation may not be necessary or can
-be deferred until after delivery if none of the risk factors (syncope, . [..........................................................................................................................................................................]
 
 
 pauses >3� the cycle length of the ventricular escape rhythm, wide
@@ -5757,7 +5700,6 @@ Regarding non-vitamin K antagonist oral anticoagulants, the
 Randomized Controlled Trial of Continued Versus Interrupted
 Direct Oral Anti-Coagulant at the Time of Device Surgery (BRUISE
 CONTROL-2) was stopped prematurely due to futility because the
-event rate was far lower than anticipated; however, it suggested that, . [..........................................................................................]
 
 
 depending on the clinical scenario and concomitant antiplatelet therapy, either stopping or continuing non-vitamin K antagonist oral anticoagulants might be reasonable at the time of device implantation. [652]
@@ -5858,7 +5800,6 @@ been developed, and results have proved reliable stability, easy access
 to the target pacing site, and stable LV pacing threshold in the long
 term. In comparison with passive fixation quadripolar leads, active fixation bipolar and quadripolar leads achieved similar results. The lead
 
-. [............................................................................................................................................................................]
 
 
 developed to allow for full extractability in the long term. However,
@@ -6047,9 +5988,7 @@ by 60% in inexperienced operators who had performed fewer than
 
 
 
-. [....................................................]
 
-. [......................................................................................................................]
 
 
 
@@ -6092,7 +6031,6 @@ RA leads (2.3%) and RV leads (2.2%). [429] A CRT device (OR 3.3) and
 Table 12 Complications of pacemaker and cardiac
 resynchronization therapy implantation
 
-. [............................................................................................................................................................................]
 
 
 passive fixation RA lead (OR 2.2) were the most important risk
@@ -6266,7 +6204,6 @@ an interdisciplinary team in partnership with the patient and family,
 should be adopted in order to deliver comprehensive treatment
 across the continuum of healthcare (see section 12). The integratedcare approach is indicated in pacemaker and CRT patients to ensure
 
-. [............................................................................................................................................................................]
 
 
 decision-making. The integrated-care approach has its origins in the
@@ -6359,7 +6296,6 @@ Evaluation must be made on a case by case basis by balancing the
 advantages of MRI with the potential risks and availability of alternative imaging methods and using shared decision-making.
 In general, MRIs should always be performed in the context of a
 rigorously applied standardized institutional workflow, following the
-appropriate conditions of use (including programming). [744][,][746][,][753][�][755] . [..................]
 
 
 A flowchart summarizing the management of patients with a pacemaker undergoing MRI is shown in Figure 14.
@@ -6429,7 +6365,6 @@ Electromagnetic interference during radiotherapy can cause
 oversensing, although this very rarely occurs in clinical practice. [760]
 
 Device relocation before radiotherapy is very rarely recom
-. [...........................................................] mended, and only if the current location of the device interferes
 
 60 ESC Guidelines
 
@@ -6465,7 +6400,6 @@ The specific recommendations of CIED manufacturers are
 11.3 Temporary pacing
 Temporary pacing can provide electronic cardiac stimulation in
 
-. [....................................................................................]
 
 
 prophylactically when the need for pacing is anticipated (e.g. after cardiac surgery). [764][,][765] Modalities for emergency temporary pacing
@@ -6570,7 +6504,6 @@ Recommendations regarding temporary cardiac pacing
 
 
 a Class of recommendation.
-b Level of evidence. . [...........................................................................................................................................................]
 
 
 11.4 Peri-operative management in
@@ -6688,7 +6621,6 @@ complete procedural success rates and low complication rates. [802]
 
 This approach may be appropriate for the combination of a young
 patient, low risk for extraction, and an experienced extractor.
-As part of a patient-centred approach, the decision in such situations has to be based on an individual risk�benefit analysis in a shared **.** **[..]** [............................................................................................................]
 
 
 11.6 When pacing is no longer indicated
@@ -6793,7 +6725,6 @@ b Level of evidence.
 General principles of follow-up are covered here, as in-depth recommendations are beyond the scope of this document. The patient and
 
 
-. [.............................................................]
 
 
 |Col1|In-office only|In-office 1 remote|ESC 2021|
@@ -6878,9 +6809,7 @@ those with cognitive impairment, communication strategies, including
 the help of a qualified interpreter, is recommended, as this helps the
 
 
-. [................................................................]
 
-. [...........................................................................................................]
 
 |Recommendation|Classa|Levelb|ESC 2021|
 |---|---|---|---|
@@ -6972,7 +6901,6 @@ has been published elsewhere, [844] with a selection presented in
 
 Table 15.
 
-. [.............................................................]
 
 ### 14 Key messages
 
@@ -7083,7 +7011,6 @@ surgery who have or develop AVB under surgery, placement of
 epicardial pacing leads during surgery should be considered.
 
 - [To reduce the risk of complications, pre-operative anti-]
-biotics must be administered before CIED procedures, . [.........................................................................................................................................................................]
 
 
 chlorhexidine�alcohol should be preferred for skin antisepsis,
@@ -7224,7 +7151,6 @@ to be documented.
 
 flow tract, or apical) has not been documented for standard pacing indicated for bradycardia or for CRT.
 
-- [Better prediction of who will develop AVB after TAVI is needed.] . [........................................................................................]
 
 
 
@@ -7471,7 +7397,6 @@ Includes Document Reviewers and ESC National Cardiac Societies.
 
 Document Reviewers: Francisco Leyva (CPG Review
 
-. [............................................................................................................................................................................]
 
 
 Coordinator) (Sweden), Magdy Abdelhamid (Egypt), Victor Aboyans
@@ -7659,7 +7584,6 @@ project. Pacing Clin Electrophysiol 2011;34:1013�1027.
 calendar year 1997. Pacing Clin Electrophysiol 2001;24:869�870.
 5. Mond HG. The World Survey of Cardiac Pacing and Cardioverter Defibrillators:
 calendar year 1997—Asian Pacific, Middle East, South America, and Canada.
-2001;24:856�862. . [............................................................................................................................................................................]
 
 
 6. Ector H, Rickards AF, Kappenberger L, Linde C, Vardas P, Oto A, Santini M,
@@ -7855,7 +7779,6 @@ leadless intracardiac transcatheter pacing system. N Engl J Med
 PA, Estes NA 3rd, Ip J, Niazi I, Plunkitt K, Banker R, Porterfield J, Ip JE, Dukkipati
 SR, Leadless II Study Investigators. Percutaneous implantation of an entirely intracardiac leadless pacemaker. N Engl J Med 2015;373:1125�1135.
 47. Knops RE, Tjong FV, Neuzil P, Sperzel J, Miller MA, Petru J, Simon J, Sediva L, de
-Groot JR, Dukkipati SR, Koruth JS, Wilde AA, Kautzner J, Reddy VY. Chronic . [............................................................................................................................................................................]
 
 
 performance of a leadless cardiac pacemaker: 1-year follow-up of the LEADLESS
@@ -8011,7 +7934,6 @@ myocarditis with preserved systolic function: ITAMY Study. J Am Coll Cardiol
 Kindermann I, Gutberlet M, Cooper LT, Liu P, Friedrich MG. Cardiovascular
 magnetic resonance in nonischemic myocardial inflammation: expert recommendations. J Am Coll Cardiol 2018;72:3158�3176.
 87. Zhou Y, Lower EE, Li HP, Costea A, Attari M, Baughman RP. Cardiac sarcoidosis:
-the impact of age and implanted devices on survival. Chest 2017;151:139�148. . [............................................................................................................................................................................]
 
 
 88. Kandolin R, Lehtonen J, Kupari M. Cardiac sarcoidosis and giant cell myocarditis
@@ -8180,7 +8102,6 @@ review examining the basis of current practice recommendations. Europace
 
 133. Brignole M, Menozzi C, Moya A, Andresen D, Blanc JJ, Krahn AD, Wieling W,
 Beiras X, Deharo JC, Russo V, Tomaino M, Sutton R, International Study on
-Syncope of Uncertain Etiology Investigators. Pacemaker therapy in patients with . [............................................................................................................................................................................]
 
 
 neurally mediated syncope and documented asystole: Third International Study
@@ -8348,7 +8269,6 @@ L, Mondesert B, Rivard L, Roy D, Talajic M, Andrade J, Nitzsche R, Khairy P,
 CAN-SAVE R Study Investigators. Very low ventricular pacing rates can be
 achieved safely in a heterogeneous pacemaker population and provide clinical
 benefits: the CANadian Multi-Centre Randomised Study-Spontaneous
-. [............................................................................................................................................................................]
 
 
 AtrioVEntricular Conduction pReservation (CAN-SAVE R) Trial. J Am Heart
@@ -8510,7 +8430,6 @@ of programmed ventricular stimulation in patients with bifascicular block: a pro
 209. Morady F, Higgins J, Peters RW, Schwartz AB, Shen EN, Bhandari A, Scheinman
 MM, Sauve MJ. Electrophysiologic testing in bundle branch block and unexplained syncope. Am J Cardiol 1984;54:587�591.
 210. Tabrizi F, Rosenqvist M, Bergfeldt L, Englund A. Long-term prognosis in patients
-with bifascicular block—the predictive value of noninvasive and invasive assessment. J Intern Med 2006;260:31�38. . [............................................................................................................................................................................]
 
 
 211. Olshansky B, Hahn EA, Hartz VL, Prater SP, Mason JW. Clinical significance of
@@ -8670,7 +8589,6 @@ status of cardiac resynchronization. J Am Coll Cardiol 2002;39:194�201.
 Circulation 2004;109:296�299.
 
 249. Patel N, Viles-Gonzalez J, Agnihotri K, Arora S, Patel NJ, Aneja E, Shah M,
-Badheka AO, Pothineni NV. Frequency of in-hospital adverse outcomes and cost . [............................................................................................................................................................................]
 
 
 utilization associated with cardiac resynchronization therapy defibrillator implantation in the United States. J Cardiovasc Electrophysiol 2018;29:1425�1435.
@@ -8818,7 +8736,6 @@ Intern Med 2014;174:1340�1348.
 
 284. Zweerink A, Friedman DJ, Klem I, van de Ven PM, Vink C, Biesbroek PS,
 Hansen SM, Emerek K, Kim RJ, van Rossum AC, Atwater BD, Nijveldt R, Allaart
-CP. Size Matters: Normalization of QRS duration to left ventricular dimension . [............................................................................................................................................................................]
 
 
 improves prediction of long-term cardiac resynchronization therapy outcome.
@@ -8968,7 +8885,6 @@ study. Circ Arrhythm Electrophysiol 2019;12:e006934.
 320. Boczar K, Sławuta A, Za˛bek A, DeR bski M, Vijayaraman P, Gajek J, Lelakowski J,
 Małecka B. Cardiac resynchronization therapy with His bundle pacing. Pacing
 Clin Electrophysiol. 2019;42:374�380.
-. [............................................................................................................................................................................]
 
 
 321. Coluccia G, Vitale E, Corallo S, Aste M, Odaglia F, Donateo P, Oddone D, Brignole
@@ -9109,7 +9025,6 @@ results of the pacing to avoid cardiac enlargement (PACE) trial. Eur J Heart Fai
 
 360. Albertsen AE, Mortensen PT, Jensen HK, Poulsen SH, Egeblad H, Nielsen JC.
 Adverse effect of right ventricular pacing prevented by biventricular pacing during long-term follow-up: a randomized comparison. Eur J Echocardiogr
-2011;12:767�772. . [............................................................................................................................................................................]
 
 
 361. Chung ES, St John Sutton MG, Mealing S, Sidhu MK, Padhiar A, Tsintzos SI, Lu
@@ -9263,7 +9178,6 @@ responsive to cardiac resynchronization therapy. JACC Cardiovasc Imaging
 Prognostic value of global longitudinal strain in heart failure patients treated
 with cardiac resynchronization therapy. Heart Rhythm 2018;15:1533�1539.
 394. Donal E, Delgado V, Bucciarelli-Ducci C, Galli E, Haugaa KH, Charron P, Voigt
-JU, Cardim N, Masci PG, Galderisi M, Gaemperli O, Gimelli A, Pinto YM, . [............................................................................................................................................................................]
 
 
 Lancellotti P, Habib G, Elliott P, Edvardsen T, Cosyns B, Popescu BA, EACVI
@@ -9420,7 +9334,6 @@ Kaszala K, Tan AY, Koneru JN, Ellenbogen KA, Padala SK. Intermediate term
 performance and safety of His bundle pacing leads: a single center experience.
 Heart Rhythm 2021;18:743�749.
 427. Vijayaraman P, Naperkowski A, Subzposh FA, Abdelrahman M, Sharma PS,
-Oren JW, Dandamudi G, Ellenbogen KA. Permanent His-bundle pacing: longterm lead performance and clinical outcomes. Heart Rhythm 2018;15:696�702. . [............................................................................................................................................................................]
 
 
 428. Zanon F, Abdelrahman M, Marcantoni L, Naperkowski A, Subzposh FA, Pastore
@@ -9568,7 +9481,6 @@ Cardiol 2015;38:604�613.
 468. Swart G, Brady WJ, DeBehnke DJ, MA OJ, Aufderheide TP. Acute myocardial
 infarction complicated by hemodynamically unstable bradyarrhythmia: prehospital and ED treatment with atropine. Am J Emerg Med 1999;17:647�652.
 469. Ibanez B, James S, Agewall S, Antunes MJ, Bucciarelli-Ducci C, Bueno H,
-Caforio ALP, Crea F, Goudevenos JA, Halvorsen S, Hindricks G, Kastrati A, . [............................................................................................................................................................................]
 
 
 Lenzen MJ, Prescott E, Roffi M, Valgimigli M, Varenhorst C, Vranckx P,
@@ -9732,7 +9644,6 @@ Circulation 2018;138:2611�2623.
 E, Donato A. Incidence, predictors, and outcomes of permanent pacemaker
 implantation following transcatheter aortic valve replacement: analysis from the
 U.S. Society of Thoracic Surgeons/American College of Cardiology TVT
-Registry. JACC Cardiovasc Interv 2016;9:2189�2199. . [............................................................................................................................................................................]
 
 
 504. Regueiro A, Abdul-Jawad Altisent O, Del Trigo M, Campelo-Parada F, Puri R,
@@ -9889,7 +9800,6 @@ Chisholm R, Igual A, Ribeiro HB, Nombela-Franco L, Philippon F, Garcia Del
 Blanco B, Rodes-Cabau J. Impact of new-onset persistent left bundle branch
 block on late clinical outcomes in patients undergoing transcatheter aortic valve
 implantation with a balloon-expandable valve. JACC Cardiovasc Interv
-2014;7:128�136. . [............................................................................................................................................................................]
 
 
 535. Mouillet G, Lellouche N, Lim P, Meguro K, Yamamoto M, Deux JF, Monin JL,
@@ -10046,7 +9956,6 @@ Pacemaker therapy in isolated congenital complete atrioventricular block.
 Pacing Clin Electrophysiol 2002;25:1685�1691.
 569. Bonatti V, Agnetti A, Squarcia U. Early and late postoperative complete heart
 block in pediatric patients submitted to open-heart surgery for congenital heart
-disease. Pediatr Med Chir 1998;20:181�186. . [............................................................................................................................................................................]
 
 
 570. Gross GJ, Chiu CC, Hamilton RM, Kirsh JA, Stephenson EA. Natural history of
@@ -10214,7 +10123,6 @@ Moss AC, Li WL, Stetler GL, Muntoni F, Bristow MR, Mestroni L, Familial
 
 Dilated Cardiomyopathy Registry Research Group. Natural history of dilated
 cardiomyopathy due to lamin A/C gene mutations. J Am Coll Cardiol
-2003;41:771�780. . [............................................................................................................................................................................]
 
 
 608. Sanna T. Cardiac features of Emery�Dreifuss muscular dystrophy caused by
@@ -10380,7 +10288,6 @@ electronic device infection: a systematic review and meta-analysis. Europace
 2015;17:767�777.
 
 642. Blomstrom-Lundqvist C, Traykov V, Erba PA, Burri H, Nielsen JC, Bongiorni
-MG, Poole J, Boriani G, Costa R, Deharo JC, Epstein LM, Saghy L, Snygg-Martin . [............................................................................................................................................................................]
 
 
 U, Starck C, Tascini C, Strathmore N. European Heart Rhythm Association
@@ -10533,7 +10440,6 @@ Valzania C, Rapezzi C, Boriani G, Biffi M. Cardiac resynchronization therapy: a
 comparison among left ventricular bipolar, quadripolar and active fixation leads.
 Sci Rep 2018;8:13262.
 669. Ziacchi M, Giannola G, Lunati M, Infusino T, Luzzi G, Rordorf R, Pecora D,
-Bongiorni MG, De Ruvo E, Biffi M. Bipolar active fixation left ventricular lead or . [............................................................................................................................................................................]
 
 
 quadripolar passive fixation lead? An Italian multicenter experience. J Cardiovasc
@@ -10683,7 +10589,6 @@ Arch Intern Med 2011;171:1821�1828.
 
 709. Cantillon DJ, Dukkipati SR, Ip JH, Exner DV, Niazi IK, Banker RS, Rashtian M,
 Plunkitt K, Tomassoni GF, Nabutovsky Y, Davis KJ, Reddy VY. Comparative
-. [............................................................................................................................................................................]
 
 
 study of acute and mid-term complications with leadless and transvenous cardiac pacemakers. Heart Rhythm 2018;15:1023�1030.
@@ -10834,7 +10739,6 @@ Martin ET, Rivard AL, Rubenstein JC, Schaerf RH, Schwartz JD, Shah DJ,
 Tomassoni GF, Tominaga GT, Tonkin AE, Uretsky S, Wolff SD. Assessing the
 risks associated with MRI in patients with a pacemaker or defibrillator. N Engl J
 Med 2017;376:755�764.
-. [............................................................................................................................................................................]
 
 
 745. Indik JH, Gimbel JR, Abe H, Alkmim-Teixeira R, Birgersdotter-Green U, Clarke
@@ -10982,7 +10886,6 @@ of patients with cardiac implantable electronic devices. Anesthesiology
 2011;114:247�261.
 
 787. Crossley GH, Poole JE, Rozner MA, Asirvatham SJ, Cheng A, Chung MK,
-Ferguson TB, Gallagher JD, Gold MR, Hoyt RH, Irefin S, Kusumoto FM, . [............................................................................................................................................................................]
 
 
 Moorman LP, Thompson A. The Heart Rhythm Society (HRS)/American
@@ -11138,7 +11041,6 @@ Eur J Cardiovasc Nurs 2011;10:248�251.
 
 815. Alston C, Paget L, Halvorson G, Novelli B, Guest J, McCabe P, Hoffman K,
 Koepke C, Simon M, Sutton S, Okun S, Wicks P, Undem T, Rohrbach V, von
-Kohorn I. Communicating with Patients on Health Care Evidence. Washington, DC: . [............................................................................................................................................................................]
 
 
 [Institute of Medicine of the National Academies; 2012. http://www.iom.edu/](http://www.iom.edu/evidence)
@@ -11245,7 +11147,6 @@ fibrillation. Europace 2021;23:494�495.
 P, Dorobantu M, Edvardsen T, Folliguet T, Gale CP, Gilard M, Jobs A, Juni P,
 Lambrinou E, Lewis BS, Mehilli J, Meliga E, Merkely B, Mueller C, Roffi M,
 Rutten FH, Sibbing D, Siontis GCM, ESC Scientific Document Group. 2020 ESC
-Guidelines for the management of acute coronary syndromes in patients pre- . [....................................]
 
 
 senting without persistent ST-segment elevation. Eur Heart J

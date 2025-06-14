@@ -142,6 +142,9 @@ emission tomography/computed tomography ............................... 3970
 5.5.1.5. Infective endocarditis classification ................................. 3975
 
 
+
+![Page 2 Images](Endocarditis_2023_images/page_002_images.png)
+
 **Disclaimer.** The ESC Guidelines represent the views of the ESC and were produced after careful consideration of the scientific and medical knowledge and the evidence available at the time
 of their publication. The ESC is not responsible in the event of any contradiction, discrepancy, and/or ambiguity between the ESC Guidelines and any other official recommendations or
 guidelines issued by the relevant public health authorities, in particular, in relation to good use of healthcare or therapeutic strategies. Health professionals are encouraged to take the
@@ -756,6 +759,12 @@ professionals involved with the medical care of patients with this
 
 
 
+![Page 15 Images](Endocarditis_2023_images/page_015_images.png)
+
+
+
+
+![Page 17 Images](Endocarditis_2023_images/page_017_images.png)
 
 
 Table 2 **Levels of evidence**
@@ -772,6 +781,9 @@ Table 2 **Levels of evidence**
 
 
 
+
+
+![Page 29 Images](Endocarditis_2023_images/page_029_images.png)
 
 Figure 1 Management of patients with infective endocarditis. i.v., intravenous; OPAT, outpatient parenteral antibiotic therapy.
 
@@ -2823,7 +2835,6 @@ ciated with eosinophilic syndromes in up to 15% of patients. [272][,][273]
 
 
 
-
 Figure 8 Phases of antibiotic treatment for infective endocarditis in relation to outpatient parenteral antibiotic therapy and partial oral endocarditis treat-­
 ment. i.v., intravenous: OPAT, outpatient parenteral antibiotic treatment; TOE, transoesophageal echocardiography. [a] Criteria for switching to OPAT or par-­
 [tial oral treatment of endocarditis are given in the Supplementary data online, Table S8.](http://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehad193#supplementary-data)
@@ -4853,6 +4864,7 @@ be managed as indicated in *Sections 7* and *8* (if complicated IE).
 
 
 
+
 Figure 12 Algorithm differentiating relapse from reinfection. Reproduced with permission from Chu *et al.* [596]
 
 ESC Guidelines **3999**
@@ -6871,7 +6883,6 @@ patients with IE who did not undergo heart valve surgery.
 |[18F]FDG-PET/CT(A) and cardiac CTA are recommended in possible PVE to detect valvular lesions and confrim the diagnosis of IE.|I|B|
 |Cardiac CTA is recommended in NVE and PVE to diagnose paravalvular or periprosthetic complications if echocardiography is<br>inconclusive.|I|B|
 |Brain and whole-body imaging (CT, [18F]FDG-PET/CT, and/or MRI) are recommended in symptomatic patients with NVE and PVE to<br>detect peripheral lesions or add minor diagnostic criteria.|I|B|
-
 
 
 

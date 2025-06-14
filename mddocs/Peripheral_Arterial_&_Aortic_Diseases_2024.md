@@ -322,6 +322,9 @@ inhibitors .....................................................................
 ESC Guidelines **3541**
 
 
+
+![Page 2 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_002_images.png)
+
 8.3.2.1. Clinical presentation and diagnosis ................................. 3598
 
 8.3.2.1.1. Epidemiology ................................................................... 3598
@@ -1533,6 +1536,12 @@ Table 2 **Levels of evidence**
 
 
 
+![Page 24 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_024_images.png)
+
+
+
+
+![Page 26 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_026_images.png)
 
 revisions, the guidelines are signed off by all the experts in the task
 force. The finalized document is signed off by the CPG Committee
@@ -1568,6 +1577,9 @@ sionals are subject, where applicable.
 Peripheral arterial and aortic diseases (PAAD) are highly prevalent
 and significantly increase cardiovascular (CV) mortality and
 
+
+
+![Page 27 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_027_images.png)
 
 morbidity in the general population, [1][,][2] consequently, intensive pre-­
 ventive strategies are needed. However, patients with PAAD are
@@ -1685,6 +1697,9 @@ Opportunistic AAA screening with DUS should be considered in symptomatic/asympto
 
 
 
+
+![Page 54 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_054_images.png)
+
 |In patients with symptomatic PAD, SET is recommended.|I|A|
 |---|---|---|
 |In those patients undergoing endovascular revascularization, SET is recommended as an adjuvant therapy.|I|A|
@@ -1756,6 +1771,9 @@ Early recognition of CLTI and referral to the vascular team are recommended for 
 
 
 
+![Page 67 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_067_images.png)
+
+
 |In CLTI patients, it is recommended to perform revascularization as soon as possible.|I|B|
 |---|---|---|
 |In CLTI, it is recommended to use autologous veins as the preferred conduit for infra-inguinal bypass surgery.|I|B|
@@ -1772,6 +1790,9 @@ Early recognition of CLTI and referral to the vascular team are recommended for 
 
 
 
+
+![Page 71 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_071_images.png)
+
 **Recommendations for carotid artery stenosis assessment**
 
 |It is recommended to use the NASCET method or its non-invasive equivalent to assess ICA stenosis.|I|B|
@@ -1779,6 +1800,9 @@ Early recognition of CLTI and referral to the vascular team are recommended for 
 |It is not recommended to use the ECST method for ICA stenosis assessment.|III|C|
 
 
+
+
+![Page 73 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_073_images.png)
 
 **Recommendations for the management of subclavian artery stenosis**
 
@@ -1800,6 +1824,12 @@ DUS is recommended as the first-line imaging modality in patients with suspicion
 
 
 
+![Page 77 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_077_images.png)
+
+
+
+
+![Page 79 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_079_images.png)
 
 |In patients with atherosclerotic unilateral >70% RAS, concomitant high-risk features, and signs of kidney viability, renal artery revascularization<br>should be considered after OMT has been established.|IIa|B|
 |---|---|---|
@@ -1817,11 +1847,20 @@ DUS is recommended as the first-line imaging modality in patients with suspicion
 
 
 
+
+![Page 82 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_082_images.png)
+
 **Recommendations for surgery in aortic root and ascending aorta dilatation associated with tricuspid aortic valve**
 
 
 
 
+![Page 84 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_084_images.png)
+
+
+
+
+![Page 86 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_086_images.png)
 
 |In patients with dilatation of the tubular ascending aorta who can be offered surgery with low predicted risk, ascending aortic replacement<br>should be considered at a maximum diameter >52 mm.|IIa|B|
 |---|---|---|
@@ -1834,10 +1873,16 @@ DUS is recommended as the first-line imaging modality in patients with suspicion
 
 
 
+![Page 88 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_088_images.png)
+
+
 |In patients with low or intermediate operative risk with an aortic arch aneurysm and recurrent episodes of chest pain not attributable to<br>non-aortic causes, open surgical replacement of the arch is recommended.|I|C|
 |---|---|---|
 |In patients undergoing open surgical repair of an aortic arch aneurysm, an elephant trunk or frozen elephant trunk procedure should be<br>considered if the aneurysmal disease extends into the proximal descending thoracic aorta.|IIa|C|
 
+
+
+![Page 90 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_090_images.png)
 
 **Recommendations for follow-up after treatment of aortic aneurysms**
 
@@ -1859,6 +1904,9 @@ DUS is recommended as the first-line imaging modality in patients with suspicion
 |In patients with suspected AAS, TOE is recommended to guide peri-operative management and detect complications.|I|C|
 
 
+
+![Page 95 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_095_images.png)
+
 **Recommendations for medical treatment in acute aortic syndromes**
 
 |In patients with AAS who can be managed conservatively and who achieved haemodynamic targets with i.v. anti-impulse therapy, switching to<br>oral BBs and, if necessary, up-titration of other BP-lowering agents is recommended after 24 h if gastrointestinal transit is preserved.|I|B|
@@ -1867,9 +1915,15 @@ DUS is recommended as the first-line imaging modality in patients with suspicion
 
 
 
+
+![Page 97 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_097_images.png)
+
 **Recommendations for intervention in type A acute aortic dissection**
 
 
+
+
+![Page 99 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_099_images.png)
 
 |In patients with acute TAAD who have extensive destruction of the aortic root, a root aneurysm, or a known genetic aortic disorder, aortic<br>root replacement is recommended with a mechanical or biological valved conduit.|I|B|
 |---|---|---|
@@ -1895,6 +1949,9 @@ ESC Guidelines **3553**
 
 
 
+![Page 103 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_103_images.png)
+
+
 
 
 |In patients with acute TAAD presenting with malperfusion (cerebral, mesenteric, lower limb, or renal), immediate aortic surgery is<br>recommended.|I|B|
@@ -1903,8 +1960,14 @@ ESC Guidelines **3553**
 |In patients with acute TAAD presenting with clinically significant mesenteric malperfusion syndrome, immediate invasive angiographic<br>diagnostics to evaluate percutaneous malperfusion repair before or directly after aortic surgery, in aortic centres with expertise, should be<br>considered.|IIa|C|
 
 
+
+![Page 107 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_107_images.png)
+
 **Recommendations for the management of patients presenting with acute type B aortic dissection**
 
+
+
+![Page 108 Images](Peripheral_Arterial_&_Aortic_Diseases_2024_images/page_108_images.png)
 
 
 In patients with uncomplicated acute TBAD, TEVAR in the subacute phase (between 14 and 90 days) should be considered in selected
@@ -4027,6 +4090,7 @@ gate marker for CV and all-cause mortality. [88][,][442][,][443] A diagnostic PA
 algorithm is depicted in *Figure 9* .
 
 **3576** ESC Guidelines
+
 
 
 

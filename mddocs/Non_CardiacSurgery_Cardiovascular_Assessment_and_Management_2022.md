@@ -93,6 +93,9 @@ Click here to access the corresponding ESC CardioMed chapters.
 3.2.1. Laparoscopy ................................................................................ 3842
 
 
+
+![Page 2 Images](Non_CardiacSurgery_Cardiovascular_Assessment_and_Management_2022_images/page_002_images.png)
+
 3.2.1.1. Vascular and endovascular procedures ................... 3843
 
 3.2.1.2. Video-assisted non-cardiac surgery ........................... 3843
@@ -1137,6 +1140,9 @@ published in a supplementary document to the guidelines. This process ensures tr
 
 
 
+![Page 16 Images](Non_CardiacSurgery_Cardiovascular_Assessment_and_Management_2022_images/page_016_images.png)
+
+
 
 
 
@@ -1335,6 +1341,9 @@ IIa
 
 
 
+![Page 57 Images](Non_CardiacSurgery_Cardiovascular_Assessment_and_Management_2022_images/page_057_images.png)
+
+
 
 
 
@@ -1364,6 +1373,9 @@ Continued
 |TTE may be considered in patients with poor functional<br>capacity, abnormal ECG, high NT-proBNP/BNP, or ≥1 clinical<br>risk factor before intermediate-risk NCS.|IIb|
 |To avoid delaying surgery, a FOCUS exam performed by<br>trained specialists may be considered as an alternative to TTE<br>for pre-operative triage.|IIb|
 
+
+
+![Page 69 Images](Non_CardiacSurgery_Cardiovascular_Assessment_and_Management_2022_images/page_069_images.png)
 
 IIa
 
@@ -1931,6 +1943,7 @@ of blood products, tissue injury, and inflammatory response may affect the coagu
 
 
 
+
 Figure 1 Total risk is an interaction of patient-related and surgery-related risk. Ideally, the total risk should be as close as possible to the lower left
 corner, by choosing surgery/procedure/anaesthesia/institution with the lowest possible risk along with efforts to mitigate the patient’s CV risk.
 
@@ -2404,7 +2417,6 @@ should be clinical criteria, and not based on a specific score.
 CV, cardiovascular; CVD, cardiovascular disease; NCS, non-cardiac surgery.
 a Class of recommendation.
 b Level of evidence.
-
 
 
 
@@ -3517,7 +3529,6 @@ trials [247] and the recommendations of the 2020 ESC Guidelines for
 
 
 
-
 Figure 6 P2Y 12 inhibitor interruption after percutaneous coronary intervention before elective non-cardiac surgery. LoE, level of evidence; MI, myocardial infarction; N, no; PCI, percutaneous coronary intervention. Y, yes; [a] Availability of 24 h cath-lab service is suggested in case of major surgery within 6
 months in non-ACS/non-high-risk patients and within 12 months in ACS/high-risk patients. [b] High risk of peri-operative stent thrombosis defined by at
 least one of the following: history of recurrent MI, history of stent thrombosis under antiplatelet therapy, reduced left ventricular ejection fraction
@@ -3739,6 +3750,11 @@ Patient-related factors include age, individual thrombotic risk,
 history of bleeding complications, renal function, concomitant
 
 
+5.3.2.1.1. Vitamin K antagonists in patients with mechanical heart
+valves. Maintenance of therapeutic international normalized ratio
+(INR) is crucial for patients with mechanical heart valves (MHVs).
+
+
 medication, comorbidity, etc. Patients requiring a reversal agent
 need careful monitoring of haemostatic parameters and evaluation of thrombotic and bleeding risk in the peri-operative
 phase, as reversal might be insufficient or prothrombotic rebound might occur. In the latter case, an interdisciplinary decision should be made with regard to early resumption of
@@ -3748,11 +3764,6 @@ anticoagulation treatment.
 
 –
 Three drugs are currently used: warfarin (half-life 36 48 h), acenocoumarol (half-life 12 h), and phenprocoumon (half-life 100 h).
-
-5.3.2.1.1. Vitamin K antagonists in patients with mechanical heart
-valves. Maintenance of therapeutic international normalized ratio
-(INR) is crucial for patients with mechanical heart valves (MHVs).
-
 
 
 
@@ -6438,7 +6449,6 @@ hs-cTn T/I concentration. [8][,][41][,][101][,][109][–][111][,][118][,][413][,
 
 
 
-
 Figure 19 Systematic work-up (aetiology) and therapy of peri-operative myocardial infarction/injury. CCTA, coronary computed tomography angiography; ECG, electrocardiogram; Hb, haemoglobin; ICA, invasive coronary angiography; MI, myocardial infarction; N, no; ST, ST-segment. Y, yes;
 Most patients with type-2 MI and silent type-1 MI should be scheduled for stress imaging or CCTA/ICA as outpatients after discharge, depending on
 symptoms prior to or after surgery and known CAD. [a] Or active bleeding. [b] Or other type-2 MI trigger such as hypoxaemia, tachycardia, hypertension.
@@ -7238,7 +7248,6 @@ There is a complex interplay between the intrinsic risk of surgery and
 the patient-related risk of peri-operative CV complications. This latter risk depends on the baseline general and CV status of patients
 scheduled for NCS. For each patient, the proper quantification and
 communication of the surgical risk require close cooperation between cardiologists, surgeons, anaesthesiologists, general practitioners, and other healthcare providers (Figure 21).
-
 
 
 

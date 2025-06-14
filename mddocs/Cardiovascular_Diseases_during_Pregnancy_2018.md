@@ -112,7 +112,6 @@ cardiovascular diseases in pregnancy? . . . . . . . . . . . . . . . . . . . . . 
 3.4.3 Exercise testing. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3177
 
 
-. [........................................................................]
 
 
 3.4.4 Ionizing radiation exposure . . . . . . . . . . . . . . . . . . . . . . . . . . 3177
@@ -266,8 +265,10 @@ great arteries . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 6. Valvular heart disease . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3190
 
-6.1 Stenotic valve lesions. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3190 . [..........................................................................................................................................................]
 
+
+
+![Page 6 Images](Cardiovascular_Diseases_during_Pregnancy_2018_images/page_006_images.png)
 
 6.1.1 Mitral stenosis. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3190
 
@@ -371,6 +372,9 @@ during or after pregnancy . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 9.7 Bradyarrhythmias . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3204
 
+
+
+![Page 7 Images](Cardiovascular_Diseases_during_Pregnancy_2018_images/page_007_images.png)
 
 3.9.1 Prophylaxis. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3180
 
@@ -574,7 +578,6 @@ and risk stratification. . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 14. Key messages. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3231
 
 15. ‘What to do’ and ‘what not to do’ messages from the
-Guidelines . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3233 . [.......................................................................................................................................................]
 
 
 9.8.1 Electrical cardioversion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3204
@@ -825,7 +828,6 @@ P-SCAD Pregnancy-related spontaneous coronary artery
 dissection
 
 PSVT Paroxysmal supraventricular tachycardia
-RAAS Renin–angiotensin–aldosterone system . [.......................................................................................................................................................]
 
 
 RHD Recommended human dose
@@ -904,7 +906,6 @@ approved by the CPG for publication in the European Heart
 Journal. The Guidelines were developed after careful consideration of the scientific and medical knowledge and the evidence
 available at the time of their dating.
 
-. [....................................................................]
 
 
 The task of developing ESC Guidelines also includes the creation
@@ -1002,7 +1003,6 @@ Guidelines document is harmonized with the simultaneously published chapter on t
 [cine.com/view/10.1093/med/9780199566990.001.0001/med-978019](http://oxfordmedicine.com/view/10.1093/med/9780199566990.001. 0001/med-9780199566990-chapter-33)
 
 
-. [.............................................................................................................................................]
 
 3172 ESC Guidelines
 
@@ -1056,7 +1056,6 @@ maternal age. However, pregnancies in the late reproductive years
 with an increasing prevalence of cardiovascular risk factors, especially
 diabetes, hypertension, and obesity. Additionally, an increasing number of women with congenital heart disease reach childbearing age. [5]
 
-In western countries, maternal heart disease is the major cause of . [.........................................]
 
 
 maternal death during pregnancy. [2][,][28] The current background
@@ -1128,7 +1127,6 @@ of aortic pathology, complete aortic imaging by computed tomography (CT) scannin
 for appropriate pre-conception counselling. Peak heart rate and peak
 oxygen uptake are both known to be predictive of maternal cardiac
 events in pregnancy. [40] A pregnancy exercise capacity >80% is associ
-. [............................................................................................................................................................................]
 
 
 Several aspects must be discussed, including long-term prognosis, fertility and miscarriage rates, risk of recurrence of congenital disease, drug
@@ -1309,7 +1307,6 @@ to have its own pregnancy heart team. The conclusions and recommendations should
 
 pregnancy
 During pregnancy it can be more difficult to diagnose HF, for exam
-. [...........................................................................]
 
 
 (section 3.2) may mimic CVD. However, many disorders can be identified by taking a careful history and a thorough physical examination.
@@ -1401,7 +1398,6 @@ foetus is in the field of view (see section 3.7.1).
 3.4.5 Chest radiography and computed tomography
 Although the foetal dose from chest radiography is <0.01 mGy, it
 
-. [...............................................................................................................................................................]
 
 
 symptoms. Lung ultrasound is a promising alternative imaging modality, although its use in pregnancy has yet to be clarified. CT is usually
@@ -1552,7 +1548,6 @@ obtain the following:
 
  - [Detailed scanning to identify associated anomalies (digits and]
 
-. [................................................................................................................................................................]
 
 
 
@@ -1721,7 +1716,6 @@ where a drop in systemic vascular resistance would be detrimental. [95]
 
 Artificial rupture of membranes and infusion of oxytocin can be used
 
-. [...............................................................................................................................................................]
 
 
 3.8.3 Vaginal or caesarean delivery
@@ -1880,7 +1874,6 @@ risk of post-partum haemorrhage and has a minimal impact on cardiovascular param
 mg/h) and misoprostol (200–1000 mg)] can be used to treat postpartum haemorrhage; however, ergometrine and prostaglandin F
 analogues should be avoided. [107][,][108] Sulprostone should be used with
 caution, given its association with cardiovascular or respiratory symptoms. Meticulous leg care, elastic support stockings, and early ambu
-. [.............................................................................................................................................................]
 
 
 post-partum period is associated with significant haemodynamic
@@ -2034,7 +2027,6 @@ The levonorgestrel-releasing intrauterine device reduces periods,
 causing amenorrhoea in <_60% of women, in contrast to copper intrauterine devices, which cause heavier periods. The newer, smaller
 levonorgestrel-based intrauterine devices are easier to insert, reducing the risk of pain and therefore vasovagal response.
 Barrier methods are unreliable but reduce the risk of pelvic inflammatory disease. A good approach is the combination of barrier meth
-. [.................................................................................................................................................................]
 
 
 long-acting reversible contraception, progestin-releasing implant, or
@@ -2179,7 +2171,6 @@ Lesions vary in severity, but even patients with complex lesions now
 survive to childbearing years. [137] In large international surveys of
 
 
-. [....................]
 
 
 pregnancy and heart disease, two-thirds of cases have congenital heart
@@ -2252,7 +2243,6 @@ individually. Invasive right heart catheterization is recommended if
 there is diagnostic uncertainty and to assist important therapeutic
 decisions. If this is required, it should be performed in a specialist
 
-. [............................................................................................................................................................................]
 
 
 A multidisciplinary team is required to care for the pregnant PH
@@ -2425,7 +2415,6 @@ In women with unrepaired ASD, pre-eclampsia and growth restriction may occur mor
 For a secundum defect, catheter device closure can be performed
 during pregnancy but is rarely indicated. If device closure is performed, antiplatelet therapy will be required. Closure for the prevention of paradoxical emboli is not indicated. In women with a residual
 shunt, prevention of venous stasis (compression stockings and minimizing bed rest) is important and extra care should be taken to avoid
-air in i.v. lines. . [............................................................................................................................................................................]
 
 
 4.3.3 Ventricular septal defect
@@ -2601,7 +2590,6 @@ regurgitation (TR) and on RV function. Cyanosis (due to ASD/patent
 foramen ovale) and arrhythmias due to accessory pathways are common. There is also an increased risk of HF and pre-term delivery. [153]
 
 4.3.9.2 Obstetric and offspring risk
-Foetal and neonatal outcomes are related to maternal oxygen saturation and CO. . [............................................................................................................................................................................]
 
 
 4.3.9.3 Management
@@ -2778,7 +2766,6 @@ this often requires electrical cardioversion.
 
 
 
-. [...................................................................]
 
 ### 5. Aortic diseases
 
@@ -2855,7 +2842,6 @@ valve and can occur even when valve function is normal. The dilata
 tion can be in the distal ascending aorta, which cannot be adequately
 visualized by echocardiography. If not visible with echocardiography,
 MRI or CT should be performed pre-pregnancy. The risk of dissec
-. [...........................................................................................................................................................]
 
 
 morphology, aortic dilatation, and CoA. [176] Pregnancy should be
@@ -2976,7 +2962,6 @@ maternal outcome is good, foetal mortality is 20–30%. [187]
 
 In the case of uncomplicated type B aortic dissection, conservative
 treatment with strict BP control using medication allowed during
-pregnancy is recommended. [188] . [....................................................................]
 
 
 
@@ -3115,7 +3100,6 @@ in pregnancy’). [5] Anticoagulation using UFH, LMWH, or vitamin K antagonist (
 the case of paroxysmal or permanent AF, left atrial thrombosis, or prior
 embolism. [5] Anticoagulation should be considered in women in sinus
 rhythm with significant MS and spontaneous echocardiographic con
-[2] . [............................................................................................................................................................................]
 
 
 Interventions. All patients with significant MS should be counselled
@@ -3286,7 +3270,6 @@ complications during pregnancy. A persistent worsening of regurgitation may occu
 No increased risk of obstetric complications has been reported.
 Intrauterine growth retardation occurs in 5–10%, and other
 offspring complications in <5%, of women with moderate or severe
-MR. [199] . [............................................................................................................................................................................]
 
 
 6.2.1.3 Management
@@ -3455,7 +3438,6 @@ complications or valve dysfunction occurred in 9% and severe morbidity in 41% (1
 valve thrombosis is relatively low with VKAs throughout pregnancy
 (0–4%). [196][,][215][–][219] Scarce evidence concerning UFH in the first trimester or throughout pregnancy indicates a high-risk of valve thrombosis (9–33%); additional risks are thrombocytopenia and
 osteoporosis. [215][,][218][,][219] LMWH is also associated with the risk of
-valve thrombosis. [196][,][214][,][215][,][219][–][222] . [............................................................................................................................................................................]
 
 
 markedly increases due to increased renal clearance, monitoring of
@@ -3576,7 +3558,6 @@ risks of embryopathy, foetopathy, foetal loss, and foetal haemorrhage
 associated with the use of VKAs need to be discussed while considering
 the VKA dose. The higher risk of valve thrombosis and lower foetal risks
 
-. [............................................................]
 
 
 6.5.3 Management
@@ -3650,7 +3631,6 @@ from easily crossing the placenta, though small amounts of streptokinase and fra
 Alteplase (a recombinant tissue plasminogen activator) has the highest molecular weight and does not cross the placenta. However, the
 risk of embolization (10%) and subplacental bleeding is a concern,
 and experience in pregnancy is limited. Fibrinolysis should be applied
-in critically ill patients when surgery is not immediately available, and . [.....................................................]
 
 
 it should be considered when the risk of surgery is high. [204] Because
@@ -3789,7 +3769,6 @@ or post-partum (STEMI 45% and NSTEMI 55%). Clinical presentation
 is the same as in the non-pregnant population. [250][,][251] ECG interpretation can be challenging, with inverted T waves in the absence of coronary ischaemia, and anaesthesia induction for caesarean section
 associated with ST-segment depression. [237] A serum troponin rise
 
-[252][,][253] . [............................................................................................................................................................................]
 
 
 Where the ECG is non-diagnostic, echocardiography may be helpful. [254] The main differential diagnoses include PE, aortic dissection,
@@ -4054,7 +4033,6 @@ antagonists (MRAs), and ivabradine are contraindicated and should be
 stopped prior to conception, with close clinical and echocardiographic
 monitoring. However, beta-blockers should be continued and
 switched to beta-1-selective blockers (see section 12). If EF falls, then
-further discussion should occur, reconsidering the safety of pregnancy. . [..........................................................................]
 
 
 If contraindicated drugs have been inadvertently taken during the first
@@ -4096,7 +4074,6 @@ or excluded using standard algorithms.
 Management goals are similar to non-pregnant acute HF, while avoiding foetotoxic agents (ACE inhibitors, ARB, ARNI, MRA, and atenolol).
 HF with pulmonary congestion is treated with loop diuretics and
 
-. [........................................]
 
 
 thiazides if required; however, diuretics should be avoided in the
@@ -4163,7 +4140,6 @@ recipient is highly specialized. [301] As all immunosuppressive agents are
 excreted into breast milk with unknown long-term effects, the
 International Society for Heart and Lung Transplantation currently
 
-[303] . [............................................................................................................................................................................]
 
 
 8.3.4 Anticoagulation
@@ -4268,7 +4244,6 @@ Low-risk cases may have a spontaneous labour and vaginal delivery.
 Caesarean section should be considered in patients with severe LV
 outflow tract obstruction, pre-term labour while on OACs, or
 severe HF. [9] Epidural and spinal anaesthesia must be applied cautiously, especially with severe LV outflow tract obstruction, because
-of potential hypovolaemia, and single-shot spinal anaesthesia avoided. . [.....................]
 
 
 During delivery, monitoring of heart rate and rhythm should be considered in patients with a high-risk of developing arrhythmias.
@@ -4359,7 +4334,6 @@ in ‘Recommendations for the management of arrhythmias’.
 9.4 Supraventricular tachycardia
 Recommendations for acute termination of PSVT (AV nodal re-entry
 
-[326] are outlined in . [..................................................................................................................................................]
 
 
 ‘Recommendations for the management of arrhythmias’ below. The
@@ -4506,7 +4480,6 @@ to the risk of bradycardia and syncope.
 
 Cardioversion seems safe in all phases of pregnancy as it does
 
-[336] . [.................................................................................................................]
 
 
 foetal arrhythmias or initiating pre-term labour seems small. [337][,][338]
@@ -4688,7 +4661,6 @@ pregnancy, [355] but a positive test should possibly be followed by a 24
 h urine collection. In cases of proteinuria >2 g/day, close monitoring
 
 is warranted. However, the result of a 24 h urine collection is often
-inaccurate [356] and the of . [....................................................................................................................................................................]
 
 
 Consequently, an ACR cut-off of 30 mg/mmol can be used to identify
@@ -4866,7 +4838,6 @@ neonatal care for >48 h, birth weight <10th percentile, preeclampsia, and pre-te
 10.4.2 Non-pharmacological management
 Non-pharmacological management of hypertension during pregnancy
 has a limited role to play, with randomized studies of dietary and life
-[376] . [............................................................................................................................................................................]
 
 
 Regular exercise might be continued with caution and obese women
@@ -5017,7 +4988,6 @@ maternal plasma.
 10.6.3 Risk of recurrence of hypertensive disorders in a
 subsequent pregnancy
 Women experiencing hypertension in their first pregnancy are at
-increased risk in a subsequent pregnancy. The earlier the onset of . [.............................................................]
 
 
 hypertension in the first pregnancy, the higher the risk of recurrence
@@ -5136,7 +5106,6 @@ achieve prophylactic anti-Xa levels more effectively. [403]
 
 Consequently, patients at high-risk for VTE should receive prophylactic enoxaparin at 0.5 IU/kg of body weight once daily [403] or another
 
-. [.........................................................................................................................................................................]
 
 
 obese women, weight-based dosing instead of fixed dosing is more
@@ -5289,7 +5258,6 @@ D-dimer: See section 11.4.1.2.
 Compression ultrasound leg vein imaging: Compression
 ultrasound is the diagnostic imaging procedure of choice for suspected DVT in pregnancy with a high sensitivity and specificity for
 
-. [......................................................................................................................................]
 
 
 compression ultrasound evaluations at days 0, 3, and 7 in pregnancy
@@ -5416,7 +5384,6 @@ discussion of the data for the following section of these Guidelines
 In case of emergency, drugs that are not recommended by international agencies for use during pregnancy and breastfeeding
 should not be withheld from the mother. The potential risk of a
 drug and the possible benefit of the therapy must be weighed
-against each other. . [.................................................................]
 
 
 12.1.1 Pharmacokinetics in pregnancy
@@ -5505,7 +5472,6 @@ and restarted 6 h after delivery if there are no bleeding complications.
 12.1.2.2 Thrombolytics
 Thrombolytics are considered to be relatively contraindicated during
 
-. [............................................................................................................................................................................]
 
 
 patients with severe hypotension or shock. [405] The risk of haemorrhage, mostly from the genital tract, is around 8%. [422] There are more
@@ -5646,7 +5612,6 @@ due to small sample sizes. [36][,][430] In a prospective case-control study of
 classification
 
 On 30 June 2015, the US Food and Drug Administration (FDA)
-changed the previously used classification system for the counselling . [.................................................................................................]
 
 
 Eplerenone has been associated with post-implantation losses at the
@@ -5977,7 +5942,6 @@ no evidence-based treatments. More research is clearly needed.
 Cardiac transplantation
 Evidence is also limited for pregnancies in patients post-cardiac
 
-. [............................................................................................................................................................................]
 
 
 Delivery
@@ -6159,7 +6123,6 @@ centre is recommended.
 
 - [It is recommended to inform women with DCM and HFrEF]
 about the risk of deterioration of the condition during gestation
-and peripartum. . [..............................................................................]
 
 
 
@@ -6367,7 +6330,6 @@ Society of Cardiology, Hera Heracleous; Denmark: Danish Society
 of Cardiology, Niels Vejlstrup; Estonia: Estonian Society of
 Cardiology, Maarja Maser; Finland: Finnish Cardiac Society, Risto
 Juhani Kaaja; The Former Yugoslav Republic of Macedonia:
-Macedonian FYR Society of Cardiology, Elizabeta SrbinovskaKostovska; France: French Society of Cardiology, Claire Mounier- . [....................................................................................................]
 
 
 Vehier; Georgia: Georgian Society of Cardiology, Tamar
@@ -6478,7 +6440,6 @@ reports and literature review. Medicine (Baltimore) 2016;95:e4487.
 A, Urbanek P, Kusmierczyk M, Kozluk E, Sacher F, Sanders P, Dangel J,
 Haissaguerre M, Walczak F. Ablation of severe drug-resistant tachyarrhythmia
 during pregnancy. J Cardiovasc Electrophysiol 2010;21:877–882.
-. [............................................................................................................................................................................]
 
 
 18. Dronkers CE, Sramek A, Huisman MV, Klok FA. Accurate diagnosis of iliac vein
@@ -6635,7 +6596,6 @@ JJ, Roos-Hesselink JW. Birth prevalence of congenital heart disease worldwide: A
 systematic review and meta-analysis. J Am Coll Cardiol 2011;58:2241–2247.
 64. Gill HK, Splitt M, Sharland GK, Simpson JM. Patterns of recurrence of congenital
 heart disease: An analysis of 6,640 consecutive pregnancies evaluated by detailed
-fetal echocardiography. J Am Coll Cardiol 2003;42:923–929. . [............................................................................................................................................................................]
 
 
 65. Elliott PM, Anastasakis A, Borger MA, Borggrefe M, Cecchi F, Charron P, Hagege
@@ -6805,7 +6765,6 @@ risk factors, and predictors of infective endocarditis in adult congenital heart
 disease: Focus on the use of prosthetic material. Eur Heart J 2017;38:
 
 2048–2056.
-. [............................................................................................................................................................................]
 
 
 111. Kebed KY, Bishu K, Al Adham RI, Baddour LM, Connolly HM, Sohail MR,
@@ -6958,7 +6917,6 @@ the deterioration due to pregnancy or a consequence of time? Congenit Heart
 Dis 2013;8:302–307.
 
 155. Cataldo S, Doohan M, Rice K, Trinder J, Stuart AG, Curtis SL. Pregnancy following Mustard or Senning correction of transposition of the great arteries: A
-retrospective study. BJOG 2016;123:807–813. . [............................................................................................................................................................................]
 
 
 156. Hornung TS, Bernard EJ, Celermajer DS, Jaeggi E, Howman-Giles RB, Chard RB,
@@ -7116,7 +7074,6 @@ gestation. J Vasc Surg 2015;62:1323–1325.
 194. Lesniak-Sobelga A, Tracz W, KostKiewicz M, Podolec P, Pasowicz M. Clinical
 and echocardiographic assessment of pregnant women with valvular heart
 diseases–maternal and fetal outcome. Int J Cardiol 2004;94:15–23.
-. [............................................................................................................................................................................]
 
 
 195. Zuhlke L, Engel ME, Karthikeyan G, Rangarajan S, Mackie P, Cupido B, Mauff K,
@@ -7280,7 +7237,6 @@ Myocardial infarction in pregnancy and postpartum in the UK. Eur J Prev Cardiol
 
 236. Berg CJ, Callaghan WM, Syverson C, Henderson Z. Pregnancy-related mortality
 in the United States, 1998 to 2005. Obstet Gynecol 2010;116:1302–1309.
-. [............................................................................................................................................................................]
 
 
 237. Roth A, Elkayam U. Acute myocardial infarction associated with pregnancy.
@@ -7437,7 +7393,6 @@ Bollen IA, Sliwa K, Alders M, Almomani R, van Langen IM, van der Meer P,
 Sinke RJ, van der Velden J, Van Veldhuisen DJ, van Tintelen JP, Jongbloed JD.
 Titin gene mutations are common in families with both peripartum cardiomyopathy and dilated cardiomyopathy. Eur Heart J 2014;35:2165–2173.
 276. Ware JS, Li J, Mazaika E, Yasso CM, DeSouza T, Cappola TP, Tsai EJ, HilfikerKleiner D, Kamiya CA, Mazzarotto F, Cook SA, Halder I, Prasad SK, Pisarcik J,
-Hanley-Yanez K, Alharethi R, Damp J, Hsich E, Elkayam U, Sheppard R, Kealey . [............................................................................................................................................................................]
 
 
 A, Alexis J, Ramani G, Safirstein J, Boehmer J, Pauly DF, Wittstein IS, Thohan V,
@@ -7590,7 +7545,6 @@ Cardiol 2002;40:1864–1869.
 312. Tanaka H, Kamiya C, Katsuragi S, Tanaka K, Miyoshi T, Tsuritani M, Yoshida M,
 Iwanaga N, Neki R, Yoshimatsu J, Ikeda T. Cardiovascular events in pregnancy
 with hypertrophic cardiomyopathy. Circ J 2014;78:2501–2506.
-. [............................................................................................................................................................................]
 
 
 313. Pieper PG, Walker F. Pregnancy in women with hypertrophic cardiomyopathy.
@@ -7745,7 +7699,6 @@ Obstet Gynecol 1998;178:521–526.
 measurement in hypertensive pregnancy? Hypertens Pregnancy 2008;27:95–101.
 353. Schmella MJ, Clifton RG, Althouse AD, Roberts JM. Uric acid determination in
 gestational hypertension: Is it as effective a delineator of risk as proteinuria in
-high-risk women? Reprod Sci 2015;22:1212–1219. . [............................................................................................................................................................................]
 
 
 354. Cade TJ, de Crespigny PC, Nguyen T, Cade JR, Umstad MP. Should the spot
@@ -7902,7 +7855,6 @@ Fetal Neonatal Med 2015;28:245–253.
 
 396. Knight M; UKOSS. Antenatal pulmonary embolism: Risk factors, management
 and outcomes. BJOG 2008;115:453–461.
-. [............................................................................................................................................................................]
 
 
 397. Sultan AA, West J, Tata LJ, Fleming KM, Nelson-Piercy C, Grainge MJ. Risk of
@@ -8024,7 +7976,6 @@ pregnant women with cardiovascular disease. Circ J 2016;80:2221–2226.
 428. Lip GY, Beevers M, Churchill D, Shaffer LM, Beevers DG. Effect of atenolol on
 birth weight. Am J Cardiol 1997;79:1436–1438.
 429. Davis RL, Eastman D, McPhillips H, Raebel MA, Andrade SE, Smith D, Yood
-MU, Dublin S, Platt R. Risks of congenital malformations and perinatal events . [............................................................................]
 
 
 among infants exposed to calcium channel and beta-blockers during pregnancy.

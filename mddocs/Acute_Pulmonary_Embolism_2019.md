@@ -112,7 +112,6 @@ embolism . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 4.4.3 Point-of-care D-dimer assays . . . . . . . . . . . . . . . . . . . . . . . . . . . 555
 
 
-. [...........................................................................]
 
 
 4.5 Computed tomographic pulmonary angiography . . . . . . . . . . . . . 555
@@ -270,7 +269,6 @@ pulmonary embolism . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 10.2 Chronic thromboembolic pulmonary hypertension . . . . . . . . . 583
 
-. [...........................................................................................................................................................]
 
 
 10.2.1 Epidemiology, pathophysiology, and natural history . . . . . 583
@@ -441,6 +439,9 @@ with cancer . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 9 Pulmonary embolism and pregnancy . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 579
 
 
+
+![Page 11 Images](Acute_Pulmonary_Embolism_2019_images/page_011_images.png)
+
 9.1 Epidemiology and risk factors for pulmonary embolism
 
 in pregnancy . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 579
@@ -560,11 +561,13 @@ CO Cardiac output
 CPET Cardiopulmonary exercise testing
 
 CPG Committee for Practice Guidelines
-CrCl Creatinine clearance . [.........................................................................................................................................................................]
 
 
 List of figures
 
+
+
+![Page 16 Images](Acute_Pulmonary_Embolism_2019_images/page_016_images.png)
 
 Figure 1 Trends in annual incidence rates and case fatality rates
 
@@ -779,7 +782,6 @@ quality criteria for the development of guidelines have been established in orde
 [Education/Clinical-Practice-Guidelines/Guidelines-development/Wri](http://www.escardio.org/Guidelines-&-Education/Clinical-Practice-Guidelines/Guidelines-development/Writing-ESC-Guidelines)
 [ting-ESC-Guidelines). The ESC Guidelines represent the official posi-](http://www.escardio.org/Guidelines-&-Education/Clinical-Practice-Guidelines/Guidelines-development/Writing-ESC-Guidelines)
 
-. [............................................................................................................................................................................]
 
 
 The ESC carries out a number of registries which are essential to
@@ -881,7 +883,6 @@ patient or the patient’s caregiver where appropriate and/or necessary. It
 is also the health professional’s responsibility to verify the rules and regulations applicable in each country to drugs and devices at the time of
 
 prescription.
-. [............................]
 
 ### 2 Introduction
 
@@ -1068,7 +1069,6 @@ PE before death. [9]
 Continued
 
 
-. [..............................................................................................]
 
 ESC Guidelines 551
 
@@ -1102,7 +1102,6 @@ tion 8 of these Guidelines.
 Major trauma, surgery, lower-limb fractures and joint replacements, and spinal cord injury are strong provoking factors for
 VTE. [23][,][24] Cancer is a well-recognized predisposing factor for VTE.
 The risk of VTE varies with different types of cancer; [25][,][26] pancreatic cancer, haematological malignancies, lung cancer, gastric can
-[27][,][28] . [....................................................................................................]
 
 
 has most likely exerted a significant positive effect on the prognosis of PE in recent years. However, there is also a tendency
@@ -1218,7 +1217,6 @@ PE. [54][,][55] Conversely, patients with VTE have an increased risk of
 subsequent myocardial infarction and stroke, or peripheral arterial embolization. [56]
 
 
-. [.........................................................................................................................................................................]
 
 
 3.3 Pathophysiology and determinants of
@@ -1316,7 +1314,6 @@ caused by an inverted pressure gradient between the right atrium
 increased risk of paradoxical embolization and stroke. [67] Finally,
 even if they do not affect haemodynamics, small distal emboli may
 create areas of alveolar haemorrhage resulting in haemoptysis,
-pleuritis, and pleural effusion, which is usually mild. This clinical . [.................................]
 
 
 presentation is known as ‘pulmonary infarction’. Its effect on gas
@@ -1413,7 +1410,6 @@ pulmonary embolism
 |PE-likely|PE-likely|>_6|>_3|>_3|
 
 
-. [...........................................................................]
 
 
 b.p.m. = beats per minute; DVT = deep vein thrombosis; PE = pulmonary
@@ -1491,7 +1487,6 @@ own hospital. The quantitative enzyme-linked immunosorbent assay
 (ELISA) or ELISA-derived assays have a diagnostic sensitivity of >_95%,
 and can be used to exclude PE in patients with either low or intermediate pre-test probability. In the emergency department, a negative ELISA
 D-dimer can, in combination with clinical probability, exclude the disease without further testing in �30% of patients with suspected
-PE. [101][�][103] Outcome studies have shown that the 3 month thrombo- . [............................................................................................................................................................................]
 
 
 embolic risk was <1% in patients with low or intermediate clinical probability who were left untreated on the basis of a negative test result. [104]
@@ -1631,7 +1626,6 @@ probability of PE. On the other hand, it remains controversial
 whether patients with a negative CTPA and a high clinical probability
 should be further investigated.
 Chronic thromboembolic pulmonary hypertension (CTEPH) is a
-potentially fatal late sequela of PE, but pre-existing CTEPH should not . [............................................................]
 
 
 be missed in patients investigated for suspected acute PE. Signs of pre[existing CTEPH on CTPA are listed in Supplementary Data Table 2;](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehz405#supplementary-data)
@@ -1703,7 +1697,6 @@ but there is substantial interobserver variability at this level. [135][,][136]
 
 Pulmonary angiography is not free of risk. In a study of 1111
 
-. [............................................................................................................................................................................]
 
 
 complications occurred in 1%, and minor complications in 5%. [137]
@@ -1859,7 +1852,6 @@ mortality, especially in patients with RV dysfunction. [155][,][157][�][159]
 
 In some patients with suspected acute PE, echocardiography may
 detect increased RV wall thickness or tricuspid insufficiency jet velocity beyond values compatible with acute RV pressure overload (>3.8
-m/s or a tricuspid valve peak systolic gradient >60 mmHg). [160] In these . [.................................................................................]
 
 
 cases, chronic thromboembolic (or other) pulmonary hypertension
@@ -1987,7 +1979,6 @@ prognostic criteria: (i) clinical, imaging, and laboratory indicators of
 PE severity, mostly related to the presence of RV dysfunction; and (ii)
 presence of comorbidity and any other aggravating conditions that
 
-. [........................................................................................................]
 
 
 5.1 Clinical parameters of pulmonary
@@ -2118,7 +2109,6 @@ and the further prognostic stratification of such patients
 [(Supplementary Data Table 4). At the other end of the severity](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehz405#supplementary-data)
 spectrum, high-sensitivity troponin assays possess a high negative
 
-[197] . [............................................................................................................................................................................]
 
 
 prospective multicentre cohort of 526 normotensive patients,
@@ -2326,7 +2316,6 @@ Severity Index
 ||Class III: 86105<br>points<br>moderate mortality<br>risk (3.27.1%)<br>Class IV: 106125<br>points<br>high mortality risk<br>(4.011.4%)<br>Class V: >125<br>points<br>very high mortality<br>risk (10.024.5%)|1 point(s) 5 30<br>day mortality risk<br>10.9% (95% CI<br>8.513.2%)|1 point(s) 5 30<br>day mortality risk<br>10.9% (95% CI<br>8.513.2%)|
 
 
-. [.................]
 
 
 BP = blood pressure; b.p.m. = beats per minute; CI = confidence interval.
@@ -2393,7 +2382,6 @@ the intermediate-high-risk category. As will be discussed in more
 detail in section 7, close monitoring is recommended in these cases to
 permit the early detection of haemodynamic decompensation or collapse, and consequently the need for rescue reperfusion therapy. [179]
 
-Patients in whom the RV appears normal on echocardiography or . [...........................................................................]
 
 
 CTPA, and/or who have normal cardiac biomarker levels, belong to
@@ -2474,7 +2462,6 @@ patients with high-risk PE; therefore, positive end-expiratory pressure should b
 6 mL/kg lean body weight should be used in an attempt to keep the
 end-inspiratory plateau pressure <30 cm H 2 O. If intubation is
 needed, anaesthetic drugs more prone to cause hypotension should
-be avoided for induction. . [....................................................................................................]
 
 
 6.1.2 Pharmacological treatment of acute right
@@ -2571,7 +2558,6 @@ reported. [253][,][254]
 6.1.4 Advanced life support in cardiac arrest
 Acute PE is part of the differential diagnosis of cardiac arrest with
 
-. [...................................................................................................]
 
 
 activity. In cardiac arrest presumably caused by acute PE, current
@@ -2704,7 +2690,6 @@ The daily dose is adjusted according to the INR over the next 5�7
 days, aiming for an INR level of 2.0 3.0. Pharmacogenetic testing
 may increase the precision of warfarin dosing. [270][,][271] When used in
 
-. [............................................................................................................................................................................]
 
 
 anticoagulation control and may be associated with a reduced risk of
@@ -2877,7 +2862,6 @@ from registries and pooled results from case series. [290][,][291] The
 overall procedural success rates (defined as haemodynamic stabilization, correction of hypoxia, and survival to hospital discharge)
 of percutaneous catheter-based therapies reported in these studies have reached 87%; [292] however, these results may be subject to
 
-. [............................................................................................]
 
 
 treatment and a catheter-based therapy combining ultrasoundbased clot fragmentation with low-dose in situ thrombolysis in 59
@@ -2954,7 +2938,6 @@ Among patients who presented with intermediate-risk PE (n =
 embolism teams
 
 The concept of multidisciplinary rapid-response teams for the man
-. [.............................................................................]
 
 
 filter was associated with a significant reduction in the risk of
@@ -3148,7 +3131,6 @@ extending up to the vena cava. [303][,][307][,][308]
 
 7.1 Diagnostic strategies
 Various combinations of clinical assessments, plasma D-dimer meas
-. [.....................................]
 
 ### 7 Integrated risk-adapted diagnosis and management
 
@@ -3244,7 +3226,6 @@ usually high and the differential diagnosis includes cardiac tamponade, acute co
 dysfunction, and hypovolaemia. The most useful initial test in this situation is bedside TTE, which will yield evidence of acute RV dysfunction if acute PE is the cause of the patient’s haemodynamic
 decompensation. In a highly unstable patient, echocardiographic evidence of RV dysfunction is sufficient to prompt immediate reperfusion without further testing. This decision may be strengthened by
 
-. [...........................................]
 
 
 the (rare) visualization of right heart thrombi. [155][,][157][,][321][,][322] Ancillary
@@ -3314,7 +3295,6 @@ treatment are alternative reperfusion options in patients with contraindications
 the appropriate resources are available on-site.
 Following reperfusion treatment and haemodynamic stabilization,
 
-. [............................................................................................................................................................................]
 
 
 parenteral to oral anticoagulation. As patients belonging to this risk
@@ -3485,7 +3465,6 @@ sensitivity is increased further when clinical criteria (e.g. PESI or
 sPESI) are combined with imaging findings, or laboratory biomarker levels. [234] A multicentre prospective management trial
 tested this hypothesis, investigating the efficacy and safety of early
 discharge, and ambulatory rivaroxaban treatment, in patients
-selected by clinical criteria and an absence of RV dysfunction. . [............................................................................................................................................................................]
 
 
 Overall, �20% of the screened unselected patients with PE were
@@ -3587,7 +3566,6 @@ whom a strong (major) transient or reversible risk factor, most commonly major s
 for the acute (index) episode; (ii) patients in whom the index episode
 might be partly explained by the presence of a weak (minor) transient
 or reversible risk factor, or if a non-malignant risk factor for thrombosis persists; (iii) patients in whom the index episode occurred in the
-. [................................................................]
 
 
 absence of any identifiable risk factor (the present Guidelines avoid
@@ -3668,7 +3646,6 @@ select candidates for extended anticoagulation after a first VTE
 event in the VKA era, is currently being revisited based on the
 lower bleeding rates with NOACs. However, despite the
 
-. [......................................................................................................................................................................]
 
 
 with NOACs is not without risk. Phase III clinical trials on the
@@ -3785,7 +3762,6 @@ more recently, another trial demonstrated the superiority of anticoagulation wit
 secondary prophylaxis of VTE recurrence. [352]
 
 A randomized, placebo controlled study evaluated sulodexide (2
-� 250 lipasemic unit capsules b.i.d.) for the prevention of recurrence . [.....................]
 
 
 in 615 patients with a first VTE event without an identifiable risk fac
@@ -3908,7 +3884,6 @@ CI 0.68�4.96). Corresponding rates of CRNM bleeds were 13%
 
 Based on the currently available evidence, as described above,
 patients with acute PE and cancer, particularly those with gastrointestinal cancer, should be encouraged to continue LMWH for >_ 3�6
-months. This also applies to patients in whom oral treatment is unfeasible due to problems of intake or absorption, and to those with . [.....................................................................................................................................................................]
 
 
 severe renal impairment. In all other cases, especially in patients with
@@ -4031,7 +4006,6 @@ pregnancy
 9.2.1 Clinical prediction rules and D-dimers
 Diagnosis of PE during pregnancy can be challenging as symptoms
 
-. [......................................................................................................]
 
 
 prevalence of confirmed PE is low among women investigated for
@@ -4147,7 +4121,6 @@ CTPA techniques is negligible (lifetime cancer risk is
 �
 reportedly increased by a factor of 1.0003 1.0007); avoiding
 CTPA on the grounds of maternal cancer risk is therefore not
-justified. [394] . [.............................]
 
 
 A normal perfusion scan and a negative CTPA appear equally safe
@@ -4279,7 +4252,6 @@ may be of clinical benefit. It is important to bear in mind that: (i)
 LMWH has a predictable pharmacokinetic profile, (ii) data on optimal
 
 
-. [............................................................................................................................................................................]
 
 582 ESC Guidelines
 
@@ -4361,7 +4333,6 @@ pregnancy
 |Amniotic fluid embolism should be considered<br>in a pregnant or post-partum woman with<br>otherwise unexplained cardiac arrest, sus-<br>tained hypotension, or respiratory deteriora-<br>tion, especially if accompanied by<br>disseminated intravascular<br>coagulation.422,425,426|IIa|C|C|
 
 
-. [...........]
 
 
 CTPA = computed tomography pulmonary angiography; CUS = compression ultrasonography; DVT = deep vein thrombosis; LMWH = low-molecular weight heparin;
@@ -4427,7 +4398,6 @@ excess body weight and cardiopulmonary comorbidity, is largely
 responsible for the frequently reported dyspnoea and signs of exer
 cise limitation after acute PE. This also means that, at least in the
 
-. [............................................................................................................................................................................]
 
 
 appear to be attributable to ‘large’ residual thrombi, or persisting/
@@ -4595,7 +4565,6 @@ chronic thromboembolic disease (CTED). Identification of patients
 with chronic thromboembolism without PH, who may have an indication for surgical or interventional treatment, requires particular
 expertise and should be done in CTEPH referral centres. Among
 1019 patients who were submitted to pulmonary endarterectomy
-(PEA) in a UK referral centre, 42 patients did not have pulmonary . [...................................................................................................]
 
 
 hypertension at rest but showed functional improvement after the
@@ -4692,7 +4661,6 @@ which are inaccessible to surgery. BPA is a stepwise procedure
 �
 requiring several (usually 4 10) separate sessions. This is necessary
 to engage all under-perfused lung segments, while limiting the con
-. [............................................................................................................................................................................]
 
 
 pulmonary arteries requires particular expertise, as the complexity
@@ -4816,7 +4784,6 @@ data are available to date. [470]
 
 Medical therapy is not indicated in symptomatic survivors of acute
 PE with documented post-thrombotic obstructions but an absence
-of PH at right heart catheterization at rest (CTED). . [.....................]
 
 
 10.3 Strategies for patient follow-up after
@@ -4930,7 +4897,6 @@ exercise). In addition, they promote self-management skills such as
 |Further diagnostic evaluatione may be consid-<br>ered in asymptomatic patients with risk factors<br>for CTEPH.f 447449,478|IIb|C|C|
 
 
-. [.......................................................]
 
 
 CPET = cardiopulmonary exercise testing; CT = computed tomography; CTEPH
@@ -5066,7 +5032,6 @@ or ‘simple’ deconditioning. Follow-up imaging is not routinely rec
 ommended in an asymptomatic patient, but it may be considered
 
 in patients with risk factors for development of CTEPH.
-. [..................................................................................................................................................................]
 
 ### 13 Gaps in the evidence
 
@@ -5158,7 +5123,6 @@ for the treatment of PE during pregnancy.
 
 - [NOACs are not allowed in pregnancy. However, if exposure to]
 these drugs occurs during pregnancy despite this warning, any
-possible effects on the foetus should be recorded to provide . [..................................................]
 
 
 more precise information on the risks and complications of these
@@ -5278,7 +5242,6 @@ Investigaciones Cardiovasculares, Madrid, Spain; and Cardiology,
 Hospital Universitario 12 de Octubre & iþ12 Research Institute,
 Madrid, Spain; CIBERCV, Madrid, Spain; Geert-Jan Geersing, Julius
 
-. [...................................................]
 
 
 [Supplementary Data with additional Web Supplementary Tables](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehz405#supplementary-data)
@@ -5376,7 +5339,6 @@ Mellemkjaer; Egypt: Egyptian Society of Cardiology, Mansour
 Mostafa; Estonia: Estonian Society of Cardiology, Julia Reinmets;
 Finland: Finnish Cardiac Society, Pertti J€a€askel€ainen; France:
 French Society of Cardiology, Denis Angoulvant; Germany:
-Greece: Hellenic . [............................................................................................................................................................................]
 
 
 Society of Cardiology, George Giannakoulas; Hungary: Hungarian
@@ -5572,7 +5534,6 @@ venous thromboembolism from use of oral contraceptives containing different prog
 FM, Stijnen T, Dekkers OM. Combined oral contraceptives: venous thrombosis.
 Cochrane Database Syst Rev 2014;3:CD010813.
 35. van Vlijmen EF, Wiewel-Verschueren S, Monster TB, Meijer K. Combined oral
-contraceptives, thrombophilia and the risk of venous thromboembolism: a systematic review and meta-analysis. J Thromb Haemost 2016;14:1393�1403. . [............................................................................................................................................................................]
 
 
 36. Tricotel A, Collin C, Zureik M. Impact of the sharp changes in the use of contraception in 2013 on the risk of pulmonary embolism in France. J Thromb Haemost
@@ -5736,7 +5697,6 @@ Investigators. Prevalence of pulmonary embolism among patients hospitalized for
 syncope. N Engl J Med 2016;375:1524�1531.
 78. Stein PD, Henry JW. Clinical characteristics of patients with acute pulmonary embolism stratified according to their presenting syndromes. Chest 1997;112:974�979.
 79. White RH. The epidemiology of venous thromboembolism. Circulation
-2003;107:I4�I8. . [..........................................................................................................................................................................]
 
 
 80. Rodger MA, Carrier M, Jones GN, Rasuli P, Raymond F, Djunaedi H, Wells PS.
@@ -5889,7 +5849,6 @@ Le Gal G, Neilly B, Rabin J, Soudry G, Tapson V, Torbati S, Kauffman J, Ahuja S,
 Donohoe K. Appropriate use criteria for ventilation-perfusion imaging in pulmonary embolism: summary and excerpts. J Nucl Med 2017;58:13N�15N.
 118. Sostman HD, Coleman RE, DeLong DM, Newman GE, Paine S. Evaluation of
 revised criteria for ventilation-perfusion scintigraphy in patients with suspected
-pulmonary embolism. Radiology 1994;193:103�107. . [............................................................................................................................................................................]
 
 
 119. Gottschalk A, Sostman HD, Coleman RE, Juni JE, Thrall J, McKusick KA,
@@ -6038,7 +5997,6 @@ Monreal M, Torbicki A, Yusen RD, Jimenez D. Prognostic significance of right
 heart thrombi in patients with acute symptomatic pulmonary embolism: systematic review and meta-analysis. Chest 2017;151:409�416.
 159. Barrios D, Rosa-Salazar V, Jime´nez D, Morillo R, Muriel A, Del Toro J, Lopez-�
 Jime´nez L, Farge-Bancel D, Yusen R, Monreal M; RIETE investigators. Right heart
-thrombi in pulmonary embolism. Eur Respir J 2016;48:1377�1385. . [............................................................................................................................................................................]
 
 
 160. Guerin L, Couturaud F, Parent F, Revel MP, Gillaizeau F, Planquette B, Pontal D,
@@ -6194,7 +6152,6 @@ G, Barthel P, Strasser RH. Correlation of heart-type fatty acid-binding protein
 with mortality and echocardiographic data in patients with pulmonary embolism
 at intermediate risk. Am Heart J 2010;160:294�300.
 199. Puls M, Dellas C, Lankeit M, Olschewski M, Binder L, Geibel A, Reiner C,
-Schafer K, Hasenfuss G, Konstantinides S. Heart-type fatty acid-binding protein . [..........................................................................................................................................................................]
 
 
 permits early risk stratification of pulmonary embolism. Eur Heart J
@@ -6352,7 +6309,6 @@ intensive care unit. Curr Heart Fail Rep 2012;9:228�235.
 in treatment of a low cardiac output complicating an acute increase in right
 ventricular afterload in dogs. Anesthesiology 1984;60:132�135.
 241. Manier G, Castaing Y. Influence of cardiac output on oxygen exchange in acute
-pulmonary embolism. Am Rev Respir Dis 1992;145:130�136. . [.........................................................................................................................................................................]
 
 
 242. Kerbaul F, Gariboldi V, Giorgi R, Mekkaoui C, Guieu R, Fesler P, Gouin F,
@@ -6510,7 +6466,6 @@ thrombolysis in acute massive pulmonary embolism. Chest
 2006;129:1043�1050.
 
 282. Marti C, John G, Konstantinides S, Combescure C, Sanchez O, Lankeit M,
-Meyer G, Perrier A. Systemic thrombolytic therapy for acute pulmonary embolism: a systematic review and meta-analysis. Eur Heart J 2015;36:605�614. . [............................................................................................................................................................................]
 
 
 283. Chatterjee S, Chakraborty A, Weinberg I, Kadakia M, Wilensky RL, Sardar P,
@@ -6668,7 +6623,6 @@ the initial treatment of proximal venous thrombosis. N Engl J Med
 Dolsma J, Eijsvogel M, Faber LM, Hofstee HM, Hovens MM, Jonkers GJ, van
 Kralingen KW, Kruip MJ, Vlasveld T, DE Vreede MJ, Huisman MV; Hestia Study
 Investigators. Outpatient treatment in patients with acute pulmonary embolism:
-the Hestia Study. J Thromb Haemost 2011;9:1500�1507. . [..........................................................................................................................................................................]
 
 
 318. den Exter PL, Zondag W, Klok FA, Brouwer RE, Dolsma J, Eijsvogel M, Faber
@@ -6829,7 +6783,6 @@ Ghirarduzzi A, Tosetto A, Falanga A, Martinelli I, Testa S, Barcellona D, Gerosa
 M, Banzato A. Rivaroxaban vs warfarin in high-risk patients with antiphospholipid syndrome. Blood 2018;132:1365�1371.
 355. Brighton TA, Eikelboom JW, Mann K, Mister R, Gallus A, Ockelford P, Gibbs H,
 Hague W, Xavier D, Diaz R, Kirby A, Simes J. Low-dose aspirin for preventing
-recurrent venous thromboembolism. N Engl J Med 2012;367:1979�1987. . [............................................................................................................................................................................]
 
 
 356. Becattini C, Agnelli G, Schenone A, Eichinger S, Bucherini E, Silingardi M,
@@ -6985,7 +6938,6 @@ L, Couturaud F, van Dooren YPA, Elias A, Faber LM, Hofstee HMA, van der
 Hulle T, Kruip M, Maignan M, Mairuhu ATA, Middeldorp S, Nijkeuter M, Roy
 PM, Sanchez O, Schmidt J, Ten Wolde M, Klok FA, Huisman MV; Artemis Study
 Investigators. Pregnancy-adapted YEARS algorithm for diagnosis of suspected
-pulmonary embolism. N Engl J Med 2019;380:1139�1149. . [............................................................................................................................................................................]
 
 
 392. Mitchell DP, Rowan M, Loughman E, Ridge CA, MacMahon PJ. Contrast monitoring techniques in CT pulmonary angiography: an important and underappreciated contributor to breast dose. Eur J Radiol 2017;86:184�189.
@@ -7132,7 +7084,6 @@ study. Am J Med 2017;130:990.e9�990.e21.
 Weinberg I, Baggish A. Cardiopulmonary exercise testing in patients following
 massive and submassive pulmonary embolism. J Am Heart Assoc 2018;7:e006841.
 438. Konstantinides SV, Barco S, Rosenkranz S, Lankeit M, Held M, Gerhardt F,
-Bruch L, Ewert R, Faehling M, Freise J, Ghofrani HA, Grunig E, Halank M, . [............................................................................................................................................................................]
 
 
 Heydenreich N, Hoeper MM, Leuchte HH, Mayer E, Meyer FJ, Neurohr C,
@@ -7258,7 +7209,6 @@ endarterectomy: results from the United Kingdom National Cohort. Circulation
 467. Ogawa A, Satoh T, Fukuda T, Sugimura K, Fukumoto Y, Emoto N, Yamada N,
 Yao A, Ando M, Ogino H, Tanabe N, Tsujino I, Hanaoka M, Minatoya K, Ito H,
 Matsubara H. Balloon pulmonary angioplasty for chronic thromboembolic pulmonary hypertension: results of a multicenter registry. Circ Cardiovasc Qual
-Outcomes 2017;10:e004029. . [...............................................................................................................]
 
 
 468. Collaud S, Brenot P, Mercier O, Fadel E. Rescue balloon pulmonary angioplasty

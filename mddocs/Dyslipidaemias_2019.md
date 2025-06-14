@@ -129,7 +129,6 @@ atherosclerosis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 atherosclerosis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 129
 
 
-. [.......................................................................................]
 
 
 5.3.4 Lipoprotein(a) and risk of atherosclerosis . . . . . . . . . . . . . . . 129
@@ -305,7 +304,6 @@ lipoproteins and their remnants . . . . . . . . . . . . . . . . . . . . . . . . 
 
 cholesterol . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 145
 
-. [............................................................................................................................................................................]
 
 
 8.12 Strategies to control plasma cholesterol . . . . . . . . . . . . . . . . . . . . 145
@@ -644,7 +642,6 @@ solid organ transplant patients . . . . . . . . . . . . . . . . . . . . . . . . 
 
 Recommendations for lipid-lowering drugs in patients with
 
-. [............................................................................................................................................................................]
 
 ### List of tables
 
@@ -898,7 +895,6 @@ EAS European Atherosclerosis Society
 EBBINGHAUS Evaluating PCSK9 Binding Antibody Influence
 on Cognitive Health in High Cardiovascular
 Risk Subjects
-. [...........................................................................................................................................................................]
 
 
 eGFR Estimated glomerular filtration rate
@@ -1060,7 +1056,6 @@ STEMI ST-elevation myocardial infarction
 STRENGTH Outcomes Study to Assess STatin Residual
 Risk Reduction with EpaNova in HiGh CV Risk
 PatienTs with Hypertriglyceridemia
-. [.......................................................................................................................................................................]
 
 
 TC Total cholesterol
@@ -1144,7 +1139,6 @@ real or potential sources of conflicts of interest. These forms were
 [www.escardio.org/guidelines). Any changes in declarations of interest](http://www.escardio.org/guidelines)
 that arise during the writing period were notified to the ESC and EAS
 Chairpersons and updated. The Task Force received its entire financial support from the ESC and EAS without any involvement from
-the healthcare industry. . [...................................................]
 
 Table 1 Classes of recommendations
 
@@ -1235,7 +1229,6 @@ especially relevant to high- and very-high-risk patients.
 These novel ESC/EAS Guidelines on lipids provide important new
 advice on patient management, which should enable more clinicians
 
-. [............................................................................................................................................................................]
 
 
 2.1 What is new in the 2019 Guidelines?
@@ -1477,7 +1470,6 @@ regions in Europe (Figures 1 and 2). [11] All International Classification of
 Diseases codes that are related to deaths from vascular origin caused
 by atherosclerosis are included. The reasons for retaining a system
 that estimates fatal as opposed to total fatal þ non-fatal events are
-that non-fatal events are dependent on definition, developments in . [..........................................................................................................................................]
 
 
 diagnostic tests, and methods of ascertainment, all of which can vary,
@@ -1980,7 +1972,6 @@ associated with appreciable reclassification. Total CV risk will also be
 higher than indicated in the SCORE charts in asymptomatic persons
 
 with abnormal markers of subclinical atherosclerotic vascular dam
-age. Reclassification is of value in people identified as being at moder. [.....................................]
 ate CV risk by using markers such as CAC score >100 Agatston
 units, ankle�brachial index (ABI) <0.9 or >1.40, carotid�femoral
 pulse wave velocity >10 m/s, or the presence of plaques at carotid or
@@ -2068,7 +2059,6 @@ A recent meta-analysis from the US Preventive Services Task Force
 summarized the available evidence on the value of non-traditional
 
 risk factors for risk prediction, and found that, although there are no
-randomized trials showing that the use of CAC reduces health outcomes, nevertheless it improves both discrimination and . [....................................]
 
 
 reclassification. [19] Assessment of carotid or femoral plaque burden
@@ -2148,7 +2138,6 @@ ESC/EAS Guidelines 127
 follow-up period was low (1.5 4.9%). [26] In contrast, the rates of
 ASCVD and coronary heart disease (CHD) events in individuals with
 a CAC score >100 Agatston were 18.9 and 12.7 per 1000 personyears, respectively. [18] Compared with a strategy of treating all
-patients, the use of CAC score to guide long-term statin therapy has . [.............]
 been shown to be cost-effective. [27] Note that CAC score is often
 
 very low in patients younger than 45 years of age with severe familial
@@ -2304,7 +2293,6 @@ Plasma LDL-C is a measure of the cholesterol mass carried by LDL
 particles, by far the most numerous of the ApoB-containing lipoproteins, and is an estimate of the concentration of circulating LDL.
 Numerous epidemiological studies, Mendelian randomization studies,
 
-. [.............................................................................................................................]
 
 
 between the absolute changes in plasma LDL-C and the risk of
@@ -2448,7 +2436,6 @@ its ApoB component. [70] It is <70 nm in diameter and can freely flux
 across the endothelial barrier, where it can become—similarly to
 LDL—retained within the arterial wall and thus may increase the risk
 of ASCVD. Pro-atherogenic effects of Lp(a) have also been attrib
-. [............................................................................................................................................................................]
 
 
 plasminogen, and it has pro-inflammatory effects most likely related
@@ -2614,7 +2601,6 @@ reported as either a molar concentration (nmol/L) or as a mass (mg/
 dL) by the various assays, and conversion between molar and mass
 
 concentrations has been found to be both size- and concentration
-[91][�][93] . [...........................................................................................................................................................................]
 
 
 needed to establish a reliable and reproducible method for the quantification of Lp(a) mass or particle number. [92]
@@ -2742,7 +2728,6 @@ should be considered in patients who have an estimated 10-year risk
 of ASCVD that is close to the threshold between high and moderate
 risk. [110][�][112]
 
-Recommendations for measuring lipids and lipoproteins to estimate the risk of ASCVD are summarized below. . [....................................................................................]
 
 ### 6 Treatment targets and goals
 
@@ -2825,7 +2810,6 @@ of >_50% from baseline and an LDL-C goal <1.8 mmol/L (<70 mg/dL)
 are recommended. In patients at moderate CV risk, an LDL-C goal
 <2.6 mmol/L (<100 mg/dL) should be considered, while for low-risk
 individuals a goal of <3.0 mmol/L (<116 mg/dL) may be considered
-(see Recommendations for treatment goals for low-density lipoprotein cho[lesterol below and Supplementary Table 2).](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehz455#supplementary-data) . [...........................................................................................]
 
 
 Secondary goals have also been defined by inference for nonHDL-C and for ApoB; they receive a moderate grading, as they have
@@ -2932,7 +2916,6 @@ epidemiological studies indicates that higher consumption of fruit,
 non-starchy vegetables, nuts, legumes, fish, vegetable oils, yoghurt,
 and wholegrains, along with a lower intake of red and processed
 
-. [..................................................................................]
 
 
 meats, foods higher in refined carbohydrates, and salt, is associated with a lower incidence of CV events. [131] Moreover, it indi
@@ -3019,7 +3002,6 @@ HDL-C levels, trans fats decrease them. [137] Trans unsaturated fatty
 acids can be found in limited amounts (usually <5% of total fat) in
 dairy products and in meats from ruminants. ‘Partially hydrogenated
 fatty acids’ of industrial origin represent the major source of trans
-fatty acids in the diet; the average consumption of trans fatty acids . [......................................................................]
 
 
 �
@@ -3111,7 +3093,6 @@ improve the plasma lipid profile
 LDL-C lowering represents the primary target for reducing CV risk
 and therefore deserves special emphasis in the evaluation of lifestyle
 
-. [........................................................................................]
 
 
 particularly to people at increased CV risk, may also be able to modify plasma TG and HDL-C levels (Table 9). This section focuses on
@@ -3240,7 +3221,6 @@ intake was between 45�55% of total energy intake. [180]
 
 Moderate alcohol consumption [<_10 g/day (1 unit) for men and
 women] is acceptable for those who drink alcoholic beverages, if TG
-levels are not elevated. [183][,][184] . [............................................................................................................................................................................]
 
 
 7.4.5 Smoking
@@ -3402,7 +3382,6 @@ icosapent ethyl b.i.d. [twice a day]. [194]
 
 Other features of a healthy diet contributing to CVD prevention
 
-. [............................................................................................................................................................................]
 
 ### 8 Drugs for treatment of dyslipidaemias
 
@@ -3577,7 +3556,6 @@ treatment goals (per cent and absolute value).
 
  - [Response to statin treatment is variable, therefore uptitration of]
 the statin dose may be required before additional LDL-lowering
-treatments are started. . [........................................................................................................................................................................]
 
 
 These are general criteria for the choice of drug. Factors such as
@@ -3727,7 +3705,6 @@ disease. [244][�][246]
 treatment have been shown to exhibit an increased risk of dysglycaemia and development of type 2 diabetes mellitus (T2DM). Several studies have shown that this is a consistent, dose-related effect. [232] A minor,
 
 not clinically relevant elevation of glycated haemoglobin (HbA1c) has
-also been observed. The number needed to cause one case of diabetes . [...............................................................................................................]
 
 
 have yielded conflicting findings and there is a need for further exploration of the risk of haemorrhagic stroke in particular types of
@@ -3891,7 +3868,6 @@ ischaemic stroke was reduced by 21% in this trial (P=0.008). There
 was no evidence of harm caused by ezetimibe or the further LDL-C
 reduction. In this group of patients already treated with statins to
 
-. [............................................................................................................................................................................]
 
 
 although significant and in line with the CTT expectations. [268]
@@ -4071,7 +4047,6 @@ in patients who are at high CV risk, including those with DM. [284]
 
 Given the mechanism of action, these drugs are effective at reducing LDL-C in all patients capable of expressing LDLR in the liver.
 
-. [............................................................................................................................................................................]
 
 
 majority of patients, including those with HeFH and, albeit to a lower
@@ -4251,7 +4226,6 @@ resources.
 8.5 Lomitapide
 The microsomal TG transfer protein (MTP) transfers TGs and phospholipids from the endoplasmic reticulum to ApoB, as a necessary
 step in the formation of VLDL. MTP inhibition thus prevents the for
-. [............................................................................................................................................................................]
 
 
 Lomitapide is an MTP inhibitor designed for o.d. oral treatment of
@@ -4409,7 +4383,6 @@ used in combination. This is explained by the pharmacological interactions betwe
 glucuronidation of statins. Gemfibrozil inhibits the metabolism of statins via the glucuronidation pathway, which leads to marked increases
 in plasma concentrations of statins. [320] As fenofibrate does not share
 the same pharmacokinetic pathways as gemfibrozil, the risk of myo
-[319] . [............................................................................................................................................................................]
 
 
 As a class, fibrates have been reported to raise both serum creatinine and homocysteine levels in both short- and long-term studies.
@@ -4579,7 +4552,6 @@ due to increased mortality. [336] Dalcetrapib raises HDL-C levels by
 30�40% with no appreciable effect on LDL-C, offering specific insight
 into pure HDL-C raising. However, dalcetrapib failed to show any
 
-. [............................................................................................................................................................................]
 
 
 which raises HDL-C levels by 130% and lowers LDL-C by 37%, was
@@ -4697,7 +4669,6 @@ an outcome trial is planned to study whether Lp(a) reduction trans
 lates into risk reduction.
 
 8.12 Strategies to control plasma
-cholesterol . [..............................................................................................]
 
 
 Although LDL-C goals are attained with monotherapy in many
@@ -4855,7 +4826,6 @@ b Level of evidence.
 9.1 Familial dyslipidaemias
 Plasma lipid levels are, to a very large extent, determined by genetic
 factors. In its more extreme forms this is manifested as familial dyslipi
-. [.......................................................................................................................................................]
 
 
 among these, FH is the most common and is strongly related to CVD
@@ -5136,7 +5106,6 @@ less readily than the E3 and E4 isoforms to hepatic receptors.
 However, without some coincidental cause of dyslipidaemia such as
 dyslipidaemia associated with HTG, DM, obesity, or hypothyroidism, [373][�][375] ApoE2 homozygosity does not generally cause
 
-. [............................................................................................................................................................................]
 
 
 The detection of ApoE2 homozygosity in a dyslipidaemic patient is
@@ -5262,7 +5231,6 @@ Lysosomal acid lipase deficiency or cholesterol ester storage disease (in childr
 transmission) of elevated LDL-C and low HDL-C, accompanied by
 hepatomegaly and microvesicular hepatosteatosis. Statin treatment
 
-. [....................................................................................................]
 
 does decrease LDL-C levels and could therefore prevent ASCVD in
 these patients, but it cannot stop the progression of liver damage.
@@ -5384,7 +5352,6 @@ renal impairment and/or the potential for drug interactions, and then
 titrated upwards to achieve LDL-C treatment goals.
 The recommendations for the treatment of dyslipidaemias in older
 
-. [...................................................................................................................................]
 
 
 9.4 Diabetes and metabolic syndrome
@@ -5537,7 +5504,6 @@ Statin therapy reduces the 5 year incidence of major CVD events by
 The CTT meta-analysis further indicates that people with T2DM will
 have a relative risk reduction that is comparable to that seen in nondiabetic patients; however, being at higher absolute risk, the absolute
 benefit will be greater, resulting in a lower number needed to treat
-(NNT). Thus, statin therapy is the first-line treatment for LDL-C lowering and for the reduction of CVD burden. [419] . [............................................................................................................................................................................]
 
 
 Ezetimibe lowers LDL-C by �24% and, when added to statin therapy, decreases the risk of major vascular events. [33] The relative risk
@@ -5663,7 +5629,6 @@ who are treated with statins. The REDUCE-IT trial examined the
 
 effects of icosapent ethyl 2 g b.i.d. on CV events in 8179 high-risk
 patients with HTG who were taking a statin. Over a median of 4.9
-years, there was a significant (P < 0.001) 25% reduction in the composite primary outcome of CV death, non-fatal MI, non-fatal stroke, cor- . [............................................................]
 onary revascularization, or unstable angina, corresponding with an
 absolute reduction of 4.8%, which was offset by a 1% increased absolute risk of hospitalization for atrial fibrillation or flutter. [194] The
 STRENGTH trial is investigating the effect of omega-3 fatty acids, in
@@ -5805,7 +5770,6 @@ ACS and planned invasive management. [443] All patients received atorvastatin 40
 The authors found no significant treatment benefit in the overall
 study population. In a pre-specified analysis, a significant 28% relative
 risk reduction in MACE was observed among patients who under
-. [.........................................................................................................................................................................]
 
 
 pronounced (46% relative risk reduction) in a post hoc analysis including 865 ST-elevation MI (STEMI) patients undergoing reperfusion by
@@ -6042,7 +6006,6 @@ no evidence that statins can prevent HF of non-ischaemic origin.
 Two large RCTs [466][,][470] (mainly including patients with systolic HF), as
 well as a meta-analysis of 24 RCTs, have shown no benefit of statin
 
-[471] a reduction in HF . [............................................................................................................................................................................]
 
 
 hospitalizations, [218][,][471] as well as a small reduction in MI, was
@@ -6170,7 +6133,6 @@ Patients with CKD and established CVD have a much higher mortality
 rate compared with patients with CVD and normal renal function. [493]
 
 Therefore, patients with CKD are considered to be at high (stage 3
-CKD) or very-high risk (stage 4�5 CKD or on dialysis) of CVD, and . [.............................................................................................]
 
 
 whether statin therapy is effective in more advanced CKD, particularly
@@ -6354,7 +6316,6 @@ separate administration.
 |In patients who are intolerant of statins or those<br>with significant dyslipidaemia despite maximally<br>tolerated statin treatment, alternative or addi-<br>tional therapy with ezetimibe may be considered.|IIb|C|C|
 
 
-. [..................................................................................................................]
 
 
 Recommendations for low-density lipoprotein lowering
@@ -6461,7 +6422,6 @@ disease)
 
 
 
-ASCVD = atherosclerotic cardiovascular disease; PAD = peripheral arterial disease; PCSK9 = proprotein convertase subtilisin/kexin type 9. . [............................................................................................................................................................................]
 
 
 9.11 Other special populations at risk of
@@ -6613,7 +6573,6 @@ rent level of evidence, no further recommendations on the use of antiinflammator
 
 Evidence concerning which tests should be carried out to monitor
 
-. [............................................................................................................................................................................]
 
 
 applies to tests of possible toxicity, such as ALT and CK.
@@ -6762,7 +6721,6 @@ last three decades has been attributed to population-level changes
 
 Figure 5 Health impact pyramid.
 
-. [...........................................................................................................................................................]
 
 
 In these Guidelines, the Joint Task Force recommends a range of
@@ -6950,7 +6908,6 @@ tors further reduce ASCVD risk when given on top of statin-based
 
 therapy and their use may need to be restricted to those at the
 
-. [............................................................................................................................................................................]
 
 
 (3) Use of cardiac imaging for risk stratification. CAC score
@@ -7125,7 +7082,6 @@ LDL-C, albeit with due regard to an individual’s underlying health
 
 status and the risk of drug interactions. There is less certainty
 
-about the effects of statins in individuals aged >75 years, particularly in primary prevention. Statin therapy should be started at a . [..........]
 ### 15 Gaps in the evidence
 
 
@@ -7362,7 +7318,6 @@ University of Gothenburg, Gothenburg, Sweden.
 
 ESC Committee for Practice Guidelines (CPG): Stephan
 
-. [............................................................................................................................................................................]
 
 
 Colin Baigent (United Kingdom), Jean-Philippe Collet (France),
@@ -7558,7 +7513,6 @@ Cardiology and Other Societies on Cardiovascular Disease Prevention in Clinical
 Practice (constituted by representatives of 10 societies and by invited
 experts)Developed with the special contribution of the European Association
 for Cardiovascular Prevention & Rehabilitation (EACPR). Eur Heart J
-2016;37:2315�2381. . [............................................................................................................................................................................]
 
 
 11. Cooney MT, Selmer R, Lindman A, Tverdal A, Menotti A, Thomsen T, DeBacker
@@ -7716,7 +7670,6 @@ infarction: the IDEAL study: a randomized controlled trial. JAMA
 2005;294:2437�2445.
 
 40. Stone NJ, Robinson JG, Lichtenstein AH, Bairey Merz CN, Blum CB, Eckel RH,
-Goldberg AC, Gordon D, Levy D, Lloyd-Jones DM, McBride P, Schwartz JS, . [............................................................................................................................................................................]
 
 
 Shero ST, Smith SC Jr, Watson K, Wilson PW, Eddleman KM, Jarrett NM,
@@ -7881,7 +7834,6 @@ Collaboration, Sarwar N, Sandhu MS, Ricketts SL, Butterworth AS, Di
 Angelantonio E, Boekholdt SM, Ouwehand W, Watkins H, Samani NJ, Saleheen
 D, Lawlor D, Reilly MP, Hingorani AD, Talmud PJ, Danesh J. Triglyceride-mediated pathways and coronary disease: collaborative analysis of 101 studies. Lancet
 2010;375:1634�1639.
-. [............................................................................................................................................................................]
 
 
 57. Varbo A, Benn M, Tybjaerg-Hansen A, Jorgensen AB, Frikke-Schmidt R,
@@ -8044,7 +7996,6 @@ Jones SR, Martin SS. Fasting versus nonfasting and low-density lipoprotein chole
 RS, Jones SR, Martin SS. Evaluating the atherogenic burden of individuals with a
 Friedewald-estimated low-density lipoprotein cholesterol <70 mg/dL compared
 with a novel low-density lipoprotein estimation method. J Clin Lipidol
-2017;11:1065�1072. . [............................................................................................................................................................................]
 
 
 87. Meeusen JW, Lueke AJ, Jaffe AS, Saenger AK. Validation of a proposed novel
@@ -8199,7 +8150,6 @@ Targets of statin therapy: LDL cholesterol, non-HDL cholesterol, and apolipoprot
 122. Thompson A, Danesh J. Associations between apolipoprotein B, apolipoprotein
 AI, the apolipoprotein B/AI ratio and coronary heart disease: a literature-based
 meta-analysis of prospective studies. J Intern Med 2006;259:481�492.
-. [............................................................................................................................................................................]
 
 
 123. Thanassoulis G, Williams K, Ye K, Brook R, Couture P, Lawler PR, de Graaf J,
@@ -8352,7 +8302,6 @@ results from a systematic review and meta-regression of randomised clinical tria
 2009;48:9�19.
 
 162. Kastorini CM, Milionis HJ, Esposito K, Giugliano D, Goudevenos JA,
-Panagiotakos DB. The effect of Mediterranean diet on metabolic syndrome and . [............................................................................................................................................................................]
 
 
 its components: a meta-analysis of 50 studies and 534,906 individuals. J Am Coll
@@ -8517,7 +8466,6 @@ Heart Association. Dietary fats and cardiovascular disease: a presidential advis
 and docosahexaenoic acid on low-density lipoprotein cholesterol and other lipids: a review. J Clin Lipidol 2012;6:5�18.
 194. Bhatt DL, Steg PG, Miller M, Brinton EA, Jacobson TA, Ketchum SB, Doyle RT
 Jr, Juliano RA, Jiao L, Granowitz C, Tardif JC, Ballantyne CM; REDUCE-IT
-Investigators. Cardiovascular risk reduction with icosapent ethyl for hypertriglyceridemia. N Engl J Med 2019;380:11�22. . [............................................................................................................................................................................]
 
 
 195. Chasman DI, Giulianini F, MacFadyen J, Barratt BJ, Nyberg F, Ridker PM.
@@ -8678,7 +8626,6 @@ effects of statin therapy: perception vs. the evidence - focus on glucose homeos
 Eur Heart J 2018;39:2526�2539.
 233. Collins R, Reith C, Emberson J, Armitage J, Baigent C, Blackwell L, Blumenthal R,
 Danesh J, Smith GD, DeMets D, Evans S, Law M, MacMahon S, Martin S, Neal B,
-Poulter N, Preiss D, Ridker P, Roberts I, Rodgers A, Sandercock P, Schulz K, . [............................................................................................................................................................................]
 
 
 Sever P, Simes J, Smeeth L, Wald N, Yusuf S, Peto R. Interpretation of the evidence for the efficacy and safety of statin therapy. Lancet 2016;388:2532�2561.
@@ -8833,7 +8780,6 @@ randomized trial to assess the effects of lowering low-density lipoprotein chole
 268. Ference BA, Cannon CP, Landmesser U, Luscher TF, Catapano AL, Ray KK.
 Reduction of low density lipoprotein-cholesterol and cardiovascular events
 with proprotein convertase subtilisin-kexin type 9 (PCSK9) inhibitors and statins: an analysis of FOURIER, SPIRE, and the Cholesterol Treatment Trialists
-Collaboration. Eur Heart J 2018;39:2540�2545. . [............................................................................................................................................................................]
 
 
 269. Myocardial Infarction Genetics Consortium Investigators, Stitziel NO, Won
@@ -8996,7 +8942,6 @@ review and meta-analysis. Ann Intern Med 2016;164:752�763.
 JG, White JA, Bohula EA, Braunwald E; IMPROVE-IT (Improved Reduction of
 Outcomes: Vytorin Efficacy International Trial) Investigators. Benefit of adding
 ezetimibe to statin therapy on cardiovascular outcomes and safety in patients
-with versus without diabetes mellitus: results from IMPROVE-IT (Improved . [............................................................................................................................................................................]
 
 
 Reduction of Outcomes: Vytorin Efficacy International Trial). Circulation
@@ -9152,7 +9097,6 @@ Meyskens FL Jr, Goodman GE, Minasian LM, Parnes HL, Klein EA, Kristal AR.
 Plasma phospholipid fatty acids and prostate cancer risk in the SELECT trial.
 J Natl Cancer Inst 2013;105:1132�41.
 335. Kamanna VS, Kashyap ML. Mechanism of action of niacin. Am J Cardiol
-2008;101:20B�26B. . [............................................................................................................................................................................]
 
 
 336. Barter PJ, Caulfield M, Eriksson M, Grundy SM, Kastelein JJ, Komajda M,
@@ -9312,7 +9256,6 @@ Santos RD, Watts GF, Parhofer KG, Hovingh GK, Kovanen PT, Boileau C,
 Averna M, Bore´n J, Bruckert E, Catapano AL, Kuivenhoven JA, Pajukanta P, Ray
 K, Stalenhoef AF, Stroes E, Taskinen MR, Tybjærg-Hansen A; European
 Atherosclerosis Society Consensus Panel. Familial hypercholesterolaemia is
-underdiagnosed and undertreated in the general population: guidance for . [............................................................................................................................................................................]
 
 
 clinicians to prevent coronary heart disease: consensus statement of the
@@ -9460,7 +9403,6 @@ patients without diabetes in a real-world population receiving appropriate proph
 402. Emerging Risk Factors Collaboration, Sarwar N, Gao P, Seshasai SR, Gobin R,
 Kaptoge S, Di Angelantonio E, Ingelsson E, Lawlor DA, Selvin E, Stampfer M,
 Stehouwer CD, Lewington S, Pennells L, Thompson A, Sattar N, White IR, Ray
-KK, Danesh J. Diabetes mellitus, fasting blood glucose concentration, and risk of . [............................................................................................................................................................................]
 
 
 vascular disease: a collaborative meta-analysis of 102 prospective studies. Lancet
@@ -9613,7 +9555,6 @@ intervention. Am J Cardiol 2014;113:1753�1764.
 440. Ray KK, Cannon CP, McCabe CH, Cairns R, Tonkin AM, Sacks FM, Jackson G,
 Braunwald E; PROVE IT-TIMI 22 Investigators. Early and late benefits of highdose atorvastatin in patients with acute coronary syndromes: results from the
 PROVE IT-TIMI 22 trial. J Am Coll Cardiol 2005;46:1405�1410.
-441. Schwartz GG, Fayyad R, Szarek M, DeMicco D, Olsson AG. Early, intensive statin treatment reduces ‘hard’ cardiovascular outcomes after acute coronary syndrome. Eur J Prev Cardiol 2017;24:1294�1296. . [............................................................................................................................................................................]
 
 
 442. Schwartz GG, Olsson AG, Ezekowitz MD, Ganz P, Oliver MF, Waters D,
@@ -9775,7 +9716,6 @@ Nicolosi GL, Porcu M, Tognoni G; GISSI-HF Investigators. Effect of rosuvastatin
 in patients with chronic heart failure (the GISSI-HF trial): a randomised, doubleblind, placebo-controlled trial. Lancet 2008;372:1231�1239.
 471. Al-Gobari M, Le HH, Fall M, Gueyffier F, Burnand B. No benefits of statins for
 sudden cardiac death prevention in patients with heart failure and reduced
-. [............................................................................................................................................................................]
 
 
 ejection fraction: a meta-analysis of randomized controlled trials. PLoS One
@@ -9929,7 +9869,6 @@ prevention in patients with coronary or peripheral arterial disease. Arch Intern
 Med 2003;163:2157�2162.
 
 512. Aung PP, Maxwell HG, Jepson RG, Price JF, Leng GC. Lipid-lowering for peripheral arterial disease of the lower limb. Cochrane Database Syst Rev
-2007;4:CD000123. . [............................................................................................................................................................................]
 
 
 513. Collins R, Armitage J, Parish S, Sleigh P, Peto R; Heart Protection Study
@@ -10094,7 +10033,6 @@ prospective study of the JUPITER trial. Lancet 2009;373:1175�1182.
 Franca CN, Santana JM, Izar MC. Effects of ezetimibe on markers of synthesis
 and absorption of cholesterol in high-risk patients with elevated C-reactive protein. Life Sci 2013;92:845�851.
 547. Sahebkar A, Di Giosia P, Stamerra CA, Grassi D, Pedone C, Ferretti G,
-Bacchetti T, Ferri C, Giorgini P. Effect of monoclonal antibodies to PCSK9 on . [.........................................................................................................................................................................]
 
 
 high-sensitivity C-reactive protein levels: a meta-analysis of 16 randomized controlled treatment arms. Br J Clin Pharmacol 2016;81:1175�1190.
@@ -10256,7 +10194,6 @@ disease: a record linkage study. Eur Heart J 2014;35:290�298.
 587. Peura P, Martikainen J, Soini E, Hallinen T, Niskanen L. Cost-effectiveness of statins in the prevention of coronary heart disease events in middle-aged Finnish
 men. Curr Med Res Opin 2008;24:1823�1832.
 588. Heller DJ, Coxson PG, Penko J, Pletcher MJ, Goldman L, Odden MC, Kazi DS,
-Bibbins-Domingo K. Evaluating the impact and cost-effectiveness of statin use . [..........................................................................................................................................................................]
 
 
 guidelines for primary prevention of coronary heart disease and stroke.

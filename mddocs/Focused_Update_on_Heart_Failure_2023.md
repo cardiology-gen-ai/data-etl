@@ -120,6 +120,9 @@ and early post-discharge follow-up of patients hospitalized for acute
 heart failure ............................................................................................................. 3635
 
 
+
+![Page 2 Images](Focused_Update_on_Heart_Failure_2023_images/page_002_images.png)
+
 **Disclaimer.** The ESC Guidelines and Focused Updates represent the views of the ESC and were produced after careful consideration of the scientific and medical knowledge and the evi-­
 dence available at the time of their publication. The ESC is not responsible in the event of any contradiction, discrepancy and/or ambiguity between the ESC Guidelines and Focused Updates
 and any other official recommendations or guidelines issued by the relevant public health authorities, in particular in relation to good use of healthcare or therapeutic strategies. Health pro-­

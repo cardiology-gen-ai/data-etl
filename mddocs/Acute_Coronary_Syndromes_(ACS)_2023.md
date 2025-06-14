@@ -136,6 +136,9 @@ syndrome) ......................................................................
 3.3.1. High-sensitivity cardiac troponins ............................................ 3739
 
 
+
+![Page 2 Images](Acute_Coronary_Syndromes_(ACS)_2023_images/page_002_images.png)
+
 3.3.2. Central laboratory vs. point of care ....................................... 3739
 
 3.3.3. Confounders of cardiac troponin concentration ............. 3739
@@ -849,6 +852,9 @@ DANAMI-3– Third Danish Study of Optimal Acute
 PRIMULTI
 
 
+
+![Page 13 Images](Acute_Coronary_Syndromes_(ACS)_2023_images/page_013_images.png)
+
 DANAMI-3– Third Danish Study of Optimal Acute
 PRIMULTI Treatment of Patients with ST-Segment
 
@@ -1194,6 +1200,9 @@ mulating and issuing ESC Guidelines can be found on the ESC website
 [(https://www.escardio.org/Guidelines).](https://www.escardio.org/Guidelines)
 
 
+
+![Page 18 Images](Acute_Coronary_Syndromes_(ACS)_2023_images/page_018_images.png)
+
 The Members of this Task Force were selected by the ESC to
 represent professionals involved with the medical care of patients
 with this pathology. The selection procedure aimed to include
@@ -1287,8 +1296,14 @@ ESC Guidelines **3729**
 
 
 
+![Page 38 Images](Acute_Coronary_Syndromes_(ACS)_2023_images/page_038_images.png)
 
 
+
+
+
+
+![Page 42 Images](Acute_Coronary_Syndromes_(ACS)_2023_images/page_042_images.png)
 
 
 
@@ -1339,6 +1354,9 @@ to patients with ongoing chest discomfort/symptoms and patients
 
 
 
+
+
+![Page 54 Images](Acute_Coronary_Syndromes_(ACS)_2023_images/page_054_images.png)
 
 
 
@@ -5156,6 +5174,7 @@ PCI in Multivessel Disease), COMPARE-ACUTE (Comparison
 
 
 
+
 Figure 14 Algorithm for the management of acute coronary syndrome patients with multivessel coronary artery disease. CABG, coronary artery bypass
 grafting; IRA, infarct-related artery; MVD, multivessel disease; NSTE-ACS, non-ST-elevation acute coronary syndrome; PCI, percutaneous coronary inter-­
 vention; STEMI, ST-elevation myocardial infarction; TIMI, Thrombolysis In Myocardial Infarction. [a] In patients presenting with STEMI and MVD without CS,
@@ -6550,6 +6569,7 @@ For a detailed description of the different lipid-lowering drug classes
 [and respective trial data, please refer to the Supplementary data online.](http://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehad191#supplementary-data)
 
 ESC Guidelines **3785**
+
 
 
 

@@ -183,6 +183,9 @@ trials .........................................................................
 ESC Guidelines **4045**
 
 
+
+![Page 2 Images](CVD_and_Diabetes_2023_images/page_002_images.png)
+
 5.3.3.1. Metformin .................................................................................... 4069
 
 5.3.3.2. Sulphonylureas ........................................................................... 4069
@@ -1085,6 +1088,9 @@ OARS Open-ended questions, Affirmation, Reflective
 listening, and Summarizing
 
 
+
+![Page 19 Images](CVD_and_Diabetes_2023_images/page_019_images.png)
+
 ODYSSEY Efficacy and Safety of Alirocumab Versus Usual
 DM-DYSLIPIDE-­ Care on Top of Maximally Tolerated Statin
 MIA Therapy in Patients With Type 2 Diabetes and
@@ -1191,6 +1197,9 @@ Are at Cardiovascular Risk
 SCORE2- type 2 diabetes-specific 10-year CVD risk score
 Diabetes
 
+
+
+![Page 24 Images](CVD_and_Diabetes_2023_images/page_024_images.png)
 
 type 2 diabetes-specific 10-year CVD risk score
 
@@ -1353,16 +1362,34 @@ Table 1 **Classes of recommendations**
 
 
 
+![Page 28 Images](CVD_and_Diabetes_2023_images/page_028_images.png)
+
+
+
+![Page 29 Images](CVD_and_Diabetes_2023_images/page_029_images.png)
+
+
+
+
+![Page 31 Images](CVD_and_Diabetes_2023_images/page_031_images.png)
+
+
+
+
+![Page 33 Images](CVD_and_Diabetes_2023_images/page_033_images.png)
 
 
 
 
 
-
+![Page 36 Images](CVD_and_Diabetes_2023_images/page_036_images.png)
 
 Table 2 **Levels of evidence**
 
 
+
+
+![Page 38 Images](CVD_and_Diabetes_2023_images/page_038_images.png)
 
 
 with developing CVD. The combination of diabetes with these
@@ -1450,7 +1477,13 @@ health-related quality of life.
 
 
 
+![Page 50 Images](CVD_and_Diabetes_2023_images/page_050_images.png)
 
+
+
+
+
+![Page 53 Images](CVD_and_Diabetes_2023_images/page_053_images.png)
 
 
 
@@ -1481,10 +1514,16 @@ In patients with T2DM without symptomatic ASCVD
 **glucose-lowering medications in diabetes—** ***Section 5.3***
 
 
+
+![Page 59 Images](CVD_and_Diabetes_2023_images/page_059_images.png)
+
 or severe TOD, it is recommended to estimate
 
 10-year CVD risk via SCORE2-Diabetes.
 
+
+
+![Page 60 Images](CVD_and_Diabetes_2023_images/page_060_images.png)
 
 **I** **B**
 
@@ -1501,6 +1540,9 @@ or severe TOD, it is recommended to estimate
 
 
 
+
+
+![Page 67 Images](CVD_and_Diabetes_2023_images/page_067_images.png)
 
 |It is recommended that individuals living with<br>overweight or obesity aim to reduce weight and<br>increase physical exercise to improve metabolic<br>control and overall CVD risk profile.|I|A|
 |---|---|---|
@@ -1888,12 +1930,13 @@ diabetes treatment if eGFR is >30 mL/min/
 1.73 m [2] .
 
 
-**IIa** **B**
-
-
 A GLP-1 RA is recommended at an eGFR >15 mL/min/1.73 m [2 ]
 
 to achieve adequate glycaemic control, due to low risk of
+
+
+**IIa** **B**
+
 
 hypoglycaemia and beneficial effects on weight, CV risk, and
 
@@ -4190,6 +4233,7 @@ and ACS or CCS undergoing PCI or CABG.
 
 
 
+
 Figure 12 Recommendations for antiplatelet therapy in patients with diabetes with acute or chronic coronary syndrome undergoing percutaneous cor-­
 onary intervention or coronary artery bypass grafting without indications for long-term oral anticoagulation. ACS, acute coronary syndrome; ASA, acetyl-­
 salicylic acid; CABG, coronary artery bypass graft; CCS, chronic coronary syndrome; DAPT, dual antiplatelet therapy; PCI, percutaneous coronary
@@ -4210,7 +4254,6 @@ Recommendation Table 13 **— Recommendations for**
 |---|---|---|
 |Prolonging DAPT beyond 12 months after ACS<br>should be considered for up to 3 years in patients<br>with diabetes who have tolerated DAPT without<br>major bleeding complications.c,317,318,336|IIa|A|
 |Adding very low-dose rivaroxaband to low-dose ASA<br>for long-term prevention of serious vascular events<br>should be considered in patients with diabetes and<br>CCS or symptomatic PAD without high bleeding<br>risk.304,305|IIa|B|
-
 
 
 |Recommendations|Classa|Levelb|
@@ -4465,7 +4508,6 @@ a Class of recommendation.
 b Level of evidence.
 
 ESC Guidelines **4083**
-
 
 
 

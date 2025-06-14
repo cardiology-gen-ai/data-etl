@@ -125,7 +125,9 @@ heart failure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 ejection fraction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3612
 
 
-. [.............................]
+
+![Page 2 Images](Heart_Failure_2021_images/page_002_images.png)
+
 
 ESC Guidelines 3601
 
@@ -238,7 +240,6 @@ reduced ejection fraction . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 7.3.5 Angiotensin receptor-neprilysin inhibitor . . . . . . . . . . . . . . . 3629
 
 7.3.6 Other drugs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3630
-7.3.7 Devices . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3630 . [............................................................................................................................................................................]
 
 
 8 Heart failure with preserved ejection fraction . . . . . . . . . . . . . . . . . . . 3630
@@ -580,7 +581,6 @@ List of recommendations
 
 Recommended diagnostic tests in all patients with
 
-. [............................................................................................................................................................................]
 
 
 Recommendations for specialized diagnostic tests for selected
@@ -921,7 +921,6 @@ amyloidosis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 Table 36 Treatment of adult congenital heart disease and heart
 
 failure in specialized centres . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3688
-. [............................................................................................................................................................................]
 
 
 Table 37 Main European Society of Cardiology Quality Indicators for
@@ -1088,7 +1087,6 @@ CHAMPIT Acute Coronary syndrome/Hypertension
 emergency/Arrhythmia/acute Mechanical
 cause/Pulmonary embolism/Infections/
 Tamponade
-. [...........................................................................................................................................................................]
 
 
 CHARM Candesartan in Heart Failure - Assessment
@@ -1229,7 +1227,6 @@ Artery Systolic Pressure >35 mmHg), Elderly
 (age >60 years), Filling pressure (Doppler
 Echocardiographic E/e [0] >9) (score)
 HbA1c Glycated haemoglobin
-. [...........................................................................................................................................................................]
 
 
 HCM Hypertrophic cardiomyopathy
@@ -1383,7 +1380,6 @@ PEP-CHF Perindopril in Elderly People with Chronic
 Heart Failure (trial)
 PET Positron emission tomography
 PKP2 Plakophilin 2
-. [...........................................................................................................................................................................]
 
 
 PLN Phospholamban
@@ -1522,7 +1518,6 @@ their recommendations should facilitate decision making of health professionals 
 an individual patient must be made by the responsible health professional(s) in consultation with the patient and caregiver as appropriate.
 A great number of guidelines have been issued in recent years by
 
-. [............................................................................................................................................................................]
 
 
 societies and organizations. Because of their impact on clinical practice, quality criteria for the development of guidelines have been
@@ -1615,7 +1610,6 @@ may be favourably influenced by the thorough application of clinical
 recommendations.
 
 Health professionals are encouraged to take the ESC
-Guidelines fully into account when exercising their clinical . [.............................]
 
 
 judgment, as well as in the determination and the implementation
@@ -1681,7 +1675,6 @@ New concepts
 HF = heart failure.
 
 
-. [...........................................................................................................................................................................]
 
 
 
@@ -1815,7 +1808,6 @@ transferrin saturation; wtTTR-CA = wild-type transthyretin cardiac amyloidosis.
 Continued
 
 
-. [.................................................................................................................................................................................]
 
 
 ESC Guidelines 3611
@@ -1906,7 +1898,6 @@ pathology of the valves, pericardium, and endocardium, and abnormalities of hear
 
 to HF.
 
-. [........................................................]
 
 
 3.2 Terminology
@@ -1990,7 +1981,6 @@ Heart failure is usually divided into two presentations: chronic heart
 failure (CHF) and acute heart failure (AHF). CHF describes those
 who have had an established diagnosis of HF or who have a more
 
-. [.................................................................................................................]
 
 
 slowly, the episode may be described as ‘decompensated’ HF. This
@@ -2181,7 +2171,6 @@ note, transition in ejection fraction over time is common, and patients
 who progress from HFmrEF to HFrEF have a worse prognosis than
 
 
-. [................................................................................................................................................................]
 
 ESC Guidelines 3615
 
@@ -2351,9 +2340,7 @@ or chronic kidney disease. [74] Conversely, NP concentrations may be
 disproportionately low in obese patients. [75]
 
 
-. [.........................................................................................................]
 
-. [..........................................................]
 
 3618 ESC Guidelines
 
@@ -2362,7 +2349,6 @@ Table 7 Causes of elevated concentrations of natriuretic
 peptides [86-88]
 
 
-. [...........................................................................................................................................................................]
 
 
 Recommendations for specialized diagnostic tests for
@@ -2521,10 +2507,8 @@ Imaging (EACVI) position paper. [99] If assessment of EF is not possible by echo
 can be employed.
 
 
-. [...............................................................................................................................................................]
 
 3620 ESC Guidelines
-
 
 
 
@@ -2682,7 +2666,6 @@ unless contraindicated or not tolerated. They should be uptitrated to
 the maximum tolerated recommended doses.
 
 
-. [............................................................................................................................................................................]
 
 3622 ESC Guidelines
 
@@ -2695,7 +2678,6 @@ whom had not been previously treated with ACE-I. Initiation in this
 setting appears safe and reduces subsequent CV death or HF hospitalizations by 42% compared to enalapril. [106][,][107][,][131] As such, initiation
 of sacubitril/valsartan in ACE-I naive (i.e. de novo) patients with HFrEF
 may be considered (class of recommendation IIb, level of evidence
-. [............................]
 B). Patients being commenced on sacubitril/valsartan should have an
 adequate blood pressure (BP), and an eGFR >_30 mL/min/1.73 m [2] . A
 washout period of at least 36 h after ACE-I therapy is required in
@@ -2770,7 +2752,6 @@ Other pharmacological treatments indicated in selected
 patients with NYHA class II–IV heart failure with
 reduced ejection fraction (LVEF �40%)
 
-. [...............................................................................................................................................]
 
 |Recommendations|Classa|Levelb|
 |---|---|---|
@@ -2936,7 +2917,6 @@ including ACE-I, reduced HF hospitalizations in the Val-HeFT trial. [147]
 However, no ARB has reduced all-cause mortality in any trial.
 
 
-. [............................................................................................................................................................................]
 
 3624 ESC Guidelines
 
@@ -2976,7 +2956,6 @@ ESC Guidelines 3625
 
 5.4.6 Recently reported advances from trials in heart
 failure with reduced ejection fraction
-**.** **[........]** [.]
 
 
 Soluble guanylate cyclase stimulator
@@ -3033,7 +3012,6 @@ when they occur. ICDs are effective at correcting potentially lethal
 ventricular arrhythmias, and in the case of transvenous systems, also
 
 
-. [..................................................................................................................................................................]
 
 
 
@@ -3112,7 +3090,6 @@ therapy in such patients with the presence of scar on CMR imaging. [189]
 6.1.3 Patient selection for implantable cardioverterdefibrillator therapy
 Patients with HFrEF and a QRS duration >_130 ms can be considered
 
-for CRT with a defibrillator (CRT-D) rather than ICD. See the secsection 6.2 . [............................................................................................................................................................................]
 
 
 In patients with moderate or severe HF, a reduction in sudden
@@ -3301,7 +3278,6 @@ the large CRT trials. [206][,][210][,][213] However, patients with LBBB
 
 
 
-. [...........................................................................................................................................................................]
 
 
 
@@ -3373,7 +3349,6 @@ Observational studies report that when biventricular capture is
 this association reflects a loss of resynchronization (which might be
 remedied by device programming), poor placement of the LV lead,
 or greater difficulty in pacing severely diseased myocardium is uncertain. This observation has not been confirmed in any randomized
-trial. . [............................................................................................................................................................................]
 
 
 Early studies suggested that imaging tests for dyssynchrony were
@@ -3481,7 +3456,6 @@ fraction; MRA = mineralocorticoid receptor antagonist; NYHA = New York
 Heart Association.
 
 a Class of recommendation.
-b . [...........................................................................................................................................................................]
 
 
 7.3.1 Angiotensin-converting enzyme inhibitors
@@ -3645,7 +3619,6 @@ clinicians should be aware that LVEF is a continuous variable with a
 normal distribution in the general population, and the EF cut-offs
 used in definitions are therefore arbitrary. Moreover, while the LVEF
 
-. [............................................................................................................................................................................]
 
 
 �
@@ -3811,7 +3784,6 @@ a diastolic stress test is recommended. [259][,][274] The confirmatory test
 for the diagnosis of HFpEF is invasive haemodynamic exercise testing.
 An invasively measured pulmonary capillary wedge pressure
 
-. [....................................................................................................]
 
 
 end-diastolic pressure >_16 mmHg (at rest) is generally considered
@@ -3989,7 +3961,6 @@ failure in patients with risk factors for its development
 CV=cardiovascular; HF= heart failure; SGLT2= sodium-glucose co-transporter 2.
 a Class of recommendation.
 b Level of evidence.
-. [...........................................................................................................................................................................]
 
 
 
@@ -4066,7 +4037,6 @@ care is delivered. The HFA of the ESC has issued several position
 papers that cover non-pharmacological management, discharge planning, and standards for delivering HF care. [303][�][305] It has also underscored the need for specialist HF cardiologists and specialist HF
 nurses to help provide care. Detailed curricula, to aid training of
 
-. [......................................................]
 
 [306][,][307]
 
@@ -4175,7 +4145,6 @@ well-being and self-management, leading to better outcomes. [309][,][311]
 The organization of a HF-MP should be adapted to the healthcare
 
 
-. [.....................................................................................................................]
 
 
 
@@ -4300,7 +4269,6 @@ b Level of evidence.
 
 c In those who are able to adhere to the exercise programme.
 
-. [.........................................................................................................................................]
 
 
 exercise-based rehabilitation should be considered in those who are
@@ -4411,7 +4379,6 @@ symptoms, weight, heart rate, and BP, can be collected frequently,
 stored in an electronic health record and used to guide patients
 (directly or through a healthcare professional), to adjust therapy or
 to seek further advice. Home telemonitoring (HTM) can help maintain quality of care, facilitate rapid access to care when needed,
-. [................]
 reduce patient travel costs, and minimize the frequency of clinic visits. [355] Enforced cessation of face-to-face consultations in many countries during the recent COVID-19 pandemic have highlighted some
 of the potential advantages of HTM. [356]
 
@@ -4518,7 +4485,6 @@ trial showed a reduction in the risk of recurrent HF hospitalization. [372]
 A much larger trial has completed recruitment (GUIDE-HF). [373]
 
 
-. [...........................................................................................................................................................]
 
 
 
@@ -4606,7 +4572,6 @@ loop diuretic dose is proposed, in the first instance, followed by concomitant a
 11.3.3). [145] In patients who fail to respond to diuretic-based strategies,
 renal replacement therapies should be considered. Ultrafiltration is
 
-. [...............................................................................................................]
 
 
 with diuretic resistance even if data about its effects on outcomes are
@@ -4762,7 +4727,6 @@ Current 2-year survival rates in patients receiving the latest
 continuous-flow LVADs are comparable to those after heart
 
 
-. [................................................................................................................]
 
 
 transplantation, although adverse events negatively affect QOL.
@@ -4815,7 +4779,6 @@ graft dysfunction, the main challenges after heart transplantation
 relate to either the efficacy or side effects of immunosuppression
 (e.g. rejection, infection, cardiac allograft vasculopathy, late graft dysfunction, malignancy, renal failure, hypertension, diabetes mellitus).
 
-**.** [.....................................................]
 
 
 10.2.3 Heart transplantation
@@ -4900,7 +4863,6 @@ cases of infected LVADs it may actually be an indication.
 Adapted from Crespo-Leiro et al. [376]
 
 
-. [......................................................................................................................]
 
 
 
@@ -4949,7 +4911,6 @@ patients with advanced heart failure
 
 
 ICD = implantable cardioverter-defibrillator; MCS = mechanical circulatory sup
-. [......................................................................................................................................................................]
 
 
 Treatment for symptoms needs to be considered and might
@@ -5087,7 +5048,6 @@ may be used to confirm AHF diagnosis, especially when NP testing is
 not available. Plasma NP levels (BNP or NT-proBNP or MRproANP) should be measured if the diagnosis is uncertain and a
 point-of-care assay is available. Normal concentrations of NPs make
 the diagnosis of AHF unlikely. Cut-offs for acute HF are: BNP <100
-. [........................................]
 
 
 pg/mL, NT-proBNP <300 pg/mL and MR-proANP <120 pg/
@@ -5162,7 +5122,6 @@ diagnosis of pneumonia and antibiotic therapy may have an indication
 when plasma levels are >0.2 lg/L. However, no impact of a strategy
 based on routine procalcitonin measurements on outcomes was
 shown in a prospective, controlled, trial. [442] Pulse oximetry should be
-measured routinely at the time of first presentation of patients with . [......................................]
 
 
 AHF and continuous monitoring may be needed in the first hours or
@@ -5244,7 +5203,6 @@ perfusion.
 11.2.3 Isolated right ventricular failure
 RV failure is associated with increased RV and atrial pressure
 
-. [.................................................................................]
 
 
 ultimately reduce systemic cardiac output, through ventricular
@@ -5311,7 +5269,6 @@ metabolism leading to organ dysfunction. [437][,][453] Of note, hypoperfusion is
 be preserved by compensatory vasoconstriction (with/without
 pressor agents), albeit at the cost of impaired tissue perfusion and
 oxygenation. [426][,][427][,][450][,][454]
-. [................]
 
 
 Management of cardiogenic shock should start as early as possible. Early identification and treatment of the underlying cause,
@@ -5345,7 +5302,6 @@ which case it should be administered. In patients with respiratory distress, res
 non-invasive ventilation should be initiated. [444][,][448] Although therapeutic tools may be available in the prehospital setting, whether more
 effective pre-hospital care would alter the clinical outcome remains
 
-. [...................................................]
 
 
 to be proven in randomized clinical trials. [455] Furthermore, prehospital management should not delay the rapid transfer of AHF
@@ -5395,7 +5351,6 @@ valve regurgitation or acute pulmonary embolism, infection, including
 myocarditis, and tamponade (CHAMPIT) (Figure 12). After exclusion
 of these conditions, which need to be treated/corrected urgently,
 management of AHF differs according to the clinical presentations
-(Figures 7�10). . [....................]
 
 
 Pre-discharge phase
@@ -5430,7 +5385,6 @@ possible in patients with respiratory distress (respiratory rate >25
 breaths/min, SpO 2 <90%) to improve gas exchange and reduce the
 rate of endotracheal intubation. [448][,][459] The fraction of inspired oxygen
 (FiO 2 ) should be increased up to 100%, if necessary, according to
-oxygen saturation level. . [......................................................]
 
 
 Blood pressure should be monitored regularly during non-invasive
@@ -5485,7 +5439,6 @@ doses, to assess the diuretic response and increase the dose when
 that is insufficient.
 
 Diuretic treatment should be started with an initial i.v. dose of
-furosemide, or equivalent dose of bumetanide or torasemide, . [...................................................]
 
 
 �
@@ -5535,7 +5488,6 @@ achievement of congestion relief, oral loop diuretics are continued at
 the lowest dose possible to avoid congestion. [463][,][471] Care must also
 be taken to avoid patients being discharged from hospital with persistent congestion, as this is a major predictor of increased deaths and
 rehospitalizations. [462][,][472] Hence, care should be taken to achieve
-adequate decongestion and establish an appropriate long-term diuretic dose before discharge. [427][,][473] . [...........................................................]
 
 
 11.3.4 Vasodilators
@@ -5642,14 +5594,12 @@ Some studies, though with limitations, support the use of norepinephrine as firs
 Dopamine was compared with norepinephrine as a first-line vasopressor therapy in patients with shock and was associated with more
 
 
-. [............................................................................]
 
 
 Recommendations for the initial treatment of acute
 
 heart failure
 
-. [...............................................................................................]
 
 |Recommendations|Classa|Levelb|
 |---|---|---|
@@ -5737,9 +5687,7 @@ contraindicated or unnecessary (because of existing treatment with
 oral anticoagulants). [494][,][495]
 
 
-. [.........................................................................................................]
 
-. [..............................................................]
 
 
 11.3.10 Short-term mechanical circulatory support
@@ -5850,9 +5798,7 @@ AF and HF frequently coexist. [519][,][520] They can cause or exacerbate
 each other through mechanisms such as structural cardiac remodelling, activation of neurohormonal systems, and rate-related LV
 
 
-. [..............................................................................]
 
-. [............................................................................................]
 
 
 |Recommendations|Classa|Levelb|ESC 2021|
@@ -5987,7 +5933,6 @@ receive chronic therapy with oral anticoagulant and with AF onset
 >48 h, at least 3 weeks of therapeutic anticoagulation or a transoesophageal echocardiography is needed before cardioversion. [7] When
 pharmacological cardioversion is preferred, amiodarone is the drug
 
-. [............................................................................................................................................................................]
 
 
 dronedarone) are associated with worse outcomes in
@@ -6211,7 +6156,6 @@ draw definitive conclusions. [152][,][548][�][550][,][552][�][554][,][557]
 Ventricular arrhythmias may be a complication, and in some instances, a cause of HF. Frequent ventricular premature beats (VPBs) may
 
 
-. [............................................................................................................................................................................]
 
 ESC Guidelines 3661
 
@@ -6234,7 +6178,6 @@ with HF as they cause hypotension. Diltiazem and verapamil increase
 HF-related events in patients with HFrEF and are contraindicated. [578]
 
 An algorithm for the use of anti-anginal medications in patients
-with HFrEF is reported in Figure 15. . [..............................................................]
 
 
 Beta-blockers, long-acting nitrates, calcium channel blockers
@@ -6338,9 +6281,7 @@ In the presence of suspected symptomatic and severe highgradient aortic stenosis
 mmHg), other causes of high flow status must be excluded and
 
 
-. [...........................................................................................................]
 
-. [......................................................] **[.........]**
 
 |Recommendations|Classa|Levelb|ESC 2021|
 |---|---|---|---|
@@ -6424,7 +6365,6 @@ Class of recommendation IIa (see Table 1 for further details on classes of recom
 
 valve interventions should be performed only in centres having both
 interventional cardiology and cardiac surgery services on site and a
-structured collaborative Heart Team approach. . [........]
 
 
 Balloon aortic valvuloplasty may be considered in highly symptomatic patients with AHF (i.e. cardiogenic shock) as bridge to TAVI or
@@ -6444,7 +6384,6 @@ Beta-blockers should be cautiously used as they prolong diastole and
 
 may worsen aortic regurgitation.
 Aortic valve surgery is recommended in patients with severe aortic
-regurgitation and HF symptoms regardless of LVEF. [592][,][602][,][603] In case . [..........................]
 
 
 of high or prohibitive surgical risk, TAVI has been used to treat also
@@ -6491,7 +6430,6 @@ experienced echocardiographer applying a multi-parametric
 approach, and ideally in stable patient conditions, after optimization
 of medical and resynchronization therapies. Being SMR a dynamic
 
-. [.....................................]
 
 
 Secondary (functional) mitral regurgitation
@@ -6556,7 +6494,6 @@ annuloplasty, are available for treatment of SMR. This approach has a
 shorter learning curve and lesser technical requirements than percutaneous edge-to-to edge mitral valve repair and does not preclude
 
 
-. [......................................................................................................................................]
 
 
 different procedures once it is performed. A sham-controlled
@@ -6647,7 +6584,6 @@ beta-blockers or diuretics. [632] Poorly controlled hypertension may
 precipitate episodes of decompensation. Causes of secondary hypertension, such as renal vascular or parenchymal disease, primary aldosteronism and obstructive sleep apnoea (OSA), should be ruled out
 or, if confirmed, considered for treatment. Treatment of hypertension is an important issue in patients with HFpEF, but the optimal
 treatment strategy is uncertain. The treatment strategy used in
-HFrEF should also be considered in HFpEF. [4] . [............................................................................................................................................................................]
 
 
 BP targets are uncertain in both HFrEF and HFpEF. However, evaluation of patient’s age and comorbidities (i.e. diabetes, CKD, CAD,
@@ -6728,7 +6664,6 @@ diabetes, and with the SGLT1/2 inhibitor sotagliflozin in patients with
 type 2 diabetes stabilized after hospitalization for acute HF or within
 3 days after discharge, further support the administration of these
 agents (see section 5.3.5 and section 11.3.11). [108][,][109][,][136]
-. [............................................................................................]
 
 
 EMPA-REG OUTCOME, CANVAS, DECLARE-TIMI 58, and
@@ -6761,7 +6696,6 @@ with diabetes and HF. [657] Overall, the effects on mortality or CV
 
 events were neutral in the DPP-4 inhibitor trials and meta
 
-. [............................................................................]
 
 
 |Recommendation|Classa|Levelb|ESC 2021|
@@ -6878,7 +6812,6 @@ developing HF. [689][,][690] Frailty is associated with a higher risk of death,
 hospitalizations, and functional decline as well as with a longer duration of hospital stay. [691][�][693] The treatment of frailty in HF should be
 multifactorial and targeted to its main components and may include
 physical rehabilitation with exercise training, nutritional supplementa
-[686] . [............................................................................................................................................................................]
 
 
 Cachexia is defined as a ‘complex metabolic syndrome associated
@@ -7038,7 +6971,6 @@ hospitalized for HF with LVEF <50% and concomitant iron deficiency
 were randomized to i.v. ferric carboxymaltose or placebo, repeated
 at 6- and then 12-week intervals if indicated according to repeat iron
 studies. [512] Administration of ferric carboxymaltose did not significantly reduce the primary composite outcome of total HF hospitalizations and CV death at 52 weeks (rate ratio 0.79, 95% CI
-0.62�1.01, P = 0.059). However, it reduced the composite endpoint . [.........................................................................................................................................................................]
 
 
 �
@@ -7204,7 +7136,6 @@ increased risk of hospitalization and death. [752][,][753][,][755][,][756][,][76
 Hyperkalaemia can be associated with the administration of RAAS
 inhibitors, CKD and increased absorption. [760] Among patients with
 
-. [......................................................................................................................................................................]
 
 
 with HF appears to be less than 5%, [757] but the incidence is much
@@ -7347,7 +7278,6 @@ beta-blockers combined with close monitoring for signs of airway
 obstruction (wheezing, shortness of breath with lengthening of the
 expiration) should be encouraged. Although not tested in HF
 
-. [...................................................................................................................................................................]
 
 
 seem to increase CV events, including HF, in patients at high
@@ -7488,7 +7418,6 @@ presence of erectile dysfunction and factors that can be related to
 erectile dysfunction. Numerous classes of CV drugs, particularly diuretics and beta-blockers, have been implicated causing erectile dysfunction. However, the relationships between many contemporary
 CV drugs and erectile dysfunction is not clear. [834] For the treatment
 of erectile dysfunction, phosphodiesterase type 5 inhibitors are gen
-[834][,][835] No . [......................................................................................................................................................................]
 
 
 studies have shown one agent to be more effective or safer than the
@@ -7628,7 +7557,6 @@ in high-risk patients undergoing potentially cardiotoxic chemotherapy. Compared 
 changes in global longitudinal strain led to the same decrease in LVEF
 (primary endpoint) but with fewer patients who developed cardiac
 dysfunction at the end of the study, thus suggesting usefulness of
-global longitudinal strain for the early detection of cardiotoxicity. [867] . [..................................................]
 
 
 Promising results for the early detection of cardiac dysfunction have
@@ -7722,9 +7650,7 @@ Recommendations for the management of patients with
 cancer and heart failure
 
 
-. [.........................................................................]
 
-. [.................................................................................................]
 
 
 
@@ -7789,7 +7715,6 @@ valve diseases. [885] Symptoms are more likely to occur in the second
 trimester when the demand for an increased cardiac output is the
 highest. Severe emotionally stressful episodes during pregnancy and
 delivery can also cause Takotsubo syndrome. [884][,][885]
-. [...............]
 
 
 PPCM presents as HF secondary to LV systolic dysfunction, usually
@@ -7855,7 +7780,6 @@ Direct causes of CMPs include pathogenic gene variants (mutations), toxins, auto
 tachyarrhythmias. Disease modifiers, conditions that may aggravate
 or trigger a CMP, include epigenetic factors and acquired modifiers,
 
-. [......................................................................................................................................................................]
 
 
 consider this key interaction between genetic and acquired causes
@@ -8085,6 +8009,8 @@ Table 28 Hypertrophic cardiomyopathy: specific aspects of diagnosis and treatmen
 
 
 
+
+
 AV= atrio-ventricular; BAG3= Bcl2-associated athanogene 3; ECG= electrocardiogram; HCM= hypertrophic cardiomyopathy; ICD= implantable cardioverter-defibrillator; LGE=
 late gadolinium enhancement; LMNA =lamin A/C; LV= left ventricular; LVEF= left ventricular ejection fraction; LVOT= left ventricular outflow tract; LVOTO= left ventricular outflow tract obstruction; MHC= myosin heavy chain; MYPC= myosin-binding protein C; NSVT= non-sustained ventricular tachycardia; NYHA= New York Heart Association; OMT
 = optimal medical therapy; PLN= phospholamban; RMB20= ribonucleic acid binding motif 20; RV= right ventricular; TNNT =troponin-T; TTN= titin.
@@ -8122,7 +8048,6 @@ on CMR, younger age, or with a specific familial/genetic phenotype
 applied to the patients enrolled in DANISH and may help for the indication to ICD implantation in DCM. [166][,][913] Treatment of HCM and
 AC, including indications for ICD, are detailed in previous
 documents. [895][,][896][,][899][,][912][,][914][,][915]
-. [..................]
 
 
 14.3 Left ventricular non-compaction
@@ -8181,7 +8106,6 @@ myocarditis [917]
 ANCA = antineutrophil cytoplasmic antibody; CMV = cytomegalovirus; HIV =
 human immunodeficiency virus; SARS-CoV-2 = severe acute respiratory syndrome coronavirus 2; SLE = systemic lupus erythematosus.
 
-. [..............................................................................................................................................................]
 
 
 disease appears to result from the intersection of shared risk factors
@@ -8331,7 +8255,6 @@ Diagnosis and treatment of CA were recently reviewed. [973] Age
 >65 years and HF along with a LV wall thickness >12 mm at echocardiography are major criteria for the suspicion of CA. [973] Criteria for a
 suspicion of CA and to confirm diagnosis are reported in Table 35,
 [Supplementary Table 25, and Figure 21.](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehab368#supplementary-data) [973][,][974] Cardiac imaging and
-EMB or extra-cardiac biopsy are needed for the diagnosis of AL-CA . [..........................]
 
 
 in patients with abnormal haematological tests (Figure 21).
@@ -8445,9 +8368,7 @@ in SR, yet. [7][,][978] Amiodarone is the preferred antiarrhythmic
 agent. [973]
 
 
-. [.......................................................................]
 
-. [......................................................................................]
 
 3686 ESC Guidelines
 
@@ -8501,9 +8422,7 @@ Table 35 “Red flags” for most common forms of cardiac
 amyloidosis
 
 
-. [.........................................................]
 
-. [....................................................................................................]
 
 
 
@@ -8594,7 +8513,6 @@ LVEF between 41% and 49% are defined as ‘mildly reduced LVEF’
 diagnosis of HF.
 
 
-. [..........................................................................................................................................................]
 
 
 (3) ACE-I or ARNI, beta-blockers, MRA, and SGLT2 inhibitors are
@@ -8795,7 +8713,6 @@ ii. Studies on optimal models for follow-up of stable HF patients
 
 iii. Studies to determine specific options for palliative care
 
-. [............................................................................................................................................................................]
 
 
 Major advances in the diagnosis and treatment of patients with HF
@@ -9169,7 +9086,6 @@ healthcare authorities, professional organizations, payers, and the
 public. [997]
 
 The ESC recognizes the need for measuring and reporting quality
-and outcomes of CV care. The methodology by which the ESC QIs . [...................................]
 
 
 are developed has been published [997] and, to date, a suite of QIs for
@@ -9275,7 +9191,6 @@ and Critical Care, Universite´ de Paris - Hoˆpital Lariboisie`re, Paris,
 France; Richard Mindham, United Kingdom, ESC Patient Forum,
 Sophia Antipolis, France; Claudio Muneretto, Cardiothoracic
 
-. [............................................................................................................................................................................]
 
 
 Massimo Francesco Piepoli, Cardiology, Guglielmo da Saliceto
@@ -9450,7 +9365,6 @@ N. Baigent (Chairperson) (United Kingdom), Magdy Abdelhamid
 Kingdom), Elena Arbelo (Spain), Riccardo Asteggiano (Italy), Andreas
 Baumbach (United Kingdom), Michael A. Borger (Germany), JelenaCelutkien� e (Lithuania), Maja Cikes (Croatia), Jean-Philippe Collet_
 (France), Volkmar Falk (Germany), Laurent Fauchier (France), Chris
-P. Gale (United Kingdom), Sigrun Halvorsen (Norway), Bernard Iung . [............................................................................................................................................................................]
 
 
 (France), Tiny Jaarsma (Sweden), Aleksandra Konradi (Russia),
@@ -9602,7 +9516,6 @@ Hemingway H, Cleland JG, McMurray JJV, Rahimi K. Temporal trends and patterns in
 Lancet 2018;391:572�580.
 
 22. Dunlay SM, Roger VL. Understanding the epidemic of heart failure: past, present,
-and future. Curr Heart Fail Rep 2014;11:404�415. . [............................................................................................................................................................................]
 
 
 23. Roth GA, Forouzanfar MH, Moran AE, Barber R, Nguyen G, Feigin VL, Naghavi
@@ -9765,7 +9678,6 @@ socioeconomic status, and place of diagnosis: a population-based study. Lancet
 Public Health 2019;4:e406�e420.
 
 62. Al-Mohammad A, Mant J, Laramee P, Swain S, Chronic Heart Failure
-Guideline Development Group. Diagnosis and management of adults . [............................................................................................................................................................................]
 
 
 with chronic heart failure: summary of updated NICE guidance. BMJ
@@ -9922,7 +9834,6 @@ biopsy in the management of cardiovascular disease: a scientific statement from
 the American Heart Association, the American College of Cardiology, and the
 European Society of Cardiology Endorsed by the Heart Failure Society of
 America and the Heart Failure Association of the European Society of
-Cardiology. Eur Heart J 2007;28:3076�3093. . [............................................................................................................................................................................]
 
 
 98. Cooper LT Jr, Berry GJ, Shabetai R. Idiopathic giant-cell myocarditis–natural history and treatment. Multicenter Giant Cell Myocarditis Study Group
@@ -10086,7 +9997,6 @@ trial. Lancet Diabetes Endocrinol 2017;5:333�340.
 Shi VC, Rouleau JL, Swedberg K, Zile MR, Packer M, Desai AS, Solomon SD,
 McMurray JJV. Renal effects and associated outcomes during angiotensinneprilysin inhibition in heart failure. JACC Heart Fail 2018;6:489�498.
 128. Desai AS, Vardeny O, Claggett B, McMurray JJ, Packer M, Swedberg K, Rouleau
-JL, Zile MR, Lefkowitz M, Shi V, Solomon SD. Reduced risk of hyperkalemia . [............................................................................................................................................................................]
 
 
 during treatment of heart failure with mineralocorticoid receptor antagonists
@@ -10244,7 +10154,6 @@ Kurtz CE, GALACTIC-HF Investigators. Cardiac myosin activation with omecamtiv me
 Granger CB, Kjekshus J, Kuˆ¡ber L, Latini R, Maggioni AP, Packer M, Pitt B,
 Solomon SD, Swedberg K, Tavazzi L, Wikstrand J, Zannad F, Zile MR,
 McMurray JJV. Declining risk of sudden death in heart failure. N Engl J Med
-2017;377:41�51. . [............................................................................................................................................................................]
 
 
 161. Bardy GH, Lee KL, Mark DB, Poole JE, Packer DL, Boineau R, Domanski M,
@@ -10404,7 +10313,6 @@ Reduction in inappropriate therapy and mortality through ICD programming. N
 Engl J Med 2012;367:2275�2283.
 195. Healey JS, Hohnloser SH, Glikson M, Neuzner J, Mabo P, Vinolas X, Kautzner J,
 O’Hara G, VanErven L, Gadler F, Pogue J, Appl U, Gilkerson J, Pochet T, Stein
-KM, Merkely B, Chrolavicius S, Meeks B, Foldesi C, Thibault B, Connolly SJ, . [............................................................................................................................................................................]
 
 
 Shockless IMPLant Evaluation Investigators. Cardioverter defibrillator implantation without induction of ventricular fibrillation: a single-blind, non-inferiority,
@@ -10551,7 +10459,6 @@ Automatic Defibrillator Implantation Trial (MADIT-II). J Am Coll Cardiol
 
 227. Linde C, Gold MR, Abraham WT, St John Sutton M, Ghio S, Cerkvenik J,
 Daubert C, REsynchronization reVErses Remodeling in Systolic left vEntricular
-dysfunction Study Group. Long-term impact of cardiac resynchronization . [............................................................................................................................................................................]
 
 
 therapy in mild heart failure: 5-year results from the REsynchronization
@@ -10703,7 +10610,6 @@ fraction. Nat Rev Cardiol 2020;17:559�573.
 F, Fu M, Guazzi M, Lam CSP, Lancellotti P, Melenovsky V, Morris DA, Nagel
 E, Pieske-Kraigher E, Ponikowski P, Solomon SD, Vasan RS, Rutten FH, Voors
 AA, Ruschitzka F, Paulus WJ, Seferovic P, Filippatos G. How to diagnose
-heart failure with preserved ejection fraction: the HFA-PEFF diagnostic algorithm: a consensus recommendation from the Heart Failure Association . [..........................................................................................................................................................................]
 
 
 (HFA) of the European Society of Cardiology (ESC). Eur Heart J
@@ -10863,7 +10769,6 @@ of heart failure by antihypertensive drug treatment in older persons with isolat
 288. Group SR, Wright JT, Jr., Williamson JD, Whelton PK, Snyder JK, Sink KM,
 Rocco MV, Reboussin DM, Rahman M, Oparil S, Lewis CE, Kimmel PL, Johnson
 KC, Goff DC Jr, Fine LJ, Cutler JA, Cushman WC, Cheung AK, Ambrosius WT.
-. [............................................................................................................................................................................]
 
 
 A randomized trial of intensive versus standard blood-pressure control. N Engl
@@ -11019,7 +10924,6 @@ randomized controlled trial. JAMA 2009;301:1451�1459.
 323. O’Connor CM, Whellan DJ, Lee KL, Keteyian SJ, Cooper LS, Ellis SJ, Leifer ES,
 Kraus WE, Kitzman DW, Blumenthal JA, Rendall DS, Miller NH, Fleg JL,
 Schulman KA, McKelvie RS, Zannad F, Pina IL, HF-ACTION Investigators.
-Efficacy and safety of exercise training in patients with chronic heart failure: HFACTION randomized controlled trial. JAMA 2009;301:1439�1450. . [..........................................................................................................................................................................]
 
 
 324. Taylor RS, Walker S, Smart NA, Piepoli MF, Warren FC, Ciani O, Whellan D,
@@ -11185,7 +11089,6 @@ and many other medical problems through and beyond the COVID-19 pandemic: the ad
 Fail 2020;22:995�998.
 
 357. Inglis SC, Clark RA, Dierckx R, Prieto-Merino D, Cleland JG. Structured telephone support or non-invasive telemonitoring for patients with heart failure.
-Heart 2017;103:255�257. . [.........................................................................................................................................................................]
 
 
 358. Frederix I, Caiani EG, Dendale P, Anker S, Bax J, Bohm A, Cowie M, Crawford
@@ -11350,7 +11253,6 @@ Zimmermann WH, Mebazaa A. Treatments targeting inotropy. Eur Heart J
 2019;40:3626�3644.
 
 388. Ahmad T, Miller PE, McCullough M, Desai NR, Riello R, Psotka M, Bohm M,
-Allen LA, Teerlink JR, Rosano GMC, Lindenfeld J. Why has positive inotropy . [.........................................................................................................................................................................]
 
 
 failed in chronic heart failure? Lessons from prior inotrope trials. Eur J Heart Fail
@@ -11512,7 +11414,6 @@ Truby LK, Sayer G, Colombo PC, Yuzefpolskaya M, Uriel N, Farr MA, Topkara
 VK. Psychosocial risk and its association with outcomes in continuous-flow left
 ventricular assist device patients. Circ Heart Fail 2020;13:e006910.
 416. Jaarsma T, Hill L, Bayes-Genis A, La Rocca HB, Castiello T, Celutkiene J, MarquesSule E, Plymen CM, Piper SE, Riegel B, Rutten FH, Ben Gal T, Bauersachs J, Coats
-AJS, Chioncel O, Lopatin Y, Lund LH, Lainscak M, Moura B, Mullens W, Piepoli MF, . [............................................................................................................................................................................]
 
 
 Rosano G, Seferovic P, Stromberg A. Self-care of heart failure patients: practical
@@ -11677,7 +11578,6 @@ in the diagnosis of acute heart failure. Rev Esp Cardiol (Engl Ed)
 Y, Lopez-Sendon J, Mebazaa A, Metra M, Rhodes A, Swedberg K, Priori SG,
 Garcia MA, Blanc JJ, Budaj A, Cowie MR, Dean V, Deckers J, Burgos EF, Lekakis
 J, Lindahl B, Mazzotta G, Morais J, Oto A, Smiseth OA, Garcia MA, Dickstein K,
-Albuquerque A, Conthe P, Crespo-Leiro M, Ferrari R, Follath F, Gavazzi A, . [............................................................................................................................................................................]
 
 
 Janssens U, Komajda M, Morais J, Moreno R, Singer M, Singh S, Tendera M,
@@ -11847,7 +11747,6 @@ JAMA 2002;287:1531�1540.
 476. Cotter G, Metzkor E, Kaluski E, Faigenberg Z, Miller R, Simovitz A, Shaham O,
 Marghitay D, Koren M, Blatt A, Moshkovitz Y, Zaidenstein R, Golik A.
 Randomised trial of high-dose isosorbide dinitrate plus low-dose furosemide
-. [............................................................................................................................................................................]
 
 
 versus high-dose furosemide plus low-dose isosorbide dinitrate in severe pulmonary oedema. Lancet 1998;351:389�393.
@@ -12008,7 +11907,6 @@ versus intra-aortic balloon pump in cardiogenic shock after acute myocardial
 infarction. J Am Coll Cardiol 2017;69:278�287.
 505. Schrage B, Ibrahim K, Loehn T, Werner N, Sinning JM, Pappalardo F, Pieri M,
 Skurk C, Lauten A, Landmesser U, Westenfeld R, Horn P, Pauschinger M,
-Eckner D, Twerenbold R, Nordbeck P, Salinger T, Abel P, Empen K, Busch MC, . [............................................................................................................................................................................]
 
 
 Felix SB, Sieweke JT, Moller JE, Pareek N, Hill J, MacCarthy P, Bergmann MW,
@@ -12164,7 +12062,6 @@ impact on ventricular arrhythmias, implantable cardioverter-defibrillator therap
 Spontaneous conversion and maintenance of sinus rhythm by amiodarone in
 patients with heart failure and atrial fibrillation: observations from the Veterans
 Affairs Congestive Heart Failure Survival Trial of Antiarrhythmic Therapy
-. [............................................................................................................................................................................]
 
 
 (CHF-STAT). The Department of Veterans Affairs CHF-STAT Investigators.
@@ -12324,7 +12221,6 @@ Study Group. Circulation 1997;96:856�863.
 572. IONA Study Group. Effect of nicorandil on coronary events in patients with
 stable angina: the Impact Of Nicorandil in Angina (IONA) randomised trial.
 Lancet 2002;359:1269�1275.
-. [............................................................................................................................................................................]
 
 
 573. Kanamasa K, Hayashi T, Kimura A, Ikeda A, Ishikawa K. Long-term, continuous
@@ -12484,7 +12380,6 @@ large population cohort study. J Am Coll Cardiol 2011;58:2084�2091.
 602. Chaliki HP, Mohty D, Avierinos JF, Scott CG, Schaff HV, Tajik AJ, EnriquezSarano M. Outcomes after aortic valve replacement in patients with severe
 aortic regurgitation and markedly reduced left ventricular function. Circulation
 2002;106:2687�2693.
-. [............................................................................................................................................................................]
 
 
 603. Tornos P, Sambola A, Permanyer-Miralda G, Evangelista A, Gomez Z, SolerSoler J. Long-term outcome of surgically treated aortic regurgitation: influence
@@ -12651,7 +12546,6 @@ meta-analysis. J Hypertens 2018;36:1637�1647.
 631. Vaduganathan M, Pareek M, Kristensen AMD, Biering-Sorensen T, Byrne C,
 Almarzooq Z, Olesen TB, Olsen MH, Bhatt DL. Prevention of heart failure
 events with intensive versus standard blood pressure lowering across the spectrum of kidney function and albuminuria: a SPRINT substudy. Eur J Heart Fail
-2021;23:384�392. . [..........................................................................................................................................................................]
 
 
 632. Fagard RH, Celis H, Thijs L, Wouters S. Regression of left ventricular mass by
@@ -12816,7 +12710,6 @@ and meta-analysis of cardiovascular outcome trials. Lancet Diabetes Endocrinol
 661. Jorsal A, Kistorp C, Holmager P, Tougaard RS, Nielsen R, Hanselmann A,
 Nilsson B, Moller JE, Hjort J, Rasmussen J, Boesgaard TW, Schou M, Videbaek
 L, Gustafsson I, Flyvbjerg A, Wiggers H, Tarnow L. Effect of liraglutide, a
-glucagon-like peptide-1 analogue, on left ventricular function in stable chronic . [............................................................................................................................................................................]
 
 
 heart failure patients with and without diabetes (LIVE)-a multicentre, doubleblind, randomised, placebo-controlled trial. Eur J Heart Fail 2017;19:69�77.
@@ -12980,7 +12873,6 @@ position paper. J Cachexia Sarcopenia Muscle 2019;10:956�961.
 Farmakis D, Lopez-Fernandez T, Lainscak M, Pudil R, Ruschitska F, Seferovic P,
 Filippatos G, Coats A, Suter T, Von Haehling S, Ciardiello F, de Boer RA, Lyon
 AR, Tocchetti CG, Heart Failure Association Cardio-Oncology Study Group of
-the European Society of Cardiology. Cancer diagnosis in patients with heart . [............................................................................................................................................................................]
 
 
 failure: epidemiology, clinical implications and gaps in knowledge. Eur J Heart Fail
@@ -13150,7 +13042,6 @@ HL. Renal impairment, worsening renal function, and outcome in patients with
 heart failure: an updated meta-analysis. Eur Heart J 2014;35:455�469.
 736. Braunwald E. Diabetes, heart failure, and renal dysfunction: the vicious circles.
 Prog Cardiovasc Dis 2019;62:298�302.
-. [............................................................................................................................................................................]
 
 
 737. Zannad F, Ferreira JP, Pocock SJ, Zeller C, Anker SD, Butler J, Filippatos G,
@@ -13312,7 +13203,6 @@ kidney disease on RAAS inhibitors. Eur J Heart Fail 2015;17:1057�1065.
 769. Trevisan M, de Deco P, Xu H, Evans M, Lindholm B, Bellocco R, Barany P,
 Jernberg T, Lund LH, Carrero JJ. Incidence, predictors and clinical management
 of hyperkalaemia in new users of mineralocorticoid receptor antagonists. Eur J
-Heart Fail 2018;20:1217�1226. . [............................................................................................................................................................................]
 
 
 770. Ferreira JP, Rossello X, Pocock SJ, Rossignol P, Claggett BL, Rouleau JL,
@@ -13463,7 +13353,6 @@ Fail 2016;18:353�361.
 807. Cowie MR, Gallagher AM. Sleep disordered breathing and heart failure: what
 does the future hold? JACC Heart Fail 2017;5:715�723.
 808. Cowie MR, Woehrle H, Wegscheider K, Angermann C, d’Ortho MP, Erdmann
-E, Levy P, Simonds AK, Somers VK, Zannad F, Teschler H. Adaptive servo. [............................................................................................................................................................................]
 
 
 ventilation for central sleep apnea in systolic heart failure. N Engl J Med
@@ -13635,7 +13524,6 @@ Members, ESC Committee for Practice Guidelines, Document Reviewers. 2016
 
 ESC Position Paper on cancer treatments and cardiovascular toxicity developed
 under the auspices of the ESC Committee for Practice Guidelines: The Task
-. [............................................................................................................................................................................]
 
 
 Force for cancer treatments and cardiovascular toxicity of the European
@@ -13796,7 +13684,6 @@ S. Association between hospitalization for pneumonia and subsequent risk of
 cardiovascular disease. JAMA 2015;313:264�274.
 875. Violi F, Cangemi R, Falcone M, Taliani G, Pieralli F, Vannucchi V, Nozzoli C,
 Venditti M, Chirinos JA, Corrales-Medina VF, SIXTUS Study Group.
-Cardiovascular complications and short-term mortality risk in communityacquired pneumonia. Clin Infect Dis 2017;64:1486�1493. . [..........................................................................................................................................................................]
 
 
 876. Rey JR, Caro-Codon J, Rosillo SO, Iniesta AM, Castrejon-Castrejon S, MarcoClement I, Martin-Polo L, Merino-Argos C, Rodriguez-Sotelo L, Garcia-Veas JM,
@@ -13953,7 +13840,6 @@ and dilated cardiomyopathies. N Engl J Med 2016;374:233�241.
 904. van Spaendonck-Zwarts KY, Posafalvi A, van den Berg MP, Hilfiker-Kleiner D,
 Bollen IA, Sliwa K, Alders M, Almomani R, van Langen IM, van der Meer P,
 Sinke RJ, van der Velden J, Van Veldhuisen DJ, van Tintelen JP, Jongbloed JD.
-. [............................................................................................................................................................................]
 
 
 Titin gene mutations are common in families with both peripartum cardiomyopathy and dilated cardiomyopathy. Eur Heart J 2014;35:2165�2173.
@@ -14108,7 +13994,6 @@ data in sarcomere negative cases has negligible diagnostic yield. Genet Med
 927. Tuohy CV, Kaul S, Song HK, Nazer B, Heitner SB. Hypertrophic cardiomyopathy: the future of treatment. Eur J Heart Fail 2020;22:228�240.
 928. O’Mahony C, Akhtar MM, Anastasiou Z, Guttmann OP, Vriesendorp PA,
 Michels M, Magri D, Autore C, Fernandez A, Ochoa JP, Leong KMW, Varnava
-AM, Monserrat L, Anastasakis A, Garcia-Pavia P, Rapezzi C, Biagini E, Gimeno . [............................................................................................................................................................................]
 
 
 JR, Limongelli G, Omar RZ, Elliott PM. Effectiveness of the 2014 European
@@ -14273,7 +14158,6 @@ American Heart Association. Circulation 2020;141:e69�e92.
 
 963. Felix SB, Staudt A, Dorffel WV, Stangl V, Merkel K, Pohl M, Docke WD,
 Morgera S, Neumayer HH, Wernecke KD, Wallukat G, Stangl K, Baumann G.
-Hemodynamic effects of immunoadsorption and subsequent immunoglobulin . [............................................................................................................................................................................]
 
 
 substitution in dilated cardiomyopathy: three-month results from a randomized
@@ -14393,7 +14277,6 @@ of Grown-Up Congenital Heart Disease and the Heart Failure Association of
 the European Society of Cardiology. Eur Heart J 2016;37:1419�1427.
 991. Lluri G, Lin J, Reardon L, Miner P, Whalen K, Aboulhosn J. Early experience
 with sacubitril/valsartan in adult patients with congenital heart disease. World J
-Pediatr Congenit Heart Surg 2019;10:292�295. . [...................................................................................................]
 
 
 992. Appadurai V, Thoreau J, Malpas T, Nicolae M. Sacubitril/valsartan in adult congenital heart disease patients with chronic heart failure – a single centre case

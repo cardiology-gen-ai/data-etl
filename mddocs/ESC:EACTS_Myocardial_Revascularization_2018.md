@@ -124,7 +124,6 @@ of stenosis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 4 Process for decision-making and patient information . . . . . . . . . . . . . . . .98
 
 
-. [........................................................................................]
 
 
 4.1 Patient information and informed consent . . . . . . . . . . . . . . . . . . . . .98
@@ -300,7 +299,6 @@ coronary intervention . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 graft lesions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .125
 
-. [............................................................................................................................................................................]
 
 
 13.4.1 Restenosis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .125
@@ -432,6 +430,9 @@ and in patients with late diagnosis . . . . . . . . . . . . . . . . . . . . . . 
 
 8 Myocardial revascularization in patients with heart failure . . . . . . . . . .116
 
+
+
+![Page 8 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_008_images.png)
 
 8.1 Chronic heart failure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .116
 
@@ -614,7 +615,6 @@ A Maastricht Contrast-Induced
 Nephropathy Guideline
 ANTARCTIC Platelet function monitoring to adjust
 antiplatelet therapy in elderly patients
-stented for an acute coronary syndrome . [.........................................................................................................................................................................]
 
 
 ARCTIC Assessment by a Double Randomization of a
@@ -774,6 +774,9 @@ stented for an acute coronary syndrome
 ESC/EACTS Guidelines 91
 
 
+
+![Page 19 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_019_images.png)
+
 CKD Chronic kidney disease
 CMR Cardiac magnetic resonance
 COMPASS Rivaroxaban for the Prevention of Major
@@ -843,7 +846,6 @@ Therapy for the Treatment of Chronic Total
 Occlusions
 
 EuroSCORE European System for Cardiac Operative Risk
-Evaluation . [......................................................................................................................................................................]
 
 
 EUROMAX European Ambulance Acute Coronary
@@ -1016,8 +1018,10 @@ PCI Percutaneous coronary intervention
 Pd/Pa Distal coronary to aortic pressure
 PES Paclitaxel-eluting stent
 PET Positron emission tomography
-PF Platelet function . [.........................................................................................................................................................................]
 
+
+
+![Page 22 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_022_images.png)
 
 PIONEER Prevention of bleeding in patients with AF
 undergoing PCI
@@ -1166,7 +1170,6 @@ VKA Vitamin K antagonist
 
 Clinical practice guidelines summarize and evaluate all available evidence at the time of the writing process on a particular issue with the
 
-. [............................................................................................................................................................................]
 
 
 for an individual patient with a given condition, taking into account
@@ -1227,6 +1230,9 @@ electronic version for digital applications (smartphones, etc.) are produced. Th
 ### 1 Preamble
 
 
+
+![Page 26 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_026_images.png)
+
 Clinical practice guidelines summarize and evaluate all available evidence at the time of the writing process on a particular issue with the
 aim of assisting physicians in selecting the best management strategies
 
@@ -1234,9 +1240,15 @@ aim of assisting physicians in selecting the best management strategies
 
 
 
+![Page 27 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_027_images.png)
 
 
 
+
+
+
+
+![Page 32 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_032_images.png)
 
 
 
@@ -1283,7 +1295,9 @@ and implementing them in clinical practice.
 The guidelines do not, however, override the individual responsibility of healthcare professionals to make appropriate decisions in the
 
 
-. [...................................................................................]
+
+
+![Page 40 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_040_images.png)
 
 ESC/EACTS Guidelines 95
 
@@ -1297,7 +1311,14 @@ ESC/EACTS Guidelines 95
 
 
 
+![Page 47 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_047_images.png)
 
+
+
+
+
+
+![Page 51 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_051_images.png)
 
 |Col1|Class I|Col3|Class IIa|
 |---|---|---|---|
@@ -1306,7 +1327,7 @@ ESC/EACTS Guidelines 95
 
 
 
-
+![Page 53 Images](ESC:EACTS_Myocardial_Revascularization_2018_images/page_053_images.png)
 
 
 
@@ -1341,7 +1362,6 @@ patients presenting with acute coronary syndrome (ACS). Because of
 the low sensitivity of exercise electrocardiogram (ECG) testing in the
 assessment of patients with symptoms of angina, non-invasive imaging
 
-. [............................................................................]
 
 [1]
 
@@ -1496,7 +1516,6 @@ in both groups. However, it is important to consider the potential influence of 
 descending (LAD) or left circumflex arteries, which may be associated
 with an increased risk of a false negative FFR. [27]
 
-The value of FFR to evaluate intermediate stenosis and guide selection of lesions for revascularization at the time of bypass surgery has . [............................................................................................................................................................................]
 
 
 been shown in an observational study. [28] Of the 627 patients with
@@ -1561,7 +1580,6 @@ enrolled in the SYNTAX trial. [34]
 Randomized trials comparing iwFR-guided revascularization with
 angiography-guided revascularization or medical therapy are not
 available. iwFR has not been extensively validated for patients with
-LMS stenosis. . [...................................]
 
 There is no adequate randomized controlled trial (RCT) data to
 support the use of whole-cardiac cycle Pd/Pa for the guidance of
@@ -1689,7 +1707,6 @@ the patient. The Heart Team should meet on a regular basis to analyse and interp
 need for myocardial revascularization, and assess the relative shortand long-term safety and effectiveness of the percutaneous and surgical options. Ad hoc meetings of the Heart Team should facilitate and
 support efficient clinical workflows.
 The need for an interdisciplinary approach is underlined by reports
-on (i) the underuse of revascularization procedures in 18–40% of . [...................................................................................................................................................................]
 
 
 patients with CAD [44] and (ii) inappropriate use of revascularization
@@ -1789,7 +1806,6 @@ duration 9 months] for the first time. [63] After 6 weeks of medication
 optimization (mean number of anti-anginal drugs: 3) and baseline cardiopulmonary exercise testing, 200 patients were randomized (105
 PCI and 95 placebo). Following a 6-week post-randomization period,
 the primary endpoint of increment in exercise time was not significantly different, but estimates were imprecise (PCI minus placebo
-16.6 sec, 95% CI –8.9 to 42.0, P = 0.20). The dobutamine stress echocardiography peak stress wall motion score index improved with PCI . [..................................................................................]
 
 
 (-0.09, 95% CI -0.15 to -0.04, P = 0.001). ORBITA raises the issue of
@@ -1869,7 +1885,6 @@ bypass grafting
 The superiority of CABG over a strategy of initial medical therapy
 was established in a meta-analysis of seven RCTs [68] more than two
 
-. [......................................................................................................]
 
 
 with SCAD and left main (LM) or three-vessel disease, particularly
@@ -2018,7 +2033,6 @@ tively developed for the SYNTAX trial to grade the anatomical
 
 
 
-. [..............................................................]
 
 
 complexity of coronary lesions in patients with LM or three-vessel
@@ -2103,7 +2117,6 @@ not seen among matched pairs of patients in which the PCI group had
 complete revascularization (P interaction = 0.02). [135] Consistent findings
 were obtained in a pooled analysis of 3212 patients of the SYNTAX,
 
-. [.......................................................................................................]
 
 
 BEST (Randomised Comparison of Coronary Artery Bypass Surgery
@@ -2228,7 +2241,6 @@ Current evidence indicates that PCI is an appropriate alternative
 to CABG in LM disease and low-to-intermediate anatomical com
 plexity. Among patients with LM disease and low anatomical complexity, there is evidence that the outcomes with respect to major
 clinical endpoints are similar for PCI and CABG, resulting in a class I
-recommendation. Among patients with LM disease and high . [............................................................................................................................................................................]
 
 
 anatomical complexity, the number of patients studied in RCTs is
@@ -2336,7 +2348,6 @@ Myocardial revascularization in patients with non-ST-segment elevation ACS (NSTE
 endorsed by the current Task Force. [158] In the present Guidelines, we
 discuss new evidence where previous recommendations require an
 
-. [............................................................................................................................................................................]
 
 
 6.1 Early invasive vs. conservative
@@ -2432,7 +2443,6 @@ prognostic value is unclear. [22][,][137][,][181]
 Complete revascularization of significant lesions should be attempted
 in multivessel disease NSTE-ACS patients, given that it was mandated
 in trials testing early vs. late intervention [171][,][182][,][183] and that the prog
-. [..........................................]
 
 nosis of patients with incomplete revascularization is known to be
 worse. [131][,][184] In addition, it seems that complete one-stage revascularization is associated with better clinical outcome than multistage
@@ -2524,7 +2534,6 @@ A recent analysis of 12 675 STEMI patients in the FITT-STEMI
 (Feedback Intervention and Treatment Times in ST-Elevation
 Myocardial Infarction) trial emphasizes the strong impact of time
 
-. [....................................................................................]
 
 
 shock or out-of-hospital cardiac arrest. [199] In shock without out-ofhospital cardiac arrest, every 10 min treatment delay between
@@ -2589,7 +2598,6 @@ remote from the IRA have an adverse prognosis following primary
 PCI. [207] Staged PCI in patients with multivessel disease and no haemodynamic compromise is an independent predictor of survival, and
 more frequent ischaemic events have been reported in direct vs.
 staged revascularization of STEMI patients with multivessel
-disease. [208][–][210] . [...................................]
 
 
 Four major randomized trials-PRAMI (Preventive Angioplasty in
@@ -2651,7 +2659,6 @@ Acute Treatment of Patients with ST-segment Elevation Myocardial
 Infarction: DEFERred stent implantation in connection with primary
 PCI (DANAMI 3-DEFER)] trial in 1215 STEMI patients, there was no
 effect on the primary clinical outcome (composite of death, non-fatal
-MI, or ischaemia-driven revascularization of non-IRA lesions) over a . [................................................................................................................................................................]
 
 
 median follow-up of 42 months. [221] Routine deferred stenting was
@@ -2777,7 +2784,6 @@ score-matched comparison revealed similar survival (mean follow-up
 2.9 years) with PCI (using EES) vs. CABG. [250] PCI was associated with
 a higher risk of MI, particularly in patients with incomplete revascularization, and repeat revascularization. CABG was associated with a
 higher risk of stroke. The conclusion of the study was that multivessel
-PCI can be a valuable option in HF patients if complete revascularization is possible. A systematic review of studies comparing . [..............................................................................................................]
 
 
 revascularization with medical therapy in patients with an EF <_40%
@@ -2849,7 +2855,6 @@ ing causes.
 
 The SHOCK (Should We Emergently Revascularize Occluded
 
-. [............................................................................................................................................................................]
 
 
 patients with cardiogenic shock complicating AMI, emergency revascularization with PCI or CABG improved long-term survival when
@@ -2961,7 +2966,6 @@ beneficial effects on arterial blood pressure and peripheral perfusion,
 measured by serum lactate levels. [266] In all trials, a higher rate of
 bleeding from vascular access sites and a significantly higher incidence
 of limb ischaemia following pLVAD was noted. Similar outcomes
-. [...........................................]
 
 
 were noted in an RCT of high-risk PCI in patients with impaired LV
@@ -3155,7 +3159,6 @@ of death and MI with revascularization by early-generation DES (RR
 3.8%; RR 0.59, 95% CI 0.39– 0.90; P <0.01). [152] A sensitivity analysis
 revealed that this superiority of CABG over early-generation DES for
 
-. [.....................................................................................................................................................................]
 
 
 high SYNTAX score. A network meta-analysis had suggested that the
@@ -3273,7 +3276,6 @@ CIN prevention is needed.
 
 
 
-. [...........................]
 
 
 
@@ -3433,14 +3435,12 @@ ESC/EACTS Guidelines for the management of valvular heart
 disease. [305]
 
 
-. [......................................................................................................................................................................]
 
 ESC/EACTS Guidelines 123
 
 
 for and timing of PCI in patients undergoing TAVI is also an area with
 limited evidence. The long-term outcomes of patients with concomitant surgical repair of ischaemic MR are also awaited.
-. [....................................................................................................................................................................]
 
 ### 12 Associated peripheral artery diseases
 
@@ -3576,7 +3576,6 @@ blood pressure asymmetry should lead to the investigation of subclavian artery s
 
 
 
-. [..........................................................................................]
 
 ### 13 Repeat revascularization
 
@@ -3653,7 +3652,6 @@ bypassed native artery should be the preferred approach. If PCI in
 the native vessel fails or is not an option, PCI in the diseased SVG
 should be considered. CABG should be considered for patients with
 extensively diseased or occluded bypass grafts and diffuse native ves
-[340] . [............................................................................................................................................................................]
 
 
 The IMA is the conduit of choice for revascularization during redo
@@ -3773,7 +3771,6 @@ the use of intracoronary imaging may be particularly helpful.
 Outcomes of patients with in-stent restenosis after DES are poorer
 than those in patients with BMS in-stent restenosis, independently of
 the therapeutic modality. [382] In patients with recurrent episodes of
-diffuse in-stent restenosis in large vessels—and in those with . [................................................................................]
 
 
 associated multivessel disease, especially in the presence of other
@@ -3850,7 +3847,6 @@ Revascularization plays an important role in reducing the frequency
 of ventricular arrhythmias in patients with normal or mildly reduced
 LV function, [389][,][390] as well as the risk of sudden cardiac death in
 
-. [............................]
 
 
 patients with CAD and LVEF <_35%. [391] Indirect evidence for a pro
@@ -3910,7 +3906,6 @@ New-onset AF in patients undergoing PCI occurs in 2–6% of procedures and incre
 hypertension. [406][–][409] Notably, new-onset AF [defined as change from
 sinus rhythm (SR) at admission to AF during/after PCI] typically
 
-. [...........................................................................................................................................................]
 
 
 impaired prognosis and a more than doubling of the risk of death,
@@ -4045,7 +4040,6 @@ been studied sufficiently. Likewise, the role of routine left atrial exclusion a
 
 CABG remains the most common cardiac surgical procedure, and
 
-[443] . [.....................................]
 
 
 Perioperative medication and blood management are covered in separate Guidelines. [410][,][444]
@@ -4116,7 +4110,6 @@ patients and patients with diabetes. [458][,][464][,][471][–][475] In the ART 
 
 use of BIMA was associated with a 1.0 - 1.5% absolute risk increase in
 
-the need for sternal would reconstruction, and a subsequent subanalysis has found that this risk is minimized with skeletonized harvesting. [476] While we await the 10 year data of the ART trial, BIMA . [.................................................................................................................................................]
 
 
 grafting should be considered in patients with a reasonable life
@@ -4208,7 +4201,6 @@ reduced risk of early morbidity, such as stroke, and fewer transfusions. [508][�
 CKD, there is some evidence that off-pump surgery is associated
 with lower in-hospital mortality and less need for new renal replacement therapy. [529]
 
-8 . [...............................................................................................................................................]
 
 
 15.1.9 Minimally invasive and hybrid procedures
@@ -4344,7 +4336,6 @@ devices
 Plain balloon angioplasty has been superseded in the treatment of de
 novo coronary lesions after demonstration of the superiority of stenting in terms of the requirement for repeat revascularization. [564]
 
-Balloon angioplasty might be considered for the treatment of . [....................................]
 
 
 selected patients in whom implantation of stents is not technically
@@ -4414,7 +4405,6 @@ type for PCI regardless of clinical presentation, lesion subtype, concomitant th
 
 Completely bioresorbable scaffolds (BRS), which degrade to predominantly inert end products after fulfilling their scaffold function in the
 
-. [............................................................................................................................................................................]
 
 
 of reducing or eliminating stent-related adverse events at long-term
@@ -4575,7 +4565,6 @@ patients with large-calibre true bifurcation lesions (side branch diameter
 >_2.5 mm) and significant ostial disease length (>_5 mm). [619] Thus, main
 branch-only stenting with provisional stenting of the side branch should
 
-. [............................................................................................................................................................................]
 
 
 this rule, where upfront side branch stenting may be preferable, include
@@ -4695,7 +4684,6 @@ from 60–70% to >90%. [631][–][633]
 In ostial coronary lesions, additional judgement and caution is essential before proceeding to PCI. In particular, a catheter-induced coronary spasm must be rigorously excluded. Lesion assessment with
 IVUS may be helpful, particularly in LM ostial stenosis. FFR measurement may also be valuable in the assessment of ostial lesions of borderline significance, [634] taking special care to avoid a wedge position
 of the guiding catheter and using i.v., rather than intracoronary,
-adenosine. When performing an intervention, due to interaction . [.......................................................]
 between the guide catheter and the proximal stent edge, the risk of
 longitudinal stent deformation must be considered [635] and avoided
 with careful catheter manipulation. The accurate positioning of the
@@ -4769,7 +4757,6 @@ ESC/EACTS Guidelines 137
 Antithrombotic treatment is mandatory in CAD patients undergoing
 myocardial revascularization. The choice of treatment, the combination,
 the time point of initiation, and the duration depend on the patient’s
-characteristics, comorbidities, the clinical setting (elective revascularization vs. ACS), and the mode (PCI vs. CABG) of revascularization. Both . [....................]
 
 
 ischaemic and bleeding events significantly influence the outcome
@@ -4835,7 +4822,6 @@ patients with a history of stent thrombosis on clopidogrel treatment.
 In parallel with antiplatelet treatment, the use of anticoagulants is
 standard of care during elective PCI to inhibit thrombin generation
 
-. [........................................................................]
 
 
 and bivalirudin, have been evaluated for their use in clinical practice.
@@ -4899,7 +4885,6 @@ efit of GP IIb/IIIa treatment and while non-fatal MIs were reduced,
 (minor) bleeding events were significantly higher when utilizing these
 agents. [676] Thus, GP IIb/IIIa inhibitors may only be considered in specific
 ‘bail-out’ situations including high intraprocedural thrombus burden,
-slow flow, or no-flow with closure of the stented coronary vessel. . [...............................................................]
 
 
 An algorithm for the use of antithrombotic drugs in patients undergoing PCI is shown in Figure 10.
@@ -5019,7 +5004,6 @@ and a significant decrease in the risk of bleeding. However, the reduction of bl
 study demonstrated similar risk patterns for both ischaemia and
 bleeding when comparing the two drugs. Of note, while prior studies
 
-. [............................................................................................................................................................................]
 
 
 not confirmed in VALIDATE-SWEDEHEART and in a contemporary
@@ -5144,7 +5128,6 @@ potent P2Y 12 -inhibitors to clopidogrel) was subject to a number of
 randomized clinical trials. [716][,][717] Triggers for DAPT de-escalation
 include clinical (bleeding events or presumed high bleeding risk) and
 socio-economic factors. [716] Based on recent results from the
-randomized TROPICAL-ACS (Testing responsiveness to platelet . [.....................................................................]
 
 
 inhibition on chronic antiplatelet treatment for acute coronary syndromes) trial [717], an approach of DAPT de-escalation guided by platelet function testing may be considered in ACS patients (NSTE-ACS
@@ -5254,7 +5237,6 @@ Treatment of Acute Myocardial Infarction) trial [735] with limited statistical p
 prasugrel in a setting of primary PCI. When potent P2Y 12 receptor
 inhibitors are contraindicated or are not available, clopidogrel should
 be given for primary PCI instead. [724] The value of pre-treatment with
-. [.........................................................]
 ticagrelor was addressed in the ATLANTIC (Administration of
 Ticagrelor in the Cath Lab or in the Ambulance for New STElevation Myocardial Infarction to Open the Coronary Artery)
 trial. [736] No significant differences were observed in the levels of the
@@ -5359,7 +5341,6 @@ reader to the Focused Update.
 
 
 
-. [...............................]
 
 
 17.5 Special conditions
@@ -5408,7 +5389,6 @@ the dual antithrombotic regimen. In RE-DUAL, both dosing regimens
 for dabigatran (150 mg and 110 mg b.i.d.) vs. warfarin triple therapy
 were associated with a significant reduction of major or clinically
 
-. [......................................................................................]
 
 
 relevant bleeding events. However, as compared with triple therapy,
@@ -5506,7 +5486,6 @@ failure
 
 17.5.3 Monitoring of antiplatelet drugs (platelet function
 testing and genotyping)
-[See the Supplementary Data.](https://academic.oup.com/eurheartj/article-lookup/doi/10.1093/eurheartj/ehy394#supplementary-data) . [....................]
 
 
 17.5.4 Surgery in patients on dual antiplatelet therapy
@@ -5563,7 +5542,6 @@ impact on outcomes. [764]
 
 Several studies suggest that quality measures are more
 
-[765][,][766] . [...............................................................................................................................................]
 
 
 hospitals strongly predicted mortality, irrespective of surgeon or hospital case volumes. [767] Therefore, it is recommended that such quality
@@ -5761,7 +5739,6 @@ mine the relative benefits of PCI and CABG.
 (4) The SYNTAX score is the recommended tool to gauge the ana
 tomical complexity of coronary disease.
 
-. [.....................................................................................]
 
 ### 20 Key messages
 
@@ -6000,7 +5977,6 @@ Stephan Windecker (Chairperson) (Switzerland), Victor Aboyans
 (France), Stefan Agewall (Norway), Emanuele Barbato (Italy), He´ctor
 Bueno (Spain), Antonio Coca (Spain), Jean-Philippe Collet (France),
 Ioan Mircea Coman (Romania), Veronica Dean (France), Victoria
-Delgado (The Netherlands), Donna Fitzsimons (UK), Oliver . [........................]
 
 
 Gaemperli (Switzerland), Gerhard Hindricks (Germany), Bernard
@@ -6073,7 +6049,6 @@ Robert Henderson.
 Bugiardini R, Crea F, Cuisset T, Di Mario C, Ferreira JR, Gersh BJ, Gitt AK,
 Hulot JS, Marx N, Opie LH, Pfisterer M, Prescott E, Ruschitzka F, Sabate M,
 Senior R, Taggart DP, van der Wall EE, Vrints CJ. 2013 ESC guidelines on the
-management of stable coronary artery. Eur Heart J 2013;34:2949–3003. . [.........................................................................................................................................................................]
 
 
 2. Min JK, Leipsic J, Pencina MJ, Berman DS, Koo BK, van Mieghem C, Erglis A, Lin
@@ -6234,7 +6209,6 @@ Linking physiologic severity to clinical outcomes. J Am Coll Cardiol 2014;
 25. Mallidi J, Atreya AR, Cook J, Garb J, Jeremias A, Klein LW, Lotfi A. Long-term
 outcomes following fractional flow reserve-guided treatment of angiographically
 ambiguous left main coronary artery disease: A meta-analysis of prospective
-cohort studies. Catheter Cardiovasc Interv 2015;86:12–18. . [.........................................................................................................................................................................]
 
 
 26. Hamilos M, Muller O, Cuisset T, Ntalianis A, Chlouverakis G, Sarno G, Nelis O,
@@ -6401,7 +6375,6 @@ cardiac surgery. Can J Cardiol 2006;22:679–683.
 55. Truffa MA, Alves GM, Bernardi F, Esteves Filho A, Ribeiro E, Galon MZ, Spadaro
 A, Kajita LJ, Arrieta R, Lemos PA. Does ad hoc coronary intervention reduce
 radiation exposure?   - Analysis of 568 patients. Arq Bras Cardiol 2015;
-105:487–492. . [.........................................................................................................................................................................]
 
 
 56. Hannan EL, Samadashvili Z, Walford G, Holmes DR, Jacobs A, Sharma S, Katz S,
@@ -6569,7 +6542,6 @@ Circulation 2003;107:2900–2907.
 
 88. Gada H, Kirtane AJ, Kereiakes DJ, Bangalore S, Moses JW, Genereux P, Mehran
 R, Dangas GD, Leon MB, Stone GW. Meta-analysis of trials on mortality after
-percutaneous coronary intervention compared with medical therapy in patients . [............................................................................................................................................................................]
 
 
 with stable coronary heart disease and objective evidence of myocardial ischemia. Am J Cardiol 2015;115:1194–1199.
@@ -6721,7 +6693,6 @@ in patients with diabetes and multivessel coronary disease: A pooled analysis of
 patient level data from the SYNTAX, PRECOMBAT, and BEST trials. Eur Heart
 J 2017;38:1969–1977.
 121. Mohr FW, Morice MC, Kappetein AP, Feldman TE, Stahle E, Colombo A, Mack
-MJ, Holmes DR Jr, Morel MA, Van Dyck N, Houle VM, Dawkins KD, Serruys . [............................................................................................................................................................................]
 
 
 PW. Coronary artery bypass graft surgery versus percutaneous coronary intervention in patients with three-vessel disease and left main coronary disease: 5year follow-up of the randomised, clinical SYNTAX trial. Lancet
@@ -6878,7 +6849,6 @@ Long-term mortality after coronary revascularization in nondiabetic patients
 with multivessel disease. J Am Coll Cardiol 2016;68:29–36.
 150. Farkouh ME, Domanski M, Sleeper LA, Siami FS, Dangas G, Mack M, Yang M,
 Cohen DJ, Rosenberg Y, Solomon SD, Desai AS, Gersh BJ, Magnuson EA,
-Lansky A, Boineau R, Weinberger J, Ramanathan K, Sousa JE, Rankin J, Bhargava . [............................................................................................................................................................................]
 
 
 B, Buse J, Hueb W, Smith CR, Muratov V, Bansilal S, King S III, Bertrand M,
@@ -7038,7 +7008,6 @@ PRODIGY Investigators. Two-year outcomes after first- or second-generation
 drug-eluting or bare-metal stent implantation in all-comer patients undergoing
 percutaneous coronary intervention: A pre-specified analysis from the
 PRODIGY study (PROlonging Dual Antiplatelet Treatment After Grading
-stent-induced Intimal hyperplasia studY). JACC Cardiovasc Interv 2014;7:20–28. . [............................................................................................................................................................................]
 
 
 180. Thiele H, de Waha S, Zeymer U, Desch S, Scheller B, Lauer B, Geisler T,
@@ -7192,7 +7161,6 @@ Analysis from the HORIZONS-AMI (harmonizing outcomes with revascularization and 
 
 209. Politi L, Sgura F, Rossi R, Monopoli D, Guerri E, Leuzzi C, Bursi F, Sangiorgi
 GM, Modena MG. A randomised trial of target-vessel versus multi-vessel revascularisation in ST-elevation myocardial infarction: Major adverse cardiac events
-during long-term follow-up. Heart 2010;96:662–667. . [............................................................................................................................................................................]
 
 
 210. Di Mario, C Mara, S Flavio, A Imad, S Antonio, M Anna, P Emanuela, P Stefano,
@@ -7350,7 +7318,6 @@ in acute myocardial infarction: Reappraisal of the golden hour. Lancet
 
 237. Andersen HR, Nielsen TT, Rasmussen K, Thuesen L, Kelbaek H, Thayssen P,
 Abildgaard U, Pedersen F, Madsen JK, Grande P, Villadsen AB, Krusell LR,
-Haghfelt T, Lomholt P, Husted SE, Vigholt E, Kjaergard HK, Mortensen LS; . [............................................................................................................................................................................]
 
 
 DANAMI-2 Investigators. A comparison of coronary angioplasty with fibrinolytic therapy in acute myocardial infarction. N Engl J Med 2003;349:733–742.
@@ -7498,7 +7465,6 @@ Maini B, Mulukutla S, Dzavik V, Popma J, Douglas PS, Ohman M. A prospective,
 randomized clinical trial of hemodynamic support with Impella 2.5 versus intraaortic balloon pump in patients undergoing high-risk percutaneous coronary
 intervention: The PROTECT II study. Circulation 2012;126:1717–1727.
 268. Acharya D, Loyaga-Rendon RY, Pamboukian SV, Tallaj JA, Holman WL, Cantor
-RS, Naftel DC, Kirklin JK. Ventricular assist device in acute myocardial infarction. J Am Coll Cardiol 2016;67:1871–1880. . [............................................................................................................................................................................]
 
 
 269. Hochman JS, Sleeper LA, Webb JG, Dzavik V, Buller CE, Aylward P, Col J,
@@ -7652,7 +7618,6 @@ undergoing transcatheter aortic valve implantation. EuroIntervention
 2018;13:1512–1519.
 
 304. Di Gioia G, Scarsini R, Strisciuglio T, De Biase C, Zivelonghi C, Franco D, De
-Bruyne B, Ribichini F, Barbato E. Correlation between angiographic and . [............................................................................................................................................................................]
 
 
 physiologic evaluation of coronary artery narrowings in patients with aortic
@@ -7808,7 +7773,6 @@ Emergency/Salvage coronary artery bypass grafting study. Eur J Cardiothorac Surg
 2016;49:1451–1456.
 
 334. Parasca CA, Head SJ, Milojevic M, Mack MJ, Serruys PW, Morice MC, Mohr
-FW, Feldman TE, Colombo A, Dawkins KD, Holmes DR Jr, Kappetein PA; . [............................................................................................................................................................................]
 
 
 SYNTAX Investigators. Incidence, characteristics, predictors, and outcomes of
@@ -7962,7 +7926,6 @@ recurrences in patients with coronary in-stent restenosis: A randomized controll
 362. Alfonso F, Perez-Vizcayno MJ, Hernandez R, Bethencourt A, Marti V, LopezMinguez JR, Angel J, Mantilla R, Moris C, Cequier A, Sabate M, Escaned J,
 Moreno R, Banuelos C, Suarez A, Macaya C; RIBS-II Investigators. A randomized
 comparison of sirolimus-eluting stent with balloon angioplasty in patients with
-in-stent restenosis: Results of the Restenosis Intrastent: Balloon Angioplasty . [............................................................................................................................................................................]
 
 
 Versus Elective Sirolimus-Eluting Stenting (RIBS-II) trial. J Am Coll Cardiol
@@ -8118,7 +8081,6 @@ Lancet 1982;2:1173–80.
 ventricular dysfunction. Circulation 2001;104:1489–1493.
 392. Moss AJ, Zareba W, Hall WJ, Klein H, Wilber DJ, Cannom DS, Daubert JP,
 Higgins SL, Brown MW, Andrews ML; Multicenter Automatic Defibrillator
-Implantation Trial II Investigators. Prophylactic implantation of a defibrillator in . [............................................................................................................................................................................]
 
 
 patients with myocardial infarction and reduced ejection fraction. N Engl J Med
@@ -8273,7 +8235,6 @@ carvedilol, a beta-adrenergic blocker, prevents paroxysmal atrial fibrillation a
 coronary artery bypass grafting. Circ J 2008;72:588–591.
 430. Anderson E, Dyke C, Levy JH. Anticoagulation strategies for the management
 of postoperative atrial fibrillation. Clin Lab Med 2014;34:537–561.
-. [............................................................................................................................................................................]
 
 
 431. El-Chami MF, Kilgo P, Thourani V, Lattouf OM, Delurgio DB, Guyton RA, Leon
@@ -8424,7 +8385,6 @@ Arterial Revascularization Trial Investigators. Randomized trial of bilateral ve
 469. Raza S, Blackstone EH, Sabik JF, III. Bilateral versus single internal-thoracicartery grafts. N Engl J Med 2017;376:e37.
 470. Royse A, Eccleston D, Royse C; iGRAFT Collaborators. Bilateral versus single
 internal-thoracic-artery grafts. N Engl J Med 2017;376:e37.
-. [............................................................................................................................................................................]
 
 
 471. Deo SV, Shah IK, Dunlay SM, Erwin PJ, Locker C, Altarabsheh SE, Boilson BA,
@@ -8581,7 +8541,6 @@ Circulation 2012;126:S176–S182.
 
 510. Misfeld M, Brereton RJ, Sweetman EA, Doig GS. Neurologic complications after
 off-pump coronary artery bypass grafting with and without aortic manipulation:
-. [............................................................................................................................................................................]
 
 
 Meta-analysis of 11,398 cases from 8 studies. J Thorac Cardiovasc Surg
@@ -8732,7 +8691,6 @@ Circulation 2014;130:539–545.
 
 549. Taggart DP, Altman DG, Flather M, Gerry S, Gray A, Lees B, Benedetto U,
 ART (Arterial Revascularization Trial) Investigators. Associations between
-. [............................................................................................................................................................................]
 
 
 adding a radial artery graft to single and bilateral internal thoracic artery grafts
@@ -8892,7 +8850,6 @@ Engl J Med 2016;375:1242–1252.
 Smits PC, Vlachojannis GJ, Jensen LO, Christiansen EH, Berencsi K, Valgimigli M,
 Orlandi C, Petrou M, Rapezzi C, Stone GW. Long-term safety of drug-eluting
 and bare-metal stents: Evidence from a comprehensive network meta-analysis. J
-Am Coll Cardiol 2015;65:2496–2507. . [............................................................................................................................................................................]
 
 
 581. Varenne O, Cook S, Sideris G, Kedev S, Cuisset T, Carrie D, Hovasse T, Garot
@@ -9051,7 +9008,6 @@ Percutaneous Coronary Intervention (CLI-OPCI) study. EuroIntervention
 
 608. Wijns W, Shite J, Jones MR, Lee SW, Price MJ, Fabbiocchi F, Barbato E, Akasaka
 T, Bezerra H, Holmes D. Optical coherence tomography imaging during
-. [............................................................................................................................................................................]
 
 
 percutaneous coronary intervention impacts physician decision-making:
@@ -9206,7 +9162,6 @@ long-term outcomes from the multicenter ERCTO registry. J Am Coll Cardiol
 634. Koh JS, Koo BK, Kim JH, Yang HM, Park KW, Kang HJ, Kim HS, Oh BH, Park
 YB. Relationship between fractional flow reserve and angiographic and intravascular ultrasound parameters in ostial lesions: Major epicardial vessel versus side
 branch ostial lesions. JACC Cardiovasc Interv 2012;5:409–415.
-. [............................................................................................................................................................................]
 
 
 635. Arnous S, Shakhshir N, Wiper A, Ordoubadi FF, Williams P, Clarke B,
@@ -9359,7 +9314,6 @@ the FlowCardia’s Approach to Chronic Total Occlusion Recanalization
 663. Joyal D, Afilalo J, Rinfret S. Effectiveness of recanalization of chronic total occlusions: A systematic review and meta-analysis. Am Heart J 2010;160:179–187.
 664. Ndrepepa G, Berger PB, Mehilli J, Seyfarth M, Neumann FJ, Schomig A, Kastrati
 A. Periprocedural bleeding and 1-year outcome after percutaneous coronary
-. [............................................................................................................................................................................]
 
 
 interventions: Appropriateness of including bleeding as a component of a quadruple end point. J Am Coll Cardiol 2008;51:690–697.
@@ -9520,7 +9474,6 @@ of 6 vs. 12 months of clopidogrel therapy after drug-eluting stenting. Eur Heart
 692. Han Y, Xu B, Xu K, Guan C, Jing Q, Zheng Q, Li X, Zhao X, Wang H, Zhao X,
 Li X, Yu P, Zang H, Wang Z, Cao X, Zhang J, Pang W, Li J, Yang Y, Dangas GD.
 Six versus 12 months of dual antiplatelet therapy after implantation of
-. [............................................................................................................................................................................]
 
 
 biodegradable polymer sirolimus-eluting stent: Randomized substudy of the ILOVE-IT 2 trial. Circ Cardiovasc Interv 2016;9:e003145.
@@ -9680,7 +9633,6 @@ College of Physicians. Prevention of premature discontinuation of dual antiplate
 the American Heart Association, American College of Cardiology, Society for
 Cardiovascular Angiography and Interventions, American College of Surgeons,
 and American Dental Association, with representation from the American
-College of Physicians. Circulation 2007;115:813–818. . [............................................................................................................................................................................]
 
 
 720. Mega JL, Braunwald E, Wiviott SD, Bassand JP, Bhatt DL, Bode C, Burton P,
@@ -9834,7 +9786,6 @@ during primary PCI in acute myocardial infarction. N Engl J Med 2008;358:
 Appleby C, Fisher M, Khand A, Kunadian B, Mills JD, Morris JL, Morrison WL,
 Munir S, Palmer ND, Perry RA, Ramsdale DR, Velavan P, Stables RH; HEATPPCI Trial Investigators. Unfractionated heparin versus bivalirudin in primary
 percutaneous coronary intervention (HEAT-PPCI): An open-label, single centre,
-randomised controlled trial. Lancet 2014;384:1849–1858. . [............................................................................................................................................................................]
 
 
 747. Hansson EC, Jideus L, Aberg B, Bjursten H, Dreifaldt M, Holmgren A, Ivert T,
@@ -9956,7 +9907,6 @@ Tiefenbrunn AJ, Misra VK, Kiefe CI, Barron HV. The volume of primary angioplasty
 procedures and survival after acute myocardial infarction. National Registry of
 Myocardial Infarction 2 Investigators. N Engl J Med 2000;342:1573–1580.
 775. Xu B, Redfors B, Yang Y, Qiao S, Wu Y, Chen J, Liu H, Chen J, Xu L, Zhao Y,
-Guan C, Gao R, Genereux P. Impact of operator experience and volume on . [...............................................................................................]
 
 
 outcomes after left main coronary artery percutaneous coronary intervention.

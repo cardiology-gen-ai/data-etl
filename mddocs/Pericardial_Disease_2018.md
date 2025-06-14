@@ -61,6 +61,9 @@ The disclosure forms of all experts involved in the development of these guideli
 Online publish-ahead-of-print 29 August 2015
 
 
+
+![Page 1 Images](Pericardial_Disease_2018_images/page_001_images.png)
+
 ### Table of Contents
 
 Abbreviations and acronyms . . . . . . . . . . . . . . . . . . . . . . . .2923
@@ -543,8 +546,6 @@ without pericardial effusion. [1][ –][ 11][,][42] The clinical diagnosis can b
 
 
 
-
-
 made with two of the following criteria (Table 4): [2][,][4] [–] [15] (i) chest pain
 (.85–90% of cases)—typically sharp and pleuritic, improved by sitting up and leaning forward; (ii) pericardial friction rub (≤33% of
 
@@ -675,6 +676,9 @@ the disease and promoting drug dependence; in this case
 
 
 
+
+
+![Page 40 Images](Pericardial_Disease_2018_images/page_040_images.png)
 
 |Drug|Usual dosinga|Tx durationb|Taperinga|
 |---|---|---|---|
