@@ -4,14 +4,6 @@ Acquired cardiology protocols from [European Society of Cardiology](https://www.
 
 Those pdfs have later been converted using [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) and PyMuPDF into Markdown format and saved in the **/mddocs** folder. I also modified the original code to better extract and save the images, since the method indicated in the PyMuPDF4LLM documentation didn't work properly. This way, bigger and less images are extracted, better fitting this problem. Moreover, a post-processing procedure is done, eliminating repetitive useless patterns like "[.....]".
 
-To run the `converter.py`:
-```bash
-# from root directory
-cd src
-# Usage: python converter.py [pdf_directory] [markdown_directory] [method]
-python3 converter.py ../pdfdocs ../mddocs page_breaks
-```
-
 ## 🔍 Vector Database and Semantic Search
 
 After conversion to markdown, the protocols are processed through a vector database pipeline for semantic search capabilities using **Qdrant** and **LangChain**.
@@ -29,21 +21,19 @@ After conversion to markdown, the protocols are processed through a vector datab
    git clone https://github.com/cardiology-gen-ai/data-etl.git
    cd data-etl
    ```
-
-2. **Run the setup script**
+2. **Setup**
    ```bash
-   chmod +x setup.sh
-   ./setup.sh
+   make setup
    ```
 
-3. **Process the markdown documents**
-   ```bash
-   python3 embedder.py ../mddocs
-   ```
-
-4. **Access the search interface**
+3. **Access the dashboard**
    - Dashboard: http://localhost:6333/dashboard
-   - Test search: `python vectorstore.py "cardiac arrest protocols"`
+
+4. (Optional)
+   ```bash
+   # to see logs
+   make logs
+   ```
 
 ## 📁 Project Structure
 
@@ -68,29 +58,14 @@ cardio-protocols-etl/
 
 ## 🔧 Complete Pipeline Usage
 
-### Step 1: PDF to Markdown Conversion
+### Step 1: Run the entire pipeline
 ```bash
-# Convert ESC protocol PDFs to markdown
-cd src
-python3 converter.py ../pdfdocs ../mddocs page_breaks
+make run
 ```
-
-### Step 2: Start Vector Database
+### Step 2: Semantic Search
 ```bash
-# Start Qdrant vector database
-./setup.sh
-# or manually:
-docker-compose up -d
-```
-
-### Step 3: Create Vector Embeddings
-```bash
-# Process markdown files and create searchable embeddings
-python embedder.py ../mddocs
-```
-
-### Step 4: Semantic Search
-```bash
+# Test search
+make search
 # Search for protocols by meaning, not just keywords
 python3 vectorstore.py "chest pain evaluation"
 python3 vectorstore.py "acute myocardial infarction management"
@@ -149,15 +124,7 @@ results = similarity_search("anticoagulation therapy protocols", k=5)
 2. **Download PDFs** from the [shared Google Drive](https://drive.google.com/drive/folders/1rgaemZ4Jetyz98ivTw8fpLIndgZ2jczn?usp=sharing)
 3. **Run the complete pipeline**:
    ```bash
-   # Setup vector database
-   ./setup.sh
-   
-   # Convert PDFs to markdown
-   cd src
-   python3 converter.py ../pdfdocs ../mddocs page_breaks
-   
-   # Create searchable embeddings
-   python embedder.py ../mddocs
+   make run
    ```
 
 ### Data Sharing Strategy
@@ -170,7 +137,7 @@ The repository excludes large files to keep it manageable:
 
 | Collection | Description | Documents | Vector Dim | Source |
 |------------|-------------|-----------|------------|---------|
-| `cardio_protocols` | ESC cardiology guidelines | ~50+ | 384 | ESC Guidelines |
+| `cardio_protocols` | ESC cardiology guidelines | 27 | 384 | ESC Guidelines |
 
 ## 🛠️ Configuration and Customization
 
@@ -210,10 +177,6 @@ curl http://localhost:6333/collections/cardio_protocols
 docker-compose logs -f qdrant
 ```
 
-### Search Performance
-- **Query time**: ~10-50ms for similarity search
-- **Accuracy**: Semantic search vs keyword matching
-- **Memory usage**: ~2GB for full ESC protocol database
 
 ## 📚 Resources and References
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Cardiology Protocols Vector Database Setup Script
-# This script sets up the complete environment for medical protocol semantic search
+# Cardiology Protocols ETL Pipeline Setup Script
+# This script sets up the complete environment for the cardiology protocols vector database
 
 set -e  # Exit on any error
 
@@ -10,321 +10,218 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Function to print colored messages
-print_step() {
-    echo -e "${BLUE}🔄 $1${NC}"
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-print_info() {
-    echo -e "${CYAN}ℹ️  $1${NC}"
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
 }
 
-# Welcome message
-echo -e "${PURPLE}"
-cat << "EOF"
-🏥 ====================================================
-   Cardiology Protocols Vector Database Setup
-   ESC Guidelines → Semantic Search Pipeline
-====================================================
-EOF
-echo -e "${NC}"
-
-print_step "Starting setup process..."
-
-# Check if we're in the right directory
-if [ ! -f "docker-compose.yml" ]; then
-    print_error "docker-compose.yml not found. Please run this script from the project root directory."
-    exit 1
-fi
-
-# Check prerequisites
-print_step "Checking prerequisites..."
-
-# Check Docker
-if ! command -v docker &> /dev/null; then
-    print_error "Docker is not installed. Please install Docker first."
-    echo "Visit: https://docs.docker.com/get-docker/"
-    exit 1
-fi
-
-# Check if Docker daemon is running
-if ! docker info &> /dev/null; then
-    print_error "Docker daemon is not running. Please start Docker first."
-    exit 1
-fi
-
-print_success "Docker is available and running"
-
-# Check Docker Compose
-COMPOSE_CMD=""
-if command -v docker-compose &> /dev/null; then
-    COMPOSE_CMD="docker-compose"
-    print_success "Docker Compose (standalone) is available"
-elif docker compose version &> /dev/null; then
-    COMPOSE_CMD="docker compose"
-    print_success "Docker Compose (plugin) is available"
-else
-    print_error "Docker Compose is not available. Please install Docker Compose."
-    echo "Visit: https://docs.docker.com/compose/install/"
-    exit 1
-fi
-
-# Check Python
-if command -v python3 &> /dev/null; then
-    PYTHON_VERSION=$(python3 --version 2>&1 | cut -d" " -f2 | cut -d"." -f1,2)
-    print_success "Python 3 is available (version: $PYTHON_VERSION)"
-else
-    print_warning "Python 3 not found. You'll need it to run the ETL pipeline."
-fi
-
-# Check pip
-if command -v pip3 &> /dev/null; then
-    print_success "pip3 is available"
-else
-    print_warning "pip3 not found. You'll need it to install Python dependencies."
-fi
-
-# Create necessary directories
-print_step "Creating project directories..."
-
-# Core directories
-mkdir -p qdrant_storage
-mkdir -p data/raw
-mkdir -p data/processed
-mkdir -p logs
-mkdir -p backups
-
-# Create config directory if it doesn't exist
-mkdir -p config
-
-print_success "Project directories created"
-
-# Check for config files
-print_step "Checking configuration files..."
-
-CONFIG_MISSING=false
-
-if [ ! -f "config/development.yaml" ]; then
-    print_warning "config/development.yaml missing"
-    CONFIG_MISSING=true
-fi
-
-if [ ! -f "config/production.yaml" ]; then
-    print_warning "config/production.yaml missing"
-    CONFIG_MISSING=true
-fi
-
-if [ ! -f "config/README.md" ]; then
-    print_warning "config/README.md missing"
-    CONFIG_MISSING=true
-fi
-
-if [ "$CONFIG_MISSING" = true ]; then
-    print_info "Some config files are missing. The system will use default settings."
-    print_info "Check the config/ directory and ensure you have the required YAML files."
-else
-    print_success "All configuration files found"
-fi
-
-# Check for source files
-print_step "Checking source directories..."
-
-if [ -d "mddocs" ] && [ "$(ls -A mddocs 2>/dev/null)" ]; then
-    MD_COUNT=$(find mddocs -name "*.md" | wc -l)
-    print_success "Found $MD_COUNT markdown files in mddocs/"
-else
-    print_warning "No markdown files found in mddocs/ directory"
-    print_info "You'll need to convert PDFs to markdown before running the embedding process"
-fi
-
-if [ -d "pdfdocs" ] && [ "$(ls -A pdfdocs 2>/dev/null)" ]; then
-    PDF_COUNT=$(find pdfdocs -name "*.pdf" | wc -l)
-    print_success "Found $PDF_COUNT PDF files in pdfdocs/"
-else
-    print_warning "No PDF files found in pdfdocs/ directory"
-    print_info "Download ESC protocols from the shared Google Drive folder"
-fi
-
-# Check if Qdrant is already running
-print_step "Checking for existing Qdrant containers..."
-
-if docker ps --format "table {{.Names}}" | grep -q "qdrant"; then
-    print_warning "Qdrant container is already running"
-    echo "Existing containers:"
-    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(NAMES|qdrant)"
-    echo ""
-    read -p "Do you want to restart the containers? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        print_step "Stopping existing containers..."
-        $COMPOSE_CMD down
-    else
-        print_info "Keeping existing containers running"
-        print_info "Use '$COMPOSE_CMD down' to stop them if needed"
-        exit 0
-    fi
-fi
-
-# Start Docker containers
-print_step "Starting Qdrant container..."
-
-# Pull the latest image first
-print_info "Pulling latest Qdrant image..."
-$COMPOSE_CMD pull
-
-# Start containers
-$COMPOSE_CMD up -d
-
-if [ $? -eq 0 ]; then
-    print_success "Containers started successfully"
-else
-    print_error "Failed to start containers"
-    print_info "Checking logs for errors..."
-    $COMPOSE_CMD logs
-    exit 1
-fi
-
-# Wait for Qdrant to be ready
-print_step "Waiting for Qdrant to be ready..."
-
-max_attempts=60
-attempt=1
-PORT=6333
-
-while [ $attempt -le $max_attempts ]; do
-    if curl -f http://localhost:$PORT/health &> /dev/null; then
-        print_success "Qdrant is ready and healthy!"
-        break
-    fi
+# Main setup function
+main() {
+    echo -e "${BLUE}"
+    echo "🏥 Cardiology Protocols ETL Pipeline Setup"
+    echo "==========================================="
+    echo -e "${NC}"
     
-    if [ $attempt -eq $max_attempts ]; then
-        print_error "Qdrant failed to start after $max_attempts attempts ($(($max_attempts * 2)) seconds)"
-        print_info "Checking container logs:"
-        echo "----------------------------------------"
-        $COMPOSE_CMD logs qdrant | tail -20
-        echo "----------------------------------------"
-        print_info "Try running: $COMPOSE_CMD restart"
+    # Step 1: Check for Python3 availability
+    print_status "Checking Python3 availability..."
+    if command_exists python3; then
+        PYTHON_VERSION=$(python3 --version)
+        print_success "Python3 found: $PYTHON_VERSION"
+    else
+        print_error "Python3 is not installed or not in PATH"
+        print_error "Please install Python3 (version 3.8 or higher) before running this script"
         exit 1
     fi
     
-    # Show progress
-    if [ $((attempt % 10)) -eq 0 ]; then
-        echo -n "  Attempt $attempt/$max_attempts - still waiting"
+    # Check Python version (should be 3.8+)
+    PYTHON_VERSION_NUM=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    REQUIRED_VERSION="3.8"
+    if python3 -c "import sys; exit(0 if sys.version_info >= (3, 8) else 1)"; then
+        print_success "Python version $PYTHON_VERSION_NUM meets requirements (>= $REQUIRED_VERSION)"
     else
-        echo -n "."
+        print_warning "Python version $PYTHON_VERSION_NUM may not be compatible. Recommended: Python 3.8+"
     fi
     
-    sleep 2
-    ((attempt++))
-done
-
-echo  # New line after progress dots
-
-# Verify Qdrant is working
-print_step "Verifying Qdrant functionality..."
-
-# Test basic API
-if curl -s http://localhost:$PORT/collections | python3 -m json.tool &> /dev/null; then
-    print_success "Qdrant API is responding correctly"
-else
-    print_warning "Qdrant API response seems unusual, but container is running"
-fi
-
-# Check if Python requirements are installed
-print_step "Checking Python dependencies..."
-
-if [ -f "requirements.txt" ]; then
-    if command -v pip3 &> /dev/null; then
-        print_info "Installing Python dependencies..."
-        pip3 install -r requirements.txt
-        print_success "Python dependencies installed"
+    # Step 2: Check and update pip3
+    print_status "Checking pip3 availability..."
+    if command_exists pip3; then
+        print_success "pip3 found"
+        print_status "Updating pip3 to latest version..."
+        python3 -m pip install --upgrade pip
+        print_success "pip3 updated successfully"
     else
-        print_warning "pip3 not available. Install manually with: pip3 install -r requirements.txt"
+        print_error "pip3 is not installed or not in PATH"
+        print_error "Please install pip3 before running this script"
+        exit 1
     fi
-else
-    print_warning "requirements.txt not found"
+    
+    # Step 3: Install Python requirements
+    print_status "Installing Python dependencies from requirements.txt..."
+    if [ -f "requirements.txt" ]; then
+        pip3 install -r requirements.txt
+        print_success "Python dependencies installed successfully"
+    else
+        print_error "requirements.txt not found in current directory"
+        print_error "Please run this script from the project root directory"
+        exit 1
+    fi
+    
+    # Step 4: Check for Docker availability
+    print_status "Checking Docker availability..."
+    if command_exists docker; then
+        print_success "Docker found"
+        # Check if Docker daemon is running
+        if docker info >/dev/null 2>&1; then
+            print_success "Docker daemon is running"
+        else
+            print_error "Docker daemon is not running. Please start Docker first"
+            exit 1
+        fi
+    else
+        print_error "Docker is not installed or not in PATH"
+        print_error "Please install Docker before running this script"
+        exit 1
+    fi
+    
+    # Step 5: Check for Make availability
+    print_status "Checking Make availability..."
+    if command_exists make; then
+        print_success "Make found"
+    else
+        print_error "Make is not installed or not in PATH"
+        print_error "Please install Make before running this script"
+        exit 1
+    fi
+    
+    # Step 6: Create necessary directories
+    print_status "Creating necessary directories..."
+    
+    DIRECTORIES=(
+        "pdfdocs"
+        "mddocs"
+        "qdrant_storage"
+        "qdrant_config"
+        "src"
+        "backups"
+    )
+    
+    for dir in "${DIRECTORIES[@]}"; do
+        if [ ! -d "$dir" ]; then
+            mkdir -p "$dir"
+            print_success "Created directory: $dir"
+        else
+            print_status "Directory already exists: $dir"
+        fi
+    done
+    
+    # Step 7: Set proper permissions for qdrant_storage
+    print_status "Setting permissions for qdrant_storage..."
+    chmod 755 qdrant_storage
+    print_success "Permissions set for qdrant_storage"
+    
+    # Step 8: Check if Makefile exists
+    print_status "Checking Makefile..."
+    if [ ! -f "Makefile" ]; then
+        print_error "Makefile not found in current directory"
+        print_error "Please ensure you're running this script from the project root"
+        exit 1
+    fi
+    print_success "Makefile found"
+    
+    # Step 9: Pull Qdrant Docker image
+    print_status "Pulling Qdrant Docker image..."
+    docker pull qdrant/qdrant:latest
+    print_success "Qdrant Docker image pulled successfully"
+    
+    # Step 10: Start the container using make start
+    print_status "Preparing to start Qdrant container..."
+    
+    # Check if container already exists
+    if docker ps -a --format "table {{.Names}}" | grep -q "^qdrant$"; then
+        if docker ps --format "table {{.Names}}" | grep -q "^qdrant$"; then
+            print_success "Qdrant container is already running!"
+            print_status "Skipping container creation - proceeding to completion message"
+        else
+            print_status "Found existing stopped Qdrant container - it will be started automatically"
+        fi
+    else
+        print_status "No existing Qdrant container found - a new one will be created"
+    fi
+    
+    print_success "🎉 Setup completed successfully!"
+    echo ""
+    echo -e "${GREEN}Next steps:${NC}"
+    
+    # Check if container is already running to provide appropriate next steps
+    if docker ps --format "table {{.Names}}" | grep -q "^qdrant$"; then
+        echo "1. ✅ Qdrant container is already running!"
+        echo "2. 📊 Access the dashboard at: http://localhost:6333/dashboard"
+        echo "3. 🚀 Run the complete ETL pipeline: make run"
+        echo "4. 🔍 Test search functionality: make search"
+        echo ""
+        echo -e "${BLUE}System is ready to use!${NC}"
+    else
+        echo "1. 🚀 Starting Qdrant container..."
+        echo "2. 📊 Once running, access the dashboard at: http://localhost:6333/dashboard"
+        echo "3. 🚀 To run the complete ETL pipeline: make run"
+        echo "4. 🔍 To test search functionality: make search"
+        echo ""
+        # Start the container (this will handle existing containers gracefully)
+        make start
+        echo ""
+        echo -e "${GREEN}🎉 Qdrant is now running!${NC}"
+    fi
+    
+    echo ""
+    echo -e "${BLUE}Quick commands:${NC}"
+    echo "  make run      - Run complete pipeline (convert → embed → store)"
+    echo "  make search   - Test search functionality"
+    echo "  make status   - Check container status"
+    echo "  make stop     - Stop Qdrant container"
+    echo "  make health   - Check Qdrant health"
+    echo "  make logs     - View container logs"
+}
+
+# Function to handle script interruption
+cleanup() {
+    print_warning "Setup interrupted by user"
+    exit 1
+}
+
+# Trap Ctrl+C
+trap cleanup INT
+
+# Check if running as root (not recommended for Docker on some systems)
+if [ "$EUID" -eq 0 ]; then
+    print_warning "Running as root. This may cause permission issues with Docker volumes."
+    print_warning "Consider running as a regular user with Docker permissions."
 fi
 
-# Success message and next steps
-echo ""
-echo -e "${GREEN}"
-cat << "EOF"
-🎉 =========================================
-   Setup Complete! 
-=========================================
-EOF
-echo -e "${NC}"
-
-print_success "Qdrant vector database is running"
-
-echo ""
-echo -e "${CYAN}📊 Access Points:${NC}"
-echo "   🌐 Dashboard:    http://localhost:6333/dashboard"
-echo "   🔗 API:          http://localhost:6333"
-echo "   💚 Health:       http://localhost:6333/health"
-
-echo ""
-echo -e "${CYAN}📁 Directory Structure:${NC}"
-echo "   📄 PDFs:         ./pdfdocs/"
-echo "   📝 Markdown:     ./mddocs/"
-echo "   🗄️  Database:     ./qdrant_storage/"
-echo "   ⚙️  Config:       ./config/"
-
-echo ""
-echo -e "${YELLOW}🚀 Next Steps:${NC}"
-
-if [ ! -d "mddocs" ] || [ -z "$(ls -A mddocs 2>/dev/null)" ]; then
-    echo "   1. 📥 Download ESC protocol PDFs to pdfdocs/"
-    echo "   2. 🔄 Convert PDFs to markdown:"
-    echo "      cd src && python3 converter.py ../pdfdocs ../mddocs page_breaks"
+# Check if we're in the right directory (basic check)
+if [ ! -f "requirements.txt" ] || [ ! -f "Makefile" ]; then
+    print_error "This doesn't appear to be the cardiology protocols ETL project directory"
+    print_error "Please run this script from the project root where requirements.txt and Makefile exist"
+    exit 1
 fi
 
-if [ -d "mddocs" ] && [ "$(ls -A mddocs 2>/dev/null)" ]; then
-    echo "   3. 🧠 Create vector embeddings:"
-    echo "      python3 embedder.py ./mddocs"
-else
-    echo "   3. 🧠 After conversion, create embeddings:"
-    echo "      python3 embedder.py ./mddocs"
-fi
-
-echo "   4. 🔍 Test semantic search:"
-echo "      python3 vectorstore.py 'cardiac arrest protocols'"
-
-echo ""
-echo -e "${YELLOW}🛠️  Useful Commands:${NC}"
-echo "   • View logs:     $COMPOSE_CMD logs -f qdrant"
-echo "   • Restart:       $COMPOSE_CMD restart"
-echo "   • Stop:          $COMPOSE_CMD down"
-echo "   • Status:        $COMPOSE_CMD ps"
-echo "   • Health check:  curl http://localhost:6333/health"
-
-echo ""
-echo -e "${YELLOW}📚 Resources:${NC}"
-echo "   • ESC Guidelines: https://www.escardio.org/Guidelines"
-echo "   • Shared Drive:   [Your Google Drive Link]"
-echo "   • Documentation:  ./README.md"
-
-echo ""
-echo -e "${PURPLE}💡 Pro Tip: Use 'make' commands for convenience (if Makefile present)${NC}"
-if [ -f "Makefile" ]; then
-    echo "   • make start    • make logs    • make health    • make process"
-fi
-
-echo ""
-print_info "Happy searching! 🔍✨"
+# Run main setup
+main "$@"
