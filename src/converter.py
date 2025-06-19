@@ -339,7 +339,7 @@ def main():
             print("Usage: python converter.py [pdf_directory] [markdown_directory] [method]")
             print("\nArguments:")
             print("  pdf_directory      - Directory containing PDF files (default: '../pdfdocs')")
-            print("  markdown_directory - Directory to save markdown and images (default: '../mddocs')")
+            print("  markdown_directory - Directory to save markdown and images (default: './mddocs')")
             print("  method            - Image insertion method: 'page_breaks' or 'content_breaks' (default: 'content_breaks')")
             print("\nMethods:")
             print("  page_breaks    - Insert images at detected page breaks")
@@ -355,7 +355,7 @@ def main():
     
     # Configuration
     pdf_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join('../', 'pdfdocs')
-    md_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join('../', 'mddocs')
+    md_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join('./', 'mddocs')
     method = sys.argv[3] if len(sys.argv) > 3 else "content_breaks"
     
     # Validate method
