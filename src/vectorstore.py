@@ -7,10 +7,25 @@ import sys
 import os
 from typing import List
 from langchain.schema import Document
-from langchain_community.vectorstores import Qdrant
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
+
+# Updated imports to fix deprecation warnings
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    print("⚠️  Installing langchain-huggingface...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "langchain-huggingface"])
+    from langchain_huggingface import HuggingFaceEmbeddings
+
+try:
+    from langchain_qdrant import Qdrant
+except ImportError:
+    print("⚠️  Installing langchain-qdrant...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "langchain-qdrant"])
+    from langchain_qdrant import Qdrant
 
 def create_qdrant_vectorstore(chunks: List[Document],
                               embeddings_model,

@@ -5,9 +5,17 @@ Embeddings are then stored for similarity search.
 """
 import sys
 import os
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from splitter import markdown_splitter
 from vectorstore import store_embeddings
+
+# Updated import to fix deprecation warning
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    print("⚠️  Installing langchain-huggingface...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "langchain-huggingface"])
+    from langchain_huggingface import HuggingFaceEmbeddings
 
 def embedder(text, source_file_name=None):
     """
