@@ -16,6 +16,13 @@
                 "caption_keywords": [
                     "Figure"
                 ]
+            },
+            "chunking": {
+                "markdown_first": true,
+                "header_levels": 4,
+                "splitter": "recursive",
+                "chunk_size": 1000,
+                "chunk_overlap": 200
             }
 
         }

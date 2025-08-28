@@ -23,15 +23,15 @@ from src.utils.singleton import Singleton
 
 class MarkdownConverter(metaclass=Singleton):
     def __init__(self, app_id: str):
-        self.logger = get_logger("Markdown Converter based on PyMuPDF")
+        self.logger = get_logger("Markdown converter based on PyMuPDF")
         self.config = ETLConfigManager(app_id=app_id).config.preprocessing
-        pathlib.Path(self.config.output_folder).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.config.output_folder.folder).mkdir(parents=True, exist_ok=True)
 
     def __call__(self, filename: str):
         self.filename = filename
         self.filepath = self.config.input_folder.folder / self.filename
         images_folder_name = f"{os.path.splitext(self.filename)[0]}_images"
-        self.images_dir = pathlib.Path(self.config.output_folder) / images_folder_name
+        self.images_dir = pathlib.Path(self.config.output_folder.folder) / images_folder_name
         return self.process_single_file()
 
     def process_single_file(self) -> bool:
@@ -51,7 +51,7 @@ class MarkdownConverter(metaclass=Singleton):
             self.logger.info("Images extracted and saved.")
             # save markdown file
             md_filename = f"{base_name}.md"
-            md_path = pathlib.Path(self.config.output_folder) / md_filename
+            md_path = self.config.output_folder.folder / md_filename
             md_path.write_text(updated_markdown_text, encoding="utf-8")
             self.logger.info(f"Successfully parsed {self.filename}.")
             return True
@@ -127,7 +127,7 @@ class MarkdownConverter(metaclass=Singleton):
 
 def main():
     """Main function to process all files in a directory."""
-    logger = get_logger("PDF to Markdown Converter")
+    logger = get_logger("PDF to Markdown converter")
     app_id = "cardiology_protocols"
     config = ETLConfigManager(app_id=app_id).config.preprocessing
     logger.info(f"Directory containing input files: {config.input_folder.folder}")
@@ -143,7 +143,7 @@ def main():
         status_list.append(int(md_conversion_status))
     logger.info(f"Successfully processed: {sum(status_list)} PDF(s)")
     logger.info(f"Parsing failed on {len(status_list) - sum(status_list)} PDF(s)")
-    logger.info(f"Directory containing MarkDown files: {config.output_folder}")
+    logger.info(f"Directory containing Markdown files: {config.output_folder.folder}")
 
 
 if __name__ == "__main__":

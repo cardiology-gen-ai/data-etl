@@ -24,6 +24,7 @@ dependencies = [
     "langchain-text-splitters==0.3.9",
     "langchain-huggingface==0.3.1",
     "langchain-qdrant==0.2.0",
+    "langchain-experimental==0.3.4",
     "pydantic==2.11.7",
     "pillow==11.3.0"
 ]

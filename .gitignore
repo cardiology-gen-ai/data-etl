@@ -77,3 +77,5 @@ backups/
 *.tar.gz
 data/raw/
 data/downloads/
+data/
+/build/

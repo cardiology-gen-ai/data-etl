@@ -6,6 +6,8 @@ from typing import Tuple, Dict, Any, Optional, List
 
 from pydantic import BaseModel
 
+from src.managers.chunking_manager import TextSplitterConfig, TextSplitterName
+
 
 class ImageManagerConfig(BaseModel):
     dpi: int = 200
@@ -30,10 +32,33 @@ class FileStorageConfig(BaseModel):
         self.folder = pathlib.Path(self.parent_folder) / self.child_folder
 
 
+class ChunkingManagerConfig(BaseModel):
+    splitter: List[TextSplitterConfig]
+
+    @classmethod
+    def from_config(cls, config_dict: Dict[str, Any]) -> "ChunkingManagerConfig":
+        markdown_first = config_dict.get("markdown_first", False)
+        splitter_list = []
+        if markdown_first is True:
+            splitter_list.append(TextSplitterConfig(
+                name=TextSplitterName.markdown_splitter,
+                header_levels=config_dict.get("header_levels", 2),
+            ))
+        splitter = config_dict.get("splitter", None)
+        if splitter is not None:
+            if len(splitter_list) == 0 or splitter != "markdown":
+                other_config_dict = {k: v for k, v in config_dict.items() if k != "splitter"}
+                splitter_list.append(TextSplitterConfig(
+                    name=TextSplitterName(splitter), **other_config_dict,
+                ))
+        return cls(splitter=splitter_list)
+
+
 class PreprocessingConfig(BaseModel):
     image_manager: ImageManagerConfig = ImageManagerConfig()
     input_folder: FileStorageConfig
-    output_folder: pathlib.Path
+    output_folder: FileStorageConfig
+    chunking_manager: ChunkingManagerConfig
 
     @classmethod
     def from_config(cls, config_dict: Dict[str, Any]) -> "PreprocessingConfig":
@@ -45,11 +70,15 @@ class PreprocessingConfig(BaseModel):
         )
         output_folder = FileStorageConfig(
             parent_folder=preprocessing_storage_dict["parent_folder"],
-            child_folder=preprocessing_storage_dict["output_folder"]
-        ).folder
+            child_folder=preprocessing_storage_dict["output_folder"],
+            allowed_extensions=["md"]
+        )
         image_manager_dict = config_dict["images"]
         image_manager = ImageManagerConfig.from_config(image_manager_dict)
-        return cls(input_folder=input_folder, output_folder=output_folder, image_manager=image_manager, **config_dict)
+        chunking_manager_dict = config_dict["chunking"]
+        chunking_manager = ChunkingManagerConfig.from_config(chunking_manager_dict)
+        return cls(input_folder=input_folder, output_folder=output_folder, image_manager=image_manager,
+                   chunking_manager=chunking_manager, **config_dict)
 
 
 class ETLConfig(BaseModel):
