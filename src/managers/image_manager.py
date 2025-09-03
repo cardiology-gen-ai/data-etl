@@ -123,7 +123,7 @@ class ImageManager:
             json.dump(catalogue_dict.get("catalog"), f, ensure_ascii=False, indent=2)
         return self.catalog
 
-    def load_images_catalog(self, create_if_missing=True):
+    def load_images_catalog(self, create_if_missing: bool = True):
         catalog_path = self.get_catalog_path()
         if not catalog_path.exists():
             if create_if_missing:

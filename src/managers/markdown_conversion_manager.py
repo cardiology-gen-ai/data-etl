@@ -5,15 +5,16 @@ then references the images in the markdown file.
 """
 
 import os
-import itertools
 import pathlib
+from typing import Tuple, Optional
 
 import fitz
 import pymupdf4llm
+from pydantic import BaseModel
 
 from src.managers.image_manager import ImageManager
 from src.utils.logger import get_logger
-from src.config.manager import ETLConfigManager
+from src.config.manager import PreprocessingConfig
 from src.managers.markdown_manager import MarkdownManager
 from src.utils.singleton import Singleton
 
@@ -21,10 +22,20 @@ from src.utils.singleton import Singleton
 # TODO: at the moment saving and loading functions assume local environment
 
 
+class DocumentMetadata(BaseModel):
+    filename: str
+    filepath: str
+    file_extension: Optional[str] = None
+    md_filepath: str
+    n_pages: int
+    image_folder: str
+    n_chunks: Optional[int] = None
+
+
 class MarkdownConverter(metaclass=Singleton):
-    def __init__(self, app_id: str):
+    def __init__(self, config: PreprocessingConfig):
         self.logger = get_logger("Markdown converter based on PyMuPDF")
-        self.config = ETLConfigManager(app_id=app_id).config.preprocessing
+        self.config = config
         pathlib.Path(self.config.output_folder.folder).mkdir(parents=True, exist_ok=True)
 
     def __call__(self, filename: str):
@@ -34,7 +45,7 @@ class MarkdownConverter(metaclass=Singleton):
         self.images_dir = pathlib.Path(self.config.output_folder.folder) / images_folder_name
         return self.process_single_file()
 
-    def process_single_file(self) -> bool:
+    def process_single_file(self) -> Tuple[bool, DocumentMetadata | None]:
         """Processa single PDF: convert to markdown and extract images."""
         base_name = os.path.splitext(self.filename)[0]
         self.logger.info(f"Processing: {self.filename}...")
@@ -53,12 +64,19 @@ class MarkdownConverter(metaclass=Singleton):
             md_filename = f"{base_name}.md"
             md_path = self.config.output_folder.folder / md_filename
             md_path.write_text(updated_markdown_text, encoding="utf-8")
+            doc_metadata = DocumentMetadata(
+                filename = self.filename,
+                filepath = self.filepath.as_posix(),
+                md_filepath = md_path.as_posix(),
+                n_pages = document.page_count,
+                image_folder = self.images_dir.as_posix()
+            )
             self.logger.info(f"Successfully parsed {self.filename}.")
-            return True
+            return True, doc_metadata
 
         except Exception as e:
             self.logger.info(f"Error processing {self.filename}: {str(e)}")
-            return False
+            return False, None
 
     def place_images_in_markdown(self, md_text: str):
         """
@@ -123,28 +141,3 @@ class MarkdownConverter(metaclass=Singleton):
         for idx, txt in insertions:
             out = out[:idx] + txt + out[idx:]
         return out
-
-
-def main():
-    """Main function to process all files in a directory."""
-    logger = get_logger("PDF to Markdown converter")
-    app_id = "cardiology_protocols"
-    config = ETLConfigManager(app_id=app_id).config.preprocessing
-    logger.info(f"Directory containing input files: {config.input_folder.folder}")
-    # get all files in the directory
-    input_files = list(itertools.chain.from_iterable(
-        [[f for f in os.listdir(config.input_folder.folder.as_posix()) if f.lower().endswith(allowed_extension)]
-         for allowed_extension in config.input_folder.allowed_extensions]))
-    # process each file
-    status_list = []
-    md_converter = MarkdownConverter(app_id=app_id)
-    for filename in input_files:
-        md_conversion_status = md_converter(filename)
-        status_list.append(int(md_conversion_status))
-    logger.info(f"Successfully processed: {sum(status_list)} PDF(s)")
-    logger.info(f"Parsing failed on {len(status_list) - sum(status_list)} PDF(s)")
-    logger.info(f"Directory containing Markdown files: {config.output_folder.folder}")
-
-
-if __name__ == "__main__":
-    main()
