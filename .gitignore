@@ -50,9 +50,9 @@ mddocs/
 !mddocs/.gitkeep
 
 # Large source files (download separately)
-pdfdocs/
-!pdfdocs/.gitkeep
-!pdfdocs/README.md
+data/pdfdocs/
+!data/pdfdocs/.gitkeep
+!data/pdfdocs/README.md
 
 # Logs
 *.log
@@ -79,3 +79,5 @@ data/raw/
 data/downloads/
 data/
 /build/
+index/
+/index/

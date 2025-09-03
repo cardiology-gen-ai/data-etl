@@ -1,14 +1,14 @@
 import pathlib
 from enum import Enum
-from typing import Optional, Any, List
+from typing import Any, List, Dict, Optional
 
-from langchain_core.documents import Document
 from pydantic import BaseModel
-
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.documents import Document
 from langchain_text_splitters import TextSplitter, RecursiveCharacterTextSplitter, SentenceTransformersTokenTextSplitter
 from langchain_text_splitters.markdown import MarkdownHeaderTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_core.embeddings import Embeddings  # TODO: if needed, replace with custom model
+from transformers import AutoTokenizer
 
 from src.utils.singleton import Singleton
 
@@ -25,28 +25,35 @@ class TextSplitterConfig(BaseModel):
     splitter: TextSplitter | SemanticChunker | MarkdownHeaderTextSplitter = None
     chunk_size: int = 1000
     chunk_overlap: int = 150
-    embeddings: Optional[Embeddings] = None  # TODO: make an initializer [possibly called also by config manager]
+    embeddings: Optional[HuggingFaceEmbeddings] = None
     header_levels: int = 2
-    sentence_transformer_name: Optional[str] = None
 
     def model_post_init(self,  __context: Any) -> None:
+        tokenizer = AutoTokenizer.from_pretrained(self.embeddings.model_name) if self.embeddings is not None else None
+        chunk_size = self.chunk_size if tokenizer is None else min(self.chunk_size, self.embeddings._client.max_seq_length - 10)
+        chunk_overlap = self.chunk_overlap if tokenizer is None else self.chunk_overlap * chunk_size / self.chunk_size
         if self.name == TextSplitterName.markdown_splitter:
             headers_to_split_on = [("".join(["#"]*level), "Header " + str(level))
                                    for level in range(1, self.header_levels+1)]
             self.splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
         elif self.name == TextSplitterName.recursive_splitter:
-            self.splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+            self.splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+                 chunk_size=chunk_size, chunk_overlap=chunk_overlap, tokenizer=tokenizer)
         elif self.name == TextSplitterName.semantic_splitter:
-            self.splitter = SemanticChunker(embeddings=self.embeddings, min_chunk_size=self.chunk_size)
+            self.splitter = SemanticChunker(embeddings=self.embeddings, min_chunk_size=int(chunk_size/3))
         elif self.name == TextSplitterName.sentence_splitter:
-            self.splitter = SentenceTransformersTokenTextSplitter(
-                model_name=self.sentence_transformer_name,chunk_overlap=self.chunk_overlap, tokenizer=self.chunk_size)
-        else:
-            ValueError(f"{self.name.value} is not a valid splitter, valid splitters are "
-                       f"{[n.value for n in TextSplitterName]}")
+            self.splitter = SentenceTransformersTokenTextSplitter.from_huggingface_tokenizer(
+               tokenizer=tokenizer, chunk_overlap=chunk_overlap, tokens_per_chunk=chunk_size)
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class ChunkMetadata(BaseModel):
+    filename: str
+    chunk_idx: int
+    headers: Dict[str, str]
+    n_tokens: int
 
 
 class ChunkingManager(metaclass=Singleton):
@@ -71,7 +78,16 @@ class ChunkingManager(metaclass=Singleton):
                 headers_metadata_keys = \
                     ["Header " + str(level) for level in range(1, self.splitter_list[0].header_levels+1)]
                 chunk_headers = {k: v for k, v in chunk.metadata.items() if k in headers_metadata_keys}
-            chunk_metadata_dict = {"filename": str(filepath), "chunk_idx": chunk_idx, "headers": chunk_headers,
-                                   "n_tokens": 0}
-            chunk.metadata = chunk_metadata_dict
+            n_tokens = 0
+            first_splitter_with_embeddings = \
+                [splitter for splitter in self.splitter_list if splitter.embeddings is not None]
+            if len(first_splitter_with_embeddings) > 0:
+                n_tokens = first_splitter_with_embeddings[0].splitter._length_function(chunk.page_content)
+            chunk_metadata = ChunkMetadata(
+                filename=str(filepath),
+                chunk_idx=chunk_idx,
+                headers=chunk_headers,
+                n_tokens=n_tokens
+            )
+            chunk.metadata = chunk_metadata.model_dump()
         return doc_chunks
