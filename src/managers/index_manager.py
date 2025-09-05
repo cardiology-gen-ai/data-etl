@@ -13,8 +13,8 @@ from langchain_community.vectorstores import FAISS
 
 from cardiology_gen_ai import IndexTypeNames, DistanceTypeNames, IndexingConfig, \
     EmbeddingConfig
-from src.utils.logger import get_logger
-from src.utils.singleton import Singleton
+from cardiology_gen_ai.utils.logger import get_logger
+from cardiology_gen_ai.utils.singleton import Singleton
 
 
 class Vectorstore(BaseModel, ABC):

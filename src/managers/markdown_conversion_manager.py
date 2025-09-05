@@ -13,10 +13,10 @@ import pymupdf4llm
 from pydantic import BaseModel
 
 from src.managers.image_manager import ImageManager
-from src.utils.logger import get_logger
 from src.config.manager import PreprocessingConfig
 from src.managers.markdown_manager import MarkdownManager
-from src.utils.singleton import Singleton
+from cardiology_gen_ai.utils.singleton import Singleton
+from cardiology_gen_ai.utils.logger import get_logger
 
 
 # TODO: at the moment saving and loading functions assume local environment
