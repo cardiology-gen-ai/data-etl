@@ -1,15 +1,18 @@
 import os
 
-from huggingface_hub import login, logout
+import huggingface_hub
 
 from src.etl_processor import ETLProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "False"
 
+# TODO: change when dockerizing
+# sudo uv pip install -e ../cardiology-gen-ai
+
 if __name__ == "__main__":
     hf_token = os.getenv("HF_TOKEN")
     if hf_token:
-        login(os.getenv("HF_TOKEN"))
+        huggingface_hub.login(os.getenv("HF_TOKEN"))
     app_id = "cardiology_protocols"
     etl_processor = ETLProcessor(app_id=app_id)
 
@@ -20,6 +23,6 @@ if __name__ == "__main__":
     n_stored_chunks = index_manager.get_n_documents_in_vectorstore()
 
     try:
-        logout()
+        huggingface_hub.logout()
     except OSError:
         pass

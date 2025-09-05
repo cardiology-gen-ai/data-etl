@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.distutils.egg_info]
-egg_base = "build"
+egg_base = "."
 
 [project]
 name = "CardiologyGenAI-DataETL"
@@ -25,11 +25,15 @@ dependencies = [
     "langchain-huggingface==0.3.1",
     "langchain-qdrant==0.2.0",
     "langchain-experimental==0.3.4",
+    "huggingface-hub==0.34.4",
     "pydantic==2.11.7",
     "pillow==11.3.0",
     "sentence-transformers==5.1.0",
     "fastembed==0.7.2",
-    "faiss-cpu==1.12.0"
+    "faiss-cpu==1.12.0",
+    "pip==25.2",
+    "numpy==1.26.4",
+    "transformers==4.56.0"
 ]
 
 [project.optional-dependencies]

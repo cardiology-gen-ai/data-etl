@@ -5,13 +5,13 @@ from abc import ABC, abstractmethod
 
 from langchain_community.docstore import InMemoryDocstore
 from langchain_core.documents import Document
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, SparseVectorParams, VectorParams
 from langchain_qdrant import QdrantVectorStore, FastEmbedSparse, RetrievalMode
 from langchain_community.vectorstores import FAISS
 
-from src.config.manager import IndexTypeNames, DistanceTypeNames, IndexingConfig, \
+from cardiology_gen_ai import IndexTypeNames, DistanceTypeNames, IndexingConfig, \
     EmbeddingConfig
 from src.utils.logger import get_logger
 from src.utils.singleton import Singleton
@@ -20,6 +20,7 @@ from src.utils.singleton import Singleton
 class Vectorstore(BaseModel, ABC):
     config: IndexingConfig
     vectorstore: QdrantVectorStore | FAISS = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @abstractmethod
     def vectorstore_exists(self) -> bool:
@@ -60,12 +61,9 @@ class Vectorstore(BaseModel, ABC):
         else:
             self.vectorstore.add_documents(documents=doc)
 
-    class Config:
-        arbitrary_types_allowed = True
-
 
 class QdrantVectorstore(Vectorstore):
-    url: str = "http://localhost:6333"
+    url: str = os.getenv("QDRANT_URL")  # TODO: maybe should be changed
     client: QdrantClient = QdrantClient(url)
     vectorstore: QdrantVectorStore = None
 
