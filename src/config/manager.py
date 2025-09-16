@@ -1,16 +1,13 @@
 import os
 import pathlib
-import re
-import json
-from enum import Enum
 from typing import Tuple, Dict, Any, Optional, List
 
-import torch
 from langchain_huggingface import HuggingFaceEmbeddings
 from pydantic import BaseModel
-from transformers import AutoConfig
 
 from src.managers.chunking_manager import TextSplitterConfig, TextSplitterName
+from cardiology_gen_ai import IndexingConfig, EmbeddingConfig
+from cardiology_gen_ai.config.manager import ConfigManager
 
 
 class ImageManagerConfig(BaseModel):
@@ -34,30 +31,6 @@ class FileStorageConfig(BaseModel):
 
     def model_post_init(self,  __context: Any) -> None:
         self.folder = pathlib.Path(self.parent_folder) / self.child_folder
-
-
-class EmbeddingConfig(BaseModel):
-    model_name: str
-    model: HuggingFaceEmbeddings = None
-    dim: int
-
-    @classmethod
-    def from_config(cls, config_dict: Dict[str, Any]) -> "EmbeddingConfig":
-        kwargs = config_dict["kwargs"]
-        if not isinstance(kwargs, dict):
-            kwargs = dict()
-        encode_kwargs = {k: v for k, v in kwargs.items() if k in ["normalize_embeddings", "prompt_name"]}
-        model_kwargs = {k: v for k, v in kwargs.items() if k in ["device"]}
-        if model_kwargs.get("device", None) is None:
-            model_kwargs["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model_name = config_dict["deployment"]
-        model = HuggingFaceEmbeddings(
-            model_name=model_name,
-            model_kwargs=model_kwargs,
-            encode_kwargs=encode_kwargs,
-        )
-        dim = AutoConfig.from_pretrained(model_name).hidden_size
-        return cls(model_name=model_name, model=model, dim=dim)
 
 
 class ChunkingManagerConfig(BaseModel):
@@ -108,40 +81,6 @@ class PreprocessingConfig(BaseModel):
                    chunking_manager=chunking_manager, **config_dict)
 
 
-class IndexTypeNames(Enum):
-    qdrant = "qdrant"
-    faiss = "faiss"
-
-
-class DistanceTypeNames(Enum):
-    cosine = "cosine"
-    euclidean = "euclidean"
-
-
-class RetrievalTypeNames(Enum):
-    dense = "dense"
-    sparse = "sparse"
-    hybrid = "hybrid"
-
-
-class IndexingConfig(BaseModel):
-    name: str
-    description: str
-    folder: pathlib.Path = pathlib.Path("index")
-    type: IndexTypeNames
-    distance: DistanceTypeNames
-    retrieval_mode: RetrievalTypeNames = RetrievalTypeNames.dense
-
-    @classmethod
-    def from_config(cls, config_dict: Dict[str, Any]) -> "IndexingConfig":
-        index_type = IndexTypeNames(config_dict["type"])
-        distance = DistanceTypeNames(config_dict["distance"])
-        retrieval = config_dict.get("retrieval_mode", RetrievalTypeNames.dense)
-        retrieval_mode = RetrievalTypeNames(retrieval) if isinstance(retrieval, str) is not None else retrieval
-        other_config_dict = {k: v for k, v in config_dict.items() if k not in ["type", "distance", "retrieval_mode"]}
-        return cls(type=index_type, distance=distance, retrieval_mode=retrieval_mode, **other_config_dict)
-
-
 class ETLConfig(BaseModel):
     preprocessing: PreprocessingConfig
     indexing: IndexingConfig
@@ -162,32 +101,10 @@ class ETLConfig(BaseModel):
                    **other_config_dict)
 
 
-class ETLConfigManager:
-    def __init__(self, config_path: str = os.getenv("CONFIG_PATH"), app_id: str = "cardiology_protocols"):
-        self._config_path = config_path
-        self._app_id = app_id
-        self._config = self._load_config()
-        self._app_config = self._get_app_config()
+class ETLConfigManager(ConfigManager):
+    def __init__(self,
+                 config_path: str = os.getenv("CONFIG_PATH"),
+                 app_config_path: str = os.getenv("APP_CONFIG_PATH"),
+                 app_id: str = "cardiology_protocols"):
+        super().__init__(config_path, app_config_path, app_id)
         self.config = ETLConfig.from_config(self._app_config)
-
-    def _load_config(self) -> Dict[str, Any]:
-        try:
-            with open(self._config_path, "r") as config_file:
-                raw_json = config_file.read()
-
-                def replace_env_var(match):
-                    var_name = match.group(1)
-                    return os.environ.get(var_name, f"<MISSING:{var_name}>")
-
-                interpolated_json = re.sub(r"\$\{(\w+)\}", replace_env_var, raw_json)
-                return json.loads(interpolated_json)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found at {self._config_path}")
-        except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON format in configuration file at {self._config_path}")
-
-    def _get_app_config(self) -> Dict[str, Any]:
-        app_config = self._config.get(self._app_id)
-        if not app_config:
-            raise ValueError(f"No configuration found for application: {self._app_id}")
-        return app_config

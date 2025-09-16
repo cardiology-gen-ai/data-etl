@@ -9,8 +9,9 @@ from src.managers.markdown_conversion_manager import MarkdownConverter, Document
 from src.document_processor import DocumentProcessor
 from src.managers.chunking_manager import ChunkingManager
 from src.managers.index_manager import IndexManager
-from src.utils.logger import get_logger
-from src.utils.singleton import Singleton
+
+from cardiology_gen_ai.utils.singleton import Singleton
+from cardiology_gen_ai.utils.logger import get_logger
 
 
 class ETLProcessor(metaclass=Singleton):

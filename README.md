@@ -1,3 +1,13 @@
+## NB 
+
+To run the code the module of the repo cardiology-gen-ai MUST be installed e.g. via
+```
+uv pip install -e ../cardiology-gen-ai
+```
+(change `../cardiology-gen-ai` with the relative path to the repo in your machine).
+
+Other dependencies can be installed using `uv pip install .`
+
 # Data Extract Transform Load (ETL) pipeline for medical protocols
 
 Acquired cardiology protocols from [European Society of Cardiology](https://www.escardio.org/Guidelines) and saved on [this](https://drive.google.com/drive/folders/1rgaemZ4Jetyz98ivTw8fpLIndgZ2jczn?usp=sharing) Google Drive folder.

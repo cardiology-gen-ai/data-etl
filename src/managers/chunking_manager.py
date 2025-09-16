@@ -10,7 +10,7 @@ from langchain_text_splitters.markdown import MarkdownHeaderTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
 from transformers import AutoTokenizer
 
-from src.utils.singleton import Singleton
+from cardiology_gen_ai.utils.singleton import Singleton
 
 
 class TextSplitterName(Enum):

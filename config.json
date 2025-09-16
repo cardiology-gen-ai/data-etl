@@ -25,16 +25,6 @@
                 "chunk_overlap": 200
             }
 
-        },
-        "indexing": {
-            "name": "cardiology_protocols",
-            "description": "Documents containing medical protocols for cardiologic patients.",
-            "type": "qdrant",
-            "distance": "cosine"
-        },
-        "embeddings": {
-            "deployment": "sentence-transformers/all-MiniLM-L6-v2",
-            "kwargs": ""
         }
     }
 }
