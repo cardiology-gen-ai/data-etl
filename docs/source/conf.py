@@ -123,17 +123,18 @@ nitpick_ignore = [
 html_theme = 'sphinx_book_theme'  # "furo"  # TODO: change if needed
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", {}),
-    "pydantic": ("https://docs.pydantic.dev/latest/", {}),
-    "langchain": ("https://python.langchain.com/api_reference/", {}),
-    "transformers": ("https://huggingface.co/transformers/v2.11.0/", {}),
+    "python": ("https://docs.python.org/3", None),
+    "pydantic": ("https://docs.pydantic.dev/latest/", None),
+    "langchain": ("https://python.langchain.com/api_reference/", None),
+    "transformers": ("https://huggingface.co/transformers/v2.11.0/", None),
     "langchain_huggingface": ("https://python.langchain.com/api_reference/huggingface",
         "https://python.langchain.com/api_reference/objects.inv",),
     "langchain_community": ("https://python.langchain.com/api_reference/community/",
         "https://python.langchain.com/api_reference/objects.inv",),
     "langchain_qdrant": ("https://python.langchain.com/api_reference/qdrant/",
         "https://python.langchain.com/api_reference/objects.inv",),
-    "pymupdf4llm": ("https://pymupdf.readthedocs.io/en/latest/pymupdf4llm", "https://pymupdf.qubitpi.org/en/latest/")
+    "pymupdf4llm": ("https://pymupdf.readthedocs.io/en/latest/pymupdf4llm", "https://pymupdf.qubitpi.org/en/latest/"),
+    "cardiology_gen_ai": ("https://cardiology-gen-ai.github.io/cardiology-gen-ai", None)
 }
 
 extlinks = {

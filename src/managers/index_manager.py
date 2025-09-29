@@ -97,7 +97,7 @@ class EditableQdrantVectorstore(EditableVectorstore, QdrantVectorstore):
 
         Parameters
         ----------
-        embeddings_model : EmbeddingConfig
+        embeddings_model : :class:`cardiology_gen_ai.models.EmbeddingConfig`
             Embedding model config providing ``dim`` and ``model``.
 
         Returns
@@ -127,7 +127,7 @@ class EditableQdrantVectorstore(EditableVectorstore, QdrantVectorstore):
         return qdrant_vectorstore
 
     def _delete_vectorstore(self) -> None:
-        """Drop the Qdrant collection configured in :py:attr:`self.config.name`."""
+        """Drop the Qdrant collection configured in ``self.config.name``."""
         self.client.delete_collection(collection_name=self.config.name)
 
     def delete_from_vectorstore(self, filename: pathlib.Path) -> int:
@@ -175,7 +175,7 @@ class EditableFaissVectorstore(EditableVectorstore, FaissVectorstore):
 
         Parameters
         ----------
-        embeddings_model : EmbeddingConfig
+        embeddings_model : :class:`cardiology_gen_ai.models.EmbeddingConfig`
             Embedding model config providing ``dim`` and ``model``.
 
         Returns
@@ -240,14 +240,14 @@ class IndexManager(metaclass=Singleton):
 
     Parameters
     ----------
-    config : IndexingConfig
+    config : :class:`cardiology_gen_ai.models.IndexingConfig`
         Backend and persistence configuration.
-    embeddings : EmbeddingConfig
+    embeddings : :class:`cardiology_gen_ai.models.EmbeddingConfig`
         Embedding model configuration (callable + dimensionality).
     """
     logger: logging.Logger  #: :class:`~logging.Logger` : Named logger ("Indexing based on LangChain VectorStores").
-    config: IndexingConfig  #: IndexingConfig : Backend and persistence configuration used by this manager.
-    embeddings: EmbeddingConfig  #: EmbeddingConfig : Embedding model (callable and vector dimensionality).
+    config: IndexingConfig  #: :class:`cardiology_gen_ai.models.IndexingConfig` : Backend and persistence configuration used by this manager.
+    embeddings: EmbeddingConfig  #: :class:`cardiology_gen_ai.models.EmbeddingConfig` : Embedding model (callable and vector dimensionality).
     vectorstore: EditableVectorstore  #: :class:`~src.managers.index_manager.EditableVectorstore` : Concrete editable vector store selected from ``config.type``, either :class:`~src.managers.index_manager.EditableQdrantVectorstore` (wraps :py:class:`~langchain_qdrant.qdrant.QdrantVectorStore`) or :class:`~src.managers.index_manager.EditableFaissVectorstore` (wraps :py:class:`~langchain_community.vectorstores.faiss.FAISS`).
 
     def __init__(self, config: IndexingConfig, embeddings: EmbeddingConfig):
