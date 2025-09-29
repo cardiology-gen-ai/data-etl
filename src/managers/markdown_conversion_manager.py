@@ -23,22 +23,50 @@ from cardiology_gen_ai.utils.logger import get_logger
 
 
 class DocumentMetadata(BaseModel):
-    filename: str
-    filepath: str
-    file_extension: Optional[str] = None
-    md_filepath: str
-    n_pages: int
-    image_folder: str
-    n_chunks: Optional[int] = None
+    """Minimal metadata describing the converted document and outputs."""
+    filename: str #: str :Filename of the processed input.
+    filepath: str #: str : Absolute or relative path to the input PDF.
+    file_extension: Optional[str] = None #: str, optional : Optional file extension (e.g., ``".pdf"``) if desired.
+    md_filepath: str #: str : Path to the produced Markdown file.
+    n_pages: int #: int : Number of pages in the input PDF.
+    image_folder: str #: str : Directory containing exported images for this document.
+    n_chunks: Optional[int] = None #: int, optional : Optional number of text chunks, if applicable.
 
 
 class MarkdownConverter(metaclass=Singleton):
+    """Convert a PDF to Markdown, export figures, and inline them near captions.
+
+    .. rubric: Call Signature
+
+    ``__call__(filename)`` computes internal paths and invokes :meth:`~src.managers.markdown_conversion_manager.MarkdownConverter.process_single_file`.
+
+    Parameters
+    ----------
+    config : PreprocessingConfig
+        Pipeline configuration. It should provide ``input_folder.folder`` and `output_folder.folder`` paths, plus an ``image_manager`` section used
+        by :class:`~src.managers.image_manager.ImageManager`.
+    """
     def __init__(self, config: PreprocessingConfig):
         self.logger = get_logger("Markdown converter based on PyMuPDF")
         self.config = config
         pathlib.Path(self.config.output_folder.folder).mkdir(parents=True, exist_ok=True)
 
-    def __call__(self, filename: str):
+    def __call__(self, filename: str) -> Tuple[bool, Optional[DocumentMetadata]]:
+        """Run the conversion pipeline for a single file.
+
+        This sets up per-file paths (input PDF and image output directory) and
+        delegates the actual work to :meth:`process_single_file`.
+
+        Parameters
+        ----------
+        filename : str
+            Input PDF filename (looked up under ``config.input_folder.folder``).
+
+        Returns
+        -------
+        Tuple[bool, Optional[:class:`~src.managers.markdown_conversion_manager.DocumentMetadata`]]
+            ``(success, metadata)`` where ``metadata`` is present on success.
+        """
         self.filename = filename
         self.filepath = self.config.input_folder.folder / self.filename
         images_folder_name = f"{os.path.splitext(self.filename)[0]}_images"
@@ -46,7 +74,21 @@ class MarkdownConverter(metaclass=Singleton):
         return self.process_single_file()
 
     def process_single_file(self) -> Tuple[bool, DocumentMetadata | None]:
-        """Processa single PDF: convert to markdown and extract images."""
+        """Process a single PDF: convert to Markdown and place the images.
+
+        .. rubric:: Steps
+
+        1. Open the file with :pymupdf:`PyMuPDF <index.html>`.
+        2. Convert the entire document to Markdown with :pymupdf4llm:`PyMuPDF4LLLM <index.html>` (images are not embedded at this stage; ``write_images=False``).
+        3. Call :meth:`place_images_in_markdown` to inline exported figures near their likely captions or content breaks.
+        4. Save the final Markdown to ``<base_name>.md`` in the output folder.
+        5. Return ``(True, :class:`~src.managers.markdown_conversion_manager.DocumentMetadata`)`` on success.
+
+        Returns
+        -------
+        Tuple[bool, Optional[:class:`~src.managers.markdown_conversion_manager.DocumentMetadata`]]
+            Success flag and a :class:`~src.managers.markdown_conversion_manager.DocumentMetadata` instance on success.
+        """
         base_name = os.path.splitext(self.filename)[0]
         self.logger.info(f"Processing: {self.filename}...")
         try:
@@ -79,9 +121,29 @@ class MarkdownConverter(metaclass=Singleton):
             return False, None
 
     def place_images_in_markdown(self, md_text: str):
-        """
-        Insert '![alt](path) <!-- FIG_* -->' above the caption (if detected),
-        else at the first content break in the right page.
+        """Insert exported images into Markdown near captions or content breaks.
+
+        .. rubric:: Strategy
+
+        - Use :class:`~src.managers.image_manager.ImageManager` to extract/locate per-page figures and build an image catalog.
+        - Use :class:`~src.managers.markdown_manager.MarkdownManager` to normalize the Markdown and determine page anchor offsets via PDF-derived snippets.
+        - For each page:
+
+            1. Prefer inserting an image above a caption line detected by ``config.image_manager.caption_keywords``.
+            2. Otherwise, insert at the next content break within the page slice.
+
+        Each insertion is formatted as ``![alt](path) <!-- FIG_* -->`` where
+        ``alt`` is derived from the catalog entry (see ``make_alt_text``).
+
+        Parameters
+        ----------
+        md_text : str
+            Raw Markdown output from :pymupdf4llm:`PyMuPDF4LLLM <index.html>`.
+
+        Returns
+        -------
+        str
+            Markdown with image references inserted.
         """
         image_manager = ImageManager(
             filepath=self.filepath,
