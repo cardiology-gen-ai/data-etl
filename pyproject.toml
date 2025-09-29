@@ -35,7 +35,8 @@ dependencies = [
     "numpy==1.26.4",
     "transformers==4.56.0",
     "langchain-community==0.3.25",
-    "langchain-core==0.3.75"
+    "langchain-core==0.3.75",
+    "cardiologygenai-coordo @ git+https://github.com/cardiology-gen-ai/cardiology-gen-ai.git@main"
 ]
 
 [project.optional-dependencies]
