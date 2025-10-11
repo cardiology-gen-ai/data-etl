@@ -1,0 +1,30 @@
+{
+    "cardiology_protocols": {
+        "preprocessing": {
+            "storage": {
+                "parent_folder": "data",
+                "input_folder": "pdfdocs",
+                "output_folder": "mddocs",
+                "allowed_extensions": [
+                    "pdf"
+                ]
+            },
+            "images": {
+                "dpi": 200,
+                "tol": 40.0,
+                "pad": 16.0,
+                "caption_keywords": [
+                    "Figure"
+                ]
+            },
+            "chunking": {
+                "markdown_first": true,
+                "header_levels": 4,
+                "splitter": "recursive",
+                "chunk_size": 1000,
+                "chunk_overlap": 200
+            }
+
+        }
+    }
+}

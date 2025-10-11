@@ -1,0 +1,87 @@
+# Qdrant data directory (exclude from Git)
+qdrant_storage/
+
+# Environment files with sensitive data
+.env
+.env.local
+.env.production
+.env.leonardo
+
+# Sensitive config files (exclude from Git)
+config/local.yaml
+config/*secrets*
+config/*.key
+config/*.crt
+config/.env*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files (should be ignored)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# macOS specific
+**/.DS_Store
+**/._*
+
+# Generated markdown files (recreated locally)
+mddocs/
+!mddocs/.gitkeep
+
+# Large source files (download separately)
+data/pdfdocs/
+!data/pdfdocs/.gitkeep
+!data/pdfdocs/README.md
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Docker
+.dockerignore
+
+# Backup files
+*.backup
+*.bak
+backups/
+
+# Large data files (add your specific file types)
+*.pdf
+*.zip
+*.tar.gz
+data/raw/
+data/downloads/
+data/
+/build/
+index/
+/index/
+/CardiologyGenAI_DataETL.egg-info/
+/docs/build/
+
