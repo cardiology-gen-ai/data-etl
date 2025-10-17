@@ -9,7 +9,7 @@ egg_base = "."
 name = "CardiologyGenAI-DataETL"
 version = "0.1.0"
 description = "Data ETL pipeline for cardiology protocols"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 authors = [
     { name = "Christian Faccio", email = "christian.faccio@studenti.units.it" },
     { name = "Gaia Saveri", email = "gaia.saveri@gmail.com" }
