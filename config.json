@@ -2,7 +2,7 @@
     "cardiology_protocols": {
         "preprocessing": {
             "storage": {
-                "parent_folder": "data",
+                "parent_folder": "test_data",
                 "input_folder": "pdfdocs",
                 "output_folder": "mddocs",
                 "allowed_extensions": [
