@@ -1,13 +1,13 @@
 services:
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: qdrant-cardio
+    container_name: qdrant-cardio-data-etl
     ports:
       - "6333:6333"    # HTTP API
       - "6334:6334"    # gRPC API
     volumes:
-      - ./index/qdrant_storage:/qdrant/storage
-      - ./index/qdrant_config:/qdrant/config
+      - ${INDEX_ROOT}/qdrant_storage:/qdrant/storage
+      - ${INDEX_ROOT}/qdrant_config/data-etl:/qdrant/config
     environment:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
@@ -15,8 +15,8 @@ services:
       - QDRANT__SERVICE__ENABLE_CORS=true
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: [ "CMD-SHELL", "timeout 2 bash -c 'cat < /dev/null > /dev/tcp/localhost/6333' || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 90s

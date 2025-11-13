@@ -177,7 +177,6 @@ class ETLConfig(BaseModel):
         """
         embedding_dict = config_dict["embeddings"]
         embedding_config = EmbeddingConfig.from_config(embedding_dict)
-        print(embedding_config)
         preprocessing_dict = config_dict["preprocessing"]
         preprocessing_config = (
             PreprocessingConfig.from_config(preprocessing_dict, embeddings=embedding_config.model))

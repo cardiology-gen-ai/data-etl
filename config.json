@@ -3,7 +3,7 @@
         "indexing": {
             "name": "cardiology_protocols",
             "description": "Documents containing medical protocols for cardiologic patients.",
-            "type": "faiss",
+            "type": "qdrant",
             "distance": "cosine",
             "alias": "qdrant_cardio_current"
         },

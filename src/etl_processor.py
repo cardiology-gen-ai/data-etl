@@ -49,7 +49,6 @@ class ETLProcessor(metaclass=Singleton):
         - Otherwise, create a new vectorstore based on ``self.config.indexing``.
         """
         self.logger.info(f"Initializing {self.index_manager.config.name} index")
-        self.index_manager.vectorstore.delete_vectorstore()
         try:
             if self.index_manager.vectorstore.vectorstore_exists():
                 self.logger.info(f"Index {self.index_manager.config.name} already exists, loading it.")
