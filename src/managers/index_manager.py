@@ -1,3 +1,5 @@
+import configparser
+import json
 import logging
 import os
 import pathlib
@@ -254,9 +256,36 @@ class IndexManager(metaclass=Singleton):
         self.logger = get_logger("Indexing based on LangChain VectorStores")
         self.config = config
         self.embeddings = embeddings
+        self._save_config()
         self.vectorstore: EditableVectorstore = (
             EditableQdrantVectorstore(config=self.config)) if IndexTypeNames(self.config.type) == IndexTypeNames.qdrant \
             else EditableFaissVectorstore(config=self.config)
+
+    def _save_config(self, filename="config.json") -> None:
+        """Save configuration to disk."""
+        config_file = pathlib.Path(self.config.folder) / filename
+        saved = False
+        if config_file.is_file():
+            with open(str(config_file), "r") as f:
+                existing_config_json = json.load(f)
+            existing_config_embedding = existing_config_json["embeddings"]
+            existing_config_indexing = existing_config_json["indexing"]
+            existing_config_indexing["type"] = existing_config_indexing["type"] \
+                if isinstance(existing_config_indexing["type"], list) else [existing_config_indexing["type"]]
+            if (self.config.name == existing_config_indexing["name"] and
+                    self.config.distance.value == existing_config_indexing["distance"] and
+                    self.embeddings.model_name == existing_config_embedding["deployment"]):
+                existing_config_indexing["type"].append(self.config.type.value)
+                existing_config_indexing["type"] = list(set(existing_config_indexing["type"]))
+                with open(str(config_file), "w") as f:
+                    json.dump({"indexing": existing_config_indexing, "embeddings": existing_config_embedding},
+                              f, indent=2)
+                saved = True
+        if not saved:
+            print(f"Saving {str(config_file)}.")
+            with open(str(config_file), "w") as f:
+                json.dump(
+                    {"indexing": self.config.to_config(), "embeddings": self.embeddings.to_config()}, f, indent=2)
 
     def create_index(self) -> None:
         """Create the underlying index/collection using the configured backend.

@@ -1,5 +1,16 @@
 {
     "cardiology_protocols": {
+        "indexing": {
+            "name": "cardiology_protocols",
+            "description": "Documents containing medical protocols for cardiologic patients.",
+            "type": "faiss",
+            "distance": "cosine",
+            "alias": "qdrant_cardio_current"
+        },
+        "embeddings": {
+            "deployment": "sentence-transformers/all-MiniLM-L6-v2",
+            "kwargs": {}
+        },
         "preprocessing": {
             "storage": {
                 "parent_folder": "data",
@@ -24,7 +35,6 @@
                 "chunk_size": 1000,
                 "chunk_overlap": 200
             }
-
         }
     }
 }
