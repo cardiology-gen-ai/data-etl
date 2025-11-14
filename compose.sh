@@ -20,8 +20,8 @@ INDEXING_TYPE=$(jq -r '.cardiology_protocols.indexing.type' "$CONFIG_PATH")
 
 if [ "$INDEXING_TYPE" = "qdrant" ]; then
   echo "INDEXING_TYPE is qdrant → activating qdrant_vectorstore profile"
-  docker compose --profile qdrant_vectorstore up -d
+  docker compose --profile qdrant_vectorstore up # -d
 else
   echo "INDEXING_TYPE is not qdrant → starting default services only"
-  docker compose up -d
+  docker compose up # -d
 fi

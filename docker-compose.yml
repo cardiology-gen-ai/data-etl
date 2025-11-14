@@ -1,9 +1,22 @@
 services:
+  data-etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "src.main"]
+    env_file:
+      - .env
+    volumes:  # TODO: remove in production
+      - ${CONFIG_PATH}:/app/config.json
+    working_dir: /app
+    environment:
+      CONFIG_PATH: /app/config.json
+
   qdrant:
     image: qdrant/qdrant:latest
     profiles:
       - qdrant_vectorstore
-    container_name: qdrant-cardio-data-etl
+    # container_name: qdrant-cardio-data-etl
     ports:
       - "6333:6333"    # HTTP API
       - "6334:6334"    # gRPC API
