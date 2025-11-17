@@ -5,7 +5,7 @@ import pathlib
 from typing import List
 from abc import ABC, abstractmethod
 
-from langchain_community.docstore import InMemoryDocstore
+from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_core.documents import Document
 from qdrant_client import models
 from qdrant_client.http.models import Distance, SparseVectorParams, VectorParams

@@ -4,8 +4,6 @@ import huggingface_hub
 
 from src.etl_processor import ETLProcessor
 
-# TODO: remove APP_CONFIG_PATH from .env
-
 os.environ["TOKENIZERS_PARALLELISM"] = "False"
 
 
