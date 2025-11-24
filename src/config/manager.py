@@ -195,15 +195,12 @@ class ETLConfigManager(ConfigManager):
     ----------
     config_path : str | None, optional
         Filesystem path to the current ETL configuration file. Defaults to the ``CONFIG_PATH`` environment variable.
-    app_config_path : str | None, optional
-        Filesystem path to the application configuration file. Defaults to ``APP_CONFIG_PATH`` environment variable.
     app_id : str, default ``"cardiology_protocols"``
         Application identifier used by the base :class:`~cardiology_gen_ai.config.manager.ConfigManager`.
     """
     config: ETLConfig #: :class:`~src.config.manager.ETLConfig` : Parsed configuration ready to be consumed by the application.
     def __init__(self,
                  config_path: str = os.getenv("CONFIG_PATH"),
-                 app_config_path: str = os.getenv("APP_CONFIG_PATH"),
                  app_id: str = "cardiology_protocols"):
-        super().__init__(config_path, app_config_path, app_id)
-        self.config = ETLConfig.from_config(self._app_config)
+        super().__init__(config_path, app_id)
+        self.config = ETLConfig.from_config(self._config)
