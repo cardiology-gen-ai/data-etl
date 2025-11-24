@@ -10,8 +10,6 @@ from src.etl_processor import ETLProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "False"
 
-# TODO: change when dockerizing
-# sudo uv pip install -e ../cardiology-gen-ai
 
 if __name__ == "__main__":
     hf_token = os.getenv("HF_TOKEN")

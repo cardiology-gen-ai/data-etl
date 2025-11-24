@@ -203,7 +203,7 @@ class ETLConfigManager(ConfigManager):
     config: ETLConfig #: :class:`~src.config.manager.ETLConfig` : Parsed configuration ready to be consumed by the application.
     def __init__(self,
                  config_path: str = os.getenv("CONFIG_PATH"),
-                 app_config_path: str = os.getenv("APP_CONFIG_PATH"),
+                 app_config_path = None,
                  app_id: str = "cardiology_protocols"):
         super().__init__(config_path, app_config_path, app_id)
         self.config = ETLConfig.from_config(self._app_config)

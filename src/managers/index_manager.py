@@ -1,10 +1,11 @@
+import json
 import logging
 import os
 import pathlib
 from typing import List
 from abc import ABC, abstractmethod
 
-from langchain_community.docstore import InMemoryDocstore
+from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_core.documents import Document
 from qdrant_client import models
 from qdrant_client.http.models import Distance, SparseVectorParams, VectorParams
@@ -160,7 +161,7 @@ class EditableQdrantVectorstore(EditableVectorstore, QdrantVectorstore):
 
     def add_to_vectorstore(self, doc: Document | List[Document]) -> None:
         """Add documents to Qdrant (dense + sparse) using the base helper."""
-        return Vectorstore._add_to_vectorstore(self, doc)
+        return EditableVectorstore._add_to_vectorstore(self, doc)
 
 
 class EditableFaissVectorstore(EditableVectorstore, FaissVectorstore):
@@ -254,9 +255,35 @@ class IndexManager(metaclass=Singleton):
         self.logger = get_logger("Indexing based on LangChain VectorStores")
         self.config = config
         self.embeddings = embeddings
+        self._save_config()
         self.vectorstore: EditableVectorstore = (
             EditableQdrantVectorstore(config=self.config)) if IndexTypeNames(self.config.type) == IndexTypeNames.qdrant \
             else EditableFaissVectorstore(config=self.config)
+
+    def _save_config(self, filename="config.json") -> None:
+        """Save configuration to disk."""
+        config_file = pathlib.Path(self.config.folder) / filename
+        saved = False
+        if config_file.is_file():
+            with open(str(config_file), "r") as f:
+                existing_config_json = json.load(f)
+            existing_config_embedding = existing_config_json["embeddings"]
+            existing_config_indexing = existing_config_json["indexing"]
+            existing_config_indexing["type"] = existing_config_indexing["type"] \
+                if isinstance(existing_config_indexing["type"], list) else [existing_config_indexing["type"]]
+            if (self.config.name == existing_config_indexing["name"] and
+                    self.config.distance.value == existing_config_indexing["distance"] and
+                    self.embeddings.model_name == existing_config_embedding["deployment"]):
+                existing_config_indexing["type"].append(self.config.type.value)
+                existing_config_indexing["type"] = list(set(existing_config_indexing["type"]))
+                with open(str(config_file), "w") as f:
+                    json.dump({"indexing": existing_config_indexing, "embeddings": existing_config_embedding},
+                              f, indent=2)
+                saved = True
+        if not saved:
+            with open(str(config_file), "w") as f:
+                json.dump(
+                    {"indexing": self.config.to_config(), "embeddings": self.embeddings.to_config()}, f, indent=2)
 
     def create_index(self) -> None:
         """Create the underlying index/collection using the configured backend.
@@ -267,7 +294,7 @@ class IndexManager(metaclass=Singleton):
             assert self.vectorstore.vectorstore is not None
             self.logger.info(f"Index {self.config.name} created successfully.")
         except Exception as e:
-            self.logger.info(f"Error creating index {self.config.name}: {str(e)}")
+            self.logger.error(f"Error creating index {self.config.name}: {str(e)}")
             raise
 
     def get_n_documents_in_vectorstore(self) -> int:
@@ -280,7 +307,7 @@ class IndexManager(metaclass=Singleton):
             self.vectorstore.delete_vectorstore()
             self.logger.info(f"Index {self.config.name} deleted successfully.")
         except Exception as e:
-            self.logger.info(f"Error deleting index {self.config.name}: {str(e)}")
+            self.logger.error(f"Error deleting index {self.config.name}: {str(e)}")
             raise
 
     def load_index(self) -> None:
@@ -292,7 +319,7 @@ class IndexManager(metaclass=Singleton):
                                               retrieval_mode=self.config.retrieval_mode.value)
             self.logger.info(f"Index {self.config.name} loaded successfully.")
         except Exception as e:
-            self.logger.info(f"Error loading {self.config.name} index: {str(e)}")
+            self.logger.error(f"Error loading {self.config.name} index: {str(e)}")
             raise
 
     def delete_document(self, filename: pathlib.Path) -> int:
@@ -314,7 +341,7 @@ class IndexManager(metaclass=Singleton):
                 self.logger.info(f"Document {filename} deleted successfully ({n_doc_deleted} chunks removed)")
             return n_doc_deleted
         except Exception as e:
-            self.logger.info(f"Error deleting document {filename}: {str(e)}")
+            self.logger.error(f"Error deleting document {filename}: {str(e)}")
             raise
 
     def add_document(self, doc: Document | List[Document]) -> None:
@@ -337,5 +364,5 @@ class IndexManager(metaclass=Singleton):
             self.vectorstore.add_to_vectorstore(doc)
             self.logger.info("Document(s) added successfully")
         except Exception as e:
-            self.logger.info(f"Error adding document(s): {str(e)}")
+            self.logger.error(f"Error adding document(s): {str(e)}")
             raise
