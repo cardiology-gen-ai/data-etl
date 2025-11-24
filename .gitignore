@@ -7,6 +7,8 @@ qdrant_storage/
 .env.production
 .env.leonardo
 
+/test_data/
+
 # Sensitive config files (exclude from Git)
 config/local.yaml
 config/*secrets*

@@ -117,7 +117,7 @@ class MarkdownConverter(metaclass=Singleton):
             return True, doc_metadata
 
         except Exception as e:
-            self.logger.info(f"Error processing {self.filename}: {str(e)}")
+            self.logger.error(f"Error processing {self.filename}: {str(e)}")
             return False, None
 
     def place_images_in_markdown(self, md_text: str):
