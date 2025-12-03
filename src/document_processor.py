@@ -148,7 +148,7 @@ class DocumentProcessor:
         filename_stem = pathlib.Path(self.filename).stem
         md_guess = output_folder / f"{filename_stem}.md"
 
-        print("Looking for existing Markdown at:", md_guess)
+        # print("Looking for existing Markdown at:", md_guess)
 
         use_existing_md = (not force_md_conv) and md_guess.is_file()
 

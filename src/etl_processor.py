@@ -168,7 +168,7 @@ class ETLProcessor(metaclass=Singleton):
             updated_docs_metadata_list = [doc_metadata]
             self._save_docs_metadata(updated_docs_metadata_list)
 
-    def perform_etl(self, force_md_conv: bool=True, existing_metadata_path: str | None = None) -> None:
+    def perform_etl(self, force_md_conv: bool = True, existing_metadata_path: str | None = None) -> None:
         """Process all allowed files in the configured input folder.
 
         The method scans ``input_folder.folder`` for files whose extensions match

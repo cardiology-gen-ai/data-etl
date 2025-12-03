@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, List, Dict, Optional
 
 from pydantic import BaseModel
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.embeddings import Embeddings
 from langchain_core.documents import Document
 from langchain_text_splitters import TextSplitter, RecursiveCharacterTextSplitter, SentenceTransformersTokenTextSplitter
 from langchain_text_splitters.markdown import MarkdownHeaderTextSplitter
@@ -37,7 +37,7 @@ class TextSplitterConfig(BaseModel):
     splitter: TextSplitter | SemanticChunker | MarkdownHeaderTextSplitter = None #: object, optional : A prebuilt splitter. If omitted (which is the default behavior), it is created in :py:meth:`model_post_init` matching ``name``.
     chunk_size: int = 1000 #: int, default ``1000`` : Preferred chunk token/character budget. When a tokenizer is available it is interpreted as tokens; otherwise it is characters.
     chunk_overlap: int = 150 #: int, default ``150`` : Overlap between adjacent chunks (same unit as ``chunk_size``).
-    embeddings: Optional[HuggingFaceEmbeddings] = None #: :langchain:`HuggingFaceEmbeddings <huggingface/embeddings/langchain_huggingface.embeddings.huggingface.HuggingFaceEmbeddings.html>`, optional : Embeddings object. If provided, its underlying tokenizer and model metadata drive chunk sizing.
+    embeddings: Optional[Embeddings] = None #: :langchain:`HuggingFaceEmbeddings <huggingface/embeddings/langchain_huggingface.embeddings.huggingface.HuggingFaceEmbeddings.html>`, optional : Embeddings object. If provided, its underlying tokenizer and model metadata drive chunk sizing.
     header_levels: int = 2 #: int, default ``2`` : For Markdown splitting, number of header levels (e.g. ``#`` to ``###...``) to split on.
 
     def model_post_init(self,  __context: Any) -> None:
@@ -60,21 +60,20 @@ class TextSplitterConfig(BaseModel):
         Some splitter implementations expect integer values for overlaps; if you supply floats,
         internal casting may occur. Consider using integer values explicitly if your version requires it.
         """
-        tokenizer = AutoTokenizer.from_pretrained(self.embeddings.model_name) if self.embeddings is not None else None
-        chunk_size = self.chunk_size if tokenizer is None else min(self.chunk_size, self.embeddings._client.max_seq_length - 10)
-        chunk_overlap = self.chunk_overlap if tokenizer is None else self.chunk_overlap * chunk_size / self.chunk_size
         if self.name == TextSplitterName.markdown_splitter:
             headers_to_split_on = [("".join(["#"]*level), "Header " + str(level))
                                    for level in range(1, self.header_levels+1)]
             self.splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
         elif self.name == TextSplitterName.recursive_splitter:
-            self.splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-                 chunk_size=chunk_size, chunk_overlap=chunk_overlap, tokenizer=tokenizer)
+            self.splitter = RecursiveCharacterTextSplitter(
+                 chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap, length_function=len, is_separator_regex=False
+            )
         elif self.name == TextSplitterName.semantic_splitter:
-            self.splitter = SemanticChunker(embeddings=self.embeddings, min_chunk_size=int(chunk_size/3))
+            self.splitter = SemanticChunker(embeddings=self.embeddings, min_chunk_size=int(self.chunk_size/3))
         elif self.name == TextSplitterName.sentence_splitter:
-            self.splitter = SentenceTransformersTokenTextSplitter.from_huggingface_tokenizer(
-               tokenizer=tokenizer, chunk_overlap=chunk_overlap, tokens_per_chunk=chunk_size)
+            self.splitter = SentenceTransformersTokenTextSplitter(
+                chunk_overlap=self.chunk_overlap, tokens_per_chunk=self.chunk_size
+            )
 
     class Config:
         arbitrary_types_allowed = True

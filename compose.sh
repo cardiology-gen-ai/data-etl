@@ -17,11 +17,22 @@ if [ ! -f "$CONFIG_PATH" ]; then
 fi
 
 INDEXING_TYPE=$(jq -r '.cardiology_protocols.indexing.type' "$CONFIG_PATH")
+EMBEDDING_TYPE=$(jq -r '.cardiology_protocols.embeddings.ollama' "$CONFIG_PATH")
+
+PROFILES=()
 
 if [ "$INDEXING_TYPE" = "qdrant" ]; then
-  echo "INDEXING_TYPE is qdrant → activating qdrant_vectorstore profile"
-  docker compose --profile qdrant_vectorstore up # -d
+  PROFILES+=("qdrant_vectorstore")
+fi
+
+if [ "$EMBEDDING_TYPE" = "true" ]; then
+    PROFILES+=("ollama_embeddings")
+fi
+
+if [[ ${#PROFILES[@]} -eq 0 ]]; then
+    echo "No active profile"
+    docker compose up -d
 else
-  echo "INDEXING_TYPE is not qdrant → starting default services only"
-  docker compose up # -d
+    echo "Active profiles: ${PROFILES[*]}"
+    docker compose --profile "${PROFILES[@]}" up -d
 fi

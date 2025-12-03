@@ -8,12 +8,13 @@
             "alias": "qdrant_cardio_current"
         },
         "embeddings": {
-            "deployment": "sentence-transformers/all-MiniLM-L6-v2",
+            "deployment": "jina/jina-embeddings-v2-small-en",
+            "ollama": true,
             "kwargs": {}
         },
         "preprocessing": {
             "storage": {
-                "parent_folder": "test_data",
+                "parent_folder": "data",
                 "input_folder": "pdfdocs",
                 "output_folder": "mddocs",
                 "allowed_extensions": [

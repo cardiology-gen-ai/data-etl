@@ -2,7 +2,7 @@ import os
 import pathlib
 from typing import Tuple, Dict, Any, Optional, List
 
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.embeddings import Embeddings
 from pydantic import BaseModel
 
 from src.managers.chunking_manager import TextSplitterConfig, TextSplitterName
@@ -64,7 +64,7 @@ class ChunkingManagerConfig(BaseModel):
     splitter: List[TextSplitterConfig]
 
     @classmethod
-    def from_config(cls, config_dict: Dict[str, Any], embeddings: HuggingFaceEmbeddings) -> "ChunkingManagerConfig":
+    def from_config(cls, config_dict: Dict[str, Any], embeddings: Embeddings) -> "ChunkingManagerConfig":
         """Construct a :class:`ChunkingManagerConfig` from a plain dictionary.
 
         .. rubric:: Logic
@@ -109,7 +109,7 @@ class PreprocessingConfig(BaseModel):
     chunking_manager: ChunkingManagerConfig #: :class:`ChunkingManagerConfig` : How to split text into chunks.
 
     @classmethod
-    def from_config(cls, config_dict: Dict[str, Any], embeddings: HuggingFaceEmbeddings) -> "PreprocessingConfig":
+    def from_config(cls, config_dict: Dict[str, Any], embeddings: Embeddings) -> "PreprocessingConfig":
         """Build a :class:`PreprocessingConfig` from a nested mapping.
 
         .. rubric:: Expected schema
