@@ -3,6 +3,7 @@ import re
 import unicodedata
 from typing import List, Dict
 
+import json
 import fitz
 import pymupdf4llm
 
@@ -141,7 +142,7 @@ class MarkdownManager:
         """Build a loose regex to locate a textual snippet in the full Markdown.
 
         The pattern is composed by the first ``max_tokens`` alphanumeric tokens of
-        ``snippet`` joined by ``\W+``. This allows matching across whitespace and
+        ``snippet`` joined by ``\\W+``. This allows matching across whitespace and
         punctuation variations.
 
         Parameters
@@ -161,6 +162,7 @@ class MarkdownManager:
             return None
         words = words[:max_tokens]
         pattern = r"\b" + r"\W+".join(re.escape(w) for w in words) + r"\b"
+
         return re.compile(pattern)
 
     def get_keywords_matches_in_slice(self, start: int, end: int, keywords: List[str]) -> List[int]:
@@ -247,4 +249,38 @@ class MarkdownManager:
             if anchors.get(page_n) < prev:
                 anchors[page_n] = prev
             prev = anchors[page_n]
+        return anchors
+    
+
+    def get_page_anchors(self, cache_path: pathlib.Path | None = None) -> Dict[int, int]:
+        """
+        Load cached page anchors if available, otherwise compute and cache them.
+        """
+
+        if cache_path and cache_path.exists():
+            data = json.loads(cache_path.read_text(encoding="utf-8"))
+
+            if "anchors" in data:
+                anchor_dict = data["anchors"]
+            else:
+                anchor_dict = data
+
+            return {int(k): int(v) for k, v in anchor_dict.items()}
+
+        # Fallback: compute anchors
+        anchors = self.find_page_anchors_in_markdown()
+
+        if cache_path:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(
+                json.dumps(
+                    {
+                        "doc_id": self.filepath.stem,
+                        "anchors": anchors,
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
         return anchors
