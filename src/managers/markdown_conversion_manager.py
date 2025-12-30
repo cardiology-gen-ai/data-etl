@@ -154,7 +154,7 @@ class MarkdownConverter(metaclass=Singleton):
             filepath=self.filepath,
             text=md_text
         )
-        page_anchor = markdown_manager.find_page_anchors_in_markdown()
+        page_anchor = markdown_manager.get_page_anchors() # Substituted with this, so if cached we don't recompute
         # group figures by page, and sort according to y0
         catalog_entries = image_manager.load_images_catalog()
         by_page = {}
