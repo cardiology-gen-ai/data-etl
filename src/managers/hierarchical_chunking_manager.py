@@ -17,13 +17,9 @@ from typing import Dict, List, Any, Optional
 
 from markdown_manager import MarkdownManager
 
-
-
 # Logging
 logger = logging.getLogger("hierarchical_chunker")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-
 
 # TODO: Exclusion rules (check if there are others to add)
 EXCLUDED_TITLE_KEYWORDS = [
@@ -36,7 +32,6 @@ EXCLUDED_TITLE_KEYWORDS = [
     "author information", "disclaimer",
     "index"
 ]
-
 
 def is_excluded_section(sec: Dict[str, Any]) -> bool:
     title = (sec.get("title") or "").lower()

@@ -16,7 +16,7 @@ import os
 import json
 import re
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
@@ -26,9 +26,10 @@ from openai import AzureOpenAI
 # Logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(levelname)s: %(message)s",
+    format="%(asctime)s | %(levelname)s | %(message)s",
 )
 logger = logging.getLogger("entity_extraction")
+
 
 
 load_dotenv()
@@ -61,9 +62,6 @@ driver = GraphDatabase.driver(
     auth=(NEO4J_USERNAME, NEO4J_PASSWORD),
 )
 
-
-
-# LLM prompt for concept (entity) extraction
 
 SYSTEM_PROMPT = """You are a medical terminology expert.
 
@@ -101,33 +99,22 @@ Example:
 ]
 """
 
+
 # Helpers
-
 def parse_llm_json(text: str):
-    """
-    Extract and parse JSON from LLM output that may be wrapped in ```json fences.
-    """
     text = text.strip()
-
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE).strip()
         text = re.sub(r"```$", "", text).strip()
-
     return json.loads(text)
 
 
 def extract_concepts(text: str) -> List[Dict[str, str]]:
-    """
-    Call Azure OpenAI and extract typed medical concepts.
-    """
     response = client.chat.completions.create(
         model=AZURE_DEPLOYMENT,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": USER_PROMPT_TEMPLATE.format(text=text),
-            },
+            {"role": "user", "content": USER_PROMPT_TEMPLATE.format(text=text)},
         ],
         temperature=0,
     )
@@ -139,82 +126,81 @@ def extract_concepts(text: str) -> List[Dict[str, str]]:
         if not isinstance(data, list):
             raise ValueError
 
-        concepts: List[Dict[str, str]] = []
-        for item in data:
-            if (
-                isinstance(item, dict)
-                and "name" in item
-                and "type" in item
-                and isinstance(item["name"], str)
-                and isinstance(item["type"], str)
-            ):
-                concepts.append(
-                    {
-                        "name": item["name"].strip(),
-                        "type": item["type"].strip(),
-                    }
-                )
-
-        return concepts
+        return [
+            {"name": d["name"].strip(), "type": d["type"].strip()}
+            for d in data
+            if isinstance(d, dict) and "name" in d and "type" in d
+        ]
 
     except Exception:
         logger.error("Failed to parse LLM output: %s", content)
         return []
 
-
 # Neo4j helpers
-def create_concept_and_link(tx, section_id: str, concept: Dict[str, str]):
+def create_concept_and_link(tx, section_uid: str, concept: Dict[str, str]):
     tx.run(
         """
-        MATCH (s:Section {section_id: $section_id})
+        MATCH (s:Section {uid: $uid})
         MERGE (c:Concept {name: $name})
         SET c.type = $type
         MERGE (s)-[:MENTIONS]->(c)
         """,
-        section_id=section_id,
+        uid=section_uid,
         name=concept["name"],
         type=concept["type"],
     )
 
-
-# Add entities from section titles #TODO: later on consider doing so on section content as well
 def add_entities_from_sections(
+    doc_id: Optional[str] = None,
     use_section_text: bool = False,
-    max_sections: int | None = None,
+    max_sections: Optional[int] = None,
 ):
     """
-    Extract concepts from section titles (and optionally section text)
+    Extract concepts from section titles (and optionally text)
     and attach them to the Neo4j graph.
+
+    If doc_id is provided, only that document is processed.
     """
 
     with driver.session() as session:
-        result = session.run(
-            """
-            MATCH (s:Section)
-            RETURN s.section_id AS id,
-                   s.title AS title,
-                   s.text AS text
-            ORDER BY s.section_id
-            """
-        )
 
-        rows = list(result)
+        query = """
+        MATCH (s:Section)
+        WHERE $doc_id IS NULL OR s.doc_id = $doc_id
+        RETURN s.uid AS uid,
+               s.doc_id AS doc_id,
+               s.section_id AS section_id,
+               s.title AS title,
+               s.text AS text
+        ORDER BY s.uid
+        """
+
+        rows = list(session.run(query, doc_id=doc_id))
+
         if max_sections:
             rows = rows[:max_sections]
 
-        logger.info("Processing %d sections", len(rows))
+        logger.info(
+            "Processing %d sections%s",
+            len(rows),
+            f" for document {doc_id}" if doc_id else "",
+        )
 
         for row in rows:
-            section_id = row["id"]
-
+            section_uid = row["uid"]
             source_text = row["title"] or ""
+
             if use_section_text and row["text"]:
                 source_text += "\n" + row["text"]
 
             if not source_text.strip():
                 continue
 
-            logger.info("Extracting entities from section %s", section_id)
+            logger.info(
+                "Extracting entities | doc=%s section=%s",
+                row["doc_id"],
+                row["section_id"],
+            )
 
             concepts = extract_concepts(source_text)
 
@@ -222,7 +208,7 @@ def add_entities_from_sections(
                 continue
 
             logger.info(
-                "  → found %d concepts: %s",
+                "  → %d concepts: %s",
                 len(concepts),
                 ", ".join(c["name"] for c in concepts),
             )
@@ -230,7 +216,7 @@ def add_entities_from_sections(
             for concept in concepts:
                 session.execute_write(
                     create_concept_and_link,
-                    section_id,
+                    section_uid,
                     concept,
                 )
 
@@ -240,6 +226,7 @@ def add_entities_from_sections(
 
 if __name__ == "__main__":
     add_entities_from_sections(
-        use_section_text=False,  # Starts with section titles only
-        max_sections=None,       
+        doc_id=None,            # set to specific doc_id if needed
+        use_section_text=False, # start with titles only
+        max_sections=None,
     )

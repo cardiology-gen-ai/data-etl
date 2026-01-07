@@ -5,13 +5,25 @@ Builds a hierarchical knowledge graph in Neo4j from chunked guideline data.
 
 Nodes:
   (:Document {doc_id})
-  (:Section {section_id, title, level, text, is_empty, embed, page_start, page_end})
+  (:Section {
+      uid,            # globally unique: doc_id::section_id
+      doc_id,
+      section_id,
+      title,
+      level,
+      text,
+      is_empty,
+      embed,
+      page_start,
+      page_end
+  })
 
 Relationships:
   (:Document)-[:HAS_SECTION]->(:Section)
   (:Section)-[:HAS_CHILD]->(:Section)
   (:Section)-[:NEXT]->(:Section)
 """
+
 import os
 import json
 import logging
@@ -20,9 +32,10 @@ from typing import Dict, List
 
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
+
 load_dotenv()
 
-# Logging setup
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
@@ -30,15 +43,13 @@ logging.basicConfig(
 logger = logging.getLogger("build_graph")
 
 
-
+# Neo4j connection
 NEO4J_URI = os.getenv("NEO4J_URI")
 NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 if not all([NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD]):
-    raise RuntimeError("Missing Neo4j credentials in environment variables")
-
-logger.info("Connecting to Neo4j at %s", NEO4J_URI)
+    raise RuntimeError("Missing Neo4j credentials")
 
 driver = GraphDatabase.driver(
     NEO4J_URI,
@@ -46,13 +57,10 @@ driver = GraphDatabase.driver(
 )
 
 driver.verify_connectivity()
-logger.info("Neo4j connectivity verified")
+logger.info("Connected to Neo4j")
 
-
-# Schema setup TODO: see if this schem is fine or if we need something more complex
-
+# Schema setup
 def setup_schema(tx):
-    """Create constraints for graph construction."""
     tx.run("""
         CREATE CONSTRAINT document_id IF NOT EXISTS
         FOR (d:Document)
@@ -60,14 +68,14 @@ def setup_schema(tx):
     """)
 
     tx.run("""
-        CREATE CONSTRAINT section_id IF NOT EXISTS
+        CREATE CONSTRAINT section_uid IF NOT EXISTS
         FOR (s:Section)
-        REQUIRE s.section_id IS UNIQUE
+        REQUIRE s.uid IS UNIQUE
     """)
 
 
 
-# Graph building logic
+# Create nodes
 def create_document(tx, doc_id: str):
     tx.run(
         "MERGE (d:Document {doc_id: $doc_id})",
@@ -76,10 +84,14 @@ def create_document(tx, doc_id: str):
 
 
 def create_section(tx, section: Dict):
+    uid = f"{section['doc_id']}::{section['section_id']}"
+
     tx.run(
         """
-        MERGE (s:Section {section_id: $section_id})
+        MERGE (s:Section {uid: $uid})
         SET
+            s.doc_id = $doc_id,
+            s.section_id = $section_id,
             s.title = $title,
             s.level = $level,
             s.text = $text,
@@ -88,6 +100,8 @@ def create_section(tx, section: Dict):
             s.page_start = $page_start,
             s.page_end = $page_end
         """,
+        uid=uid,
+        doc_id=section["doc_id"],
         section_id=section["section_id"],
         title=section.get("section_title"),
         level=section.get("section_level"),
@@ -98,108 +112,101 @@ def create_section(tx, section: Dict):
         page_end=section.get("page_end"),
     )
 
-
-def link_document_section(tx, doc_id: str, section_id: str):
+# Relationships
+def link_document_section(tx, doc_id: str, section_uid: str):
     tx.run(
         """
         MATCH (d:Document {doc_id: $doc_id})
-        MATCH (s:Section {section_id: $section_id})
+        MATCH (s:Section {uid: $uid})
         MERGE (d)-[:HAS_SECTION]->(s)
         """,
         doc_id=doc_id,
-        section_id=section_id,
+        uid=section_uid,
     )
 
 
-def link_parent_child(tx, parent_id: str, child_id: str):
+def link_parent_child(tx, parent_uid: str, child_uid: str):
     tx.run(
         """
-        MATCH (p:Section {section_id: $parent_id})
-        MATCH (c:Section {section_id: $child_id})
+        MATCH (p:Section {uid: $parent})
+        MATCH (c:Section {uid: $child})
         MERGE (p)-[:HAS_CHILD]->(c)
         """,
-        parent_id=parent_id,
-        child_id=child_id,
+        parent=parent_uid,
+        child=child_uid,
     )
 
 
-def link_next(tx, prev_id: str, next_id: str):
+def link_next(tx, prev_uid: str, next_uid: str):
     tx.run(
         """
-        MATCH (a:Section {section_id: $prev_id})
-        MATCH (b:Section {section_id: $next_id})
+        MATCH (a:Section {uid: $prev})
+        MATCH (b:Section {uid: $next})
         MERGE (a)-[:NEXT]->(b)
         """,
-        prev_id=prev_id,
-        next_id=next_id,
+        prev=prev_uid,
+        next=next_uid,
     )
 
 
 
-# Main build function
+# Build graph from chunk file
 
-def build_graph(chunks_path: str):
-    chunks_path = Path(chunks_path)
+def build_graph_from_chunks(chunk_file: Path):
+    logger.info("Loading chunks from %s", chunk_file)
 
-    logger.info("Loading chunks from %s", chunks_path)
-
-    if not chunks_path.exists():
-        raise FileNotFoundError(chunks_path)
-
-    chunks: List[Dict] = json.loads(chunks_path.read_text(encoding="utf-8"))
+    chunks: List[Dict] = json.loads(chunk_file.read_text(encoding="utf-8"))
     if not chunks:
-        raise ValueError("Chunk file is empty")
-
-    logger.info("Loaded %d chunks", len(chunks))
+        logger.warning("Empty chunk file: %s", chunk_file)
+        return
 
     doc_id = chunks[0]["doc_id"]
-    logger.info("Document ID: %s", doc_id)
+    logger.info("Building graph for document: %s", doc_id)
 
     with driver.session() as session:
-        logger.info("Setting up schema")
         session.execute_write(setup_schema)
-
-        logger.info("Creating Document node")
         session.execute_write(create_document, doc_id)
 
-        logger.info("Creating Section nodes")
+        # Create sections
         for chunk in chunks:
             session.execute_write(create_section, chunk)
-            session.execute_write(
-                link_document_section,
-                doc_id,
-                chunk["section_id"],
-            )
+            uid = f"{doc_id}::{chunk['section_id']}"
+            session.execute_write(link_document_section, doc_id, uid)
 
-        logger.info("Created %d Section nodes", len(chunks))
-
-        logger.info("Creating hierarchy relationships")
-        parent_links = 0
-        next_links = 0
-
+        # Hierarchy + NEXT
         for i, chunk in enumerate(chunks):
+            child_uid = f"{doc_id}::{chunk['section_id']}"
+
             parent_id = chunk.get("parent_section_id")
             if parent_id:
+                parent_uid = f"{doc_id}::{parent_id}"
                 session.execute_write(
                     link_parent_child,
-                    parent_id,
-                    chunk["section_id"],
+                    parent_uid,
+                    child_uid,
                 )
-                parent_links += 1
 
             if i > 0:
+                prev_uid = f"{doc_id}::{chunks[i - 1]['section_id']}"
                 session.execute_write(
                     link_next,
-                    chunks[i - 1]["section_id"],
-                    chunk["section_id"],
+                    prev_uid,
+                    child_uid,
                 )
-                next_links += 1
 
-        logger.info("Created %d HAS_CHILD relationships", parent_links)
-        logger.info("Created %d NEXT relationships", next_links)
+    logger.info("Graph built for document: %s", doc_id)
 
-    logger.info("Graph successfully built for document: %s", doc_id)
+
+
+def main():
+    chunks_dir = Path("../test_data/chunks")
+    chunk_files = sorted(chunks_dir.glob("*_hier_chunks.json"))
+
+    logger.info("Found %d chunk files", len(chunk_files))
+
+    for chunk_file in chunk_files:
+        build_graph_from_chunks(chunk_file)
 
 
 if __name__ == "__main__":
-    build_graph("../test_data/chunks/Cardiomyopathies_2023_hier_chunks.json")
+    main()
