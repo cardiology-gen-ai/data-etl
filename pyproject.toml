@@ -37,6 +37,7 @@ dependencies = [
     "transformers==4.56.0",
     "neo4j>=5.20.0",
     "python-dotenv>=1.0.1",
+    "openai>=1.0.0",
     "cardiologygenai-coordo @ git+https://github.com/cardiology-gen-ai/cardiology-gen-ai.git@main"
 ]
 
