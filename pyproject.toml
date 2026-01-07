@@ -7,12 +7,13 @@ egg_base = "."
 
 [project]
 name = "CardiologyGenAI-DataETL"
-version = "0.1.0"
+version = "0.2.0"
 description = "Data ETL pipeline for cardiology protocols"
 requires-python = ">=3.11,<3.13"
 authors = [
     { name = "Christian Faccio", email = "christian.faccio@studenti.units.it" },
-    { name = "Gaia Saveri", email = "gaia.saveri@gmail.com" }
+    { name = "Gaia Saveri", email = "gaia.saveri@gmail.com" },
+    { name = "Marta Lucas", email = "marta.lucas@studenti.units.it"}
 ]
 
 dependencies = [
@@ -34,6 +35,8 @@ dependencies = [
     "faiss-cpu==1.12.0",
     "numpy==1.26.4",
     "transformers==4.56.0",
+    "neo4j>=5.20.0",
+    "python-dotenv>=1.0.1",
     "cardiologygenai-coordo @ git+https://github.com/cardiology-gen-ai/cardiology-gen-ai.git@main"
 ]
 
