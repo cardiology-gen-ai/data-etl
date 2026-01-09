@@ -190,8 +190,6 @@ def locate_header(
 
         score = _title_overlap_score(title, section_title)
 
-        # For depth>1 we can accept lower overlap 
-        # For depth==1 require at least a little overlap if title exists
         if score > best_score:
             best = m
             best_score = score

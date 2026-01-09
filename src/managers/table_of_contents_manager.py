@@ -77,7 +77,6 @@ class GuidelineTOCExtractor:
     BAD_PAGE_WORDS = (
         "downloaded from",
         "doi",
-        "issn",
         "oxford",
         "rights reserved",
         "the authors",
