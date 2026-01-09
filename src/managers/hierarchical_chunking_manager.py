@@ -383,17 +383,15 @@ def build_hierarchical_chunks(
     return chunks
 
 
-# TODO: test on other examples as well
-
 def main():
-    toc_path = pathlib.Path("../../test_data/toc/Cardiomyopathies_2023_toc.json")
-    markdown_path = pathlib.Path("../../test_data/mddocs/Cardiomyopathies_2023.md")
-    pdf_path = pathlib.Path("../../test_data/pdfdocs/Cardiomyopathies_2023.pdf")
+    toc_path = pathlib.Path("../../data/toc/Valvular_Heart_Disease_2021_toc.json")
+    markdown_path = pathlib.Path("../../data/mddocs/Valvular_Heart_Disease_2021.md")
+    pdf_path = pathlib.Path("../../data/pdfdocs/Valvular_Heart_Disease_2021.pdf")
     anchor_cache_path = pathlib.Path(
-        "../../test_data/anchors/Cardiomyopathies_2023_page_anchors.json"
+        "../../data/anchors/Valvular_Heart_Disease_2021_page_anchors.json"
     )
     output_path = pathlib.Path(
-        "../../test_data/chunks/Cardiomyopathies_2023_hier_chunks.json"
+        "../../test_data/chunks/Valvular_Heart_Disease_2021_hier_chunks.json"
     )
 
     logger.info("Starting hierarchical chunking (anchors + TOC boundaries, no split)")

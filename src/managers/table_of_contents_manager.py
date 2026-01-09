@@ -561,8 +561,8 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
 
-    input_dir = "../../test_data/pdfdocs"
-    output_dir = "../../test_data/toc"
+    input_dir = "../../data/pdfdocs"
+    output_dir = "../../data/toc"
 
     os.makedirs(output_dir, exist_ok=True)
 

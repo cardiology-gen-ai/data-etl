@@ -137,6 +137,15 @@ def extract_concepts(text: str) -> List[Dict[str, str]]:
         return []
 
 # Neo4j helpers
+def enforce_constraint(tx):
+    tx.run(
+        """
+        CREATE CONSTRAINT IF NOT EXISTS
+        FOR (c:Concept)
+        REQUIRE c.name IS UNIQUE
+        """
+    )
+
 def create_concept_and_link(tx, section_uid: str, concept: Dict[str, str]):
     tx.run(
         """
@@ -225,6 +234,10 @@ def add_entities_from_sections(
 
 
 if __name__ == "__main__":
+    
+    with driver.session() as session:
+        session.execute_write(enforce_constraint)
+
     add_entities_from_sections(
         doc_id=None,            # set to specific doc_id if needed
         use_section_text=False, # start with titles only
