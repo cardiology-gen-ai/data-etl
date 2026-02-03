@@ -1,0 +1,35 @@
+services:
+  data-etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root # TODO: remove in production
+    command: ["python", "-m", "src.main"]
+    profiles: ["default", "ollama_models", "qdrant_vectorstore"]
+    env_file:
+      - .env
+    volumes:  # TODO: remove in production [all in dockerfile]
+      - ${CONFIG_PATH}:/app/config.json
+      - ${ROOT_PATH}:/app/src
+      - ${DATA_ROOT}:/app
+      - ${DATA_ROOT}/index:/app/data/index
+    working_dir: /app
+    environment:
+      CONFIG_PATH: /app/config.json
+      DATA_ROOT: /app
+      INDEX_ROOT: /app/data/index
+      QDRANT_URL: ${QDRANT_URL}
+      OLLAMA_URL: ${OLLAMA_URL}
+    networks:
+      - cardiology-ai-net
+    restart: no
+
+volumes:
+    qdrant_data:
+      external: true
+    ollama:
+      external: true
+
+networks:
+  cardiology-ai-net:
+    external: true

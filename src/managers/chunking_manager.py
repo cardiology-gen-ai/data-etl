@@ -8,7 +8,6 @@ from langchain_core.documents import Document
 from langchain_text_splitters import TextSplitter, RecursiveCharacterTextSplitter, SentenceTransformersTokenTextSplitter
 from langchain_text_splitters.markdown import MarkdownHeaderTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
-from transformers import AutoTokenizer
 
 from cardiology_gen_ai.utils.singleton import Singleton
 

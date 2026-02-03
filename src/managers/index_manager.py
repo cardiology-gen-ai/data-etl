@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pathlib
+import pickle
 from typing import List
 from abc import ABC, abstractmethod
 
@@ -11,9 +12,10 @@ from qdrant_client import models
 from qdrant_client.http.models import Distance, SparseVectorParams, VectorParams
 from langchain_qdrant import QdrantVectorStore, FastEmbedSparse
 from langchain_community.vectorstores import FAISS
+from rank_bm25 import BM25Plus
 
 from cardiology_gen_ai import (IndexTypeNames, DistanceTypeNames, IndexingConfig, EmbeddingConfig,
-                               Vectorstore, QdrantVectorstore, FaissVectorstore)
+                               Vectorstore, QdrantVectorstore, FaissVectorstore, BM25Vectorstore, BM25Dict)
 from cardiology_gen_ai.utils.logger import get_logger
 from cardiology_gen_ai.utils.singleton import Singleton
 
@@ -31,7 +33,7 @@ class EditableVectorstore(Vectorstore, ABC):
     """
 
     @abstractmethod
-    def create_vectorstore(self, **kwargs) -> QdrantVectorStore | FAISS:
+    def create_vectorstore(self, **kwargs) -> QdrantVectorStore | FAISS | BM25Dict:
         """Create or connect to the underlying vector store.
 
         Returns
@@ -107,22 +109,23 @@ class EditableQdrantVectorstore(EditableVectorstore, QdrantVectorstore):
             Constructed :py:class:`~langchain_qdrant.qdrant.QdrantVectorStore` bound to
             ``self.config.name``.
         """
+        distance = Distance.COSINE if self.config.distance == DistanceTypeNames.cosine else Distance.EUCLID
         if not self.vectorstore_exists():
-            distance = Distance.COSINE if self.config.distance == DistanceTypeNames.cosine else Distance.EUCLID
             self.client.create_collection(
                 collection_name=self.config.name,
                 vectors_config=VectorParams(size=embeddings_model.dim, distance=distance),
                 sparse_vectors_config={"sparse": SparseVectorParams(index=models.SparseIndexParams(on_disk=False))},
             )
-        qdrant_vectorstore = QdrantVectorStore.construct_instance(
+        qdrant_vectorstore = QdrantVectorStore(
+            client=self.client,
             collection_name=self.config.name,
+            distance=distance,
             embedding=embeddings_model.model,
             sparse_embedding=FastEmbedSparse(model_name="Qdrant/bm25"),
-            vector_name="dense",
+            vector_name="",
             sparse_vector_name="sparse",
             content_payload_key="page_content",
             metadata_payload_key="metadata",
-            force_recreate=True,
         )
         self.vectorstore = qdrant_vectorstore
         return qdrant_vectorstore
@@ -236,6 +239,59 @@ class EditableFaissVectorstore(EditableVectorstore, FaissVectorstore):
         self.vectorstore.save_local(folder_path=self.config.folder.as_posix(), index_name=self.config.name)
 
 
+class EditableBM25Vectorstore(EditableVectorstore, BM25Vectorstore):
+
+    def _persist_bm25_vectorstore(self) -> None:
+        with open(self.config.folder / (self.config.name + "_bm25.pkl"), "wb") as f:
+            pickle.dump(self.vectorstore, f)
+
+    def _rebuild_bm25_vectorstore(self) -> None:
+        tokenized_corpus = [BM25Vectorstore.tokenize(doc.page_content) for doc in self.vectorstore.documents]
+        self.vectorstore.bm25 = BM25Plus(tokenized_corpus)
+
+    def create_vectorstore(self, **kwargs) -> BM25Dict:
+        vectorstore = BM25Dict()
+        self.vectorstore = vectorstore
+        self.config.folder.mkdir(parents=True, exist_ok=True)
+        self._persist_bm25_vectorstore()
+        return vectorstore
+
+    def _delete_vectorstore(self) -> None:
+        os.remove((pathlib.Path(self.config.folder) / (self.config.name + "._bm25.pkl")).as_posix())
+
+    def add_to_vectorstore(self, doc: Document | List[Document]) -> None:
+        docs = doc if isinstance(doc, list) else [doc]
+        for doc in docs:
+            self.vectorstore.documents.append(doc)
+        self._rebuild_bm25_vectorstore()
+
+    def delete_from_vectorstore(self, filename: pathlib.Path) -> int:
+        filename = str(filename)
+        keep_docs = []
+        n_docs_removed = 0
+        for doc in self.vectorstore.documents:
+            if doc.metadata["filename"] == filename:
+                n_docs_removed += 1
+            else:
+                keep_docs.append(doc)
+        if len(keep_docs) > 0:
+            self._rebuild_bm25_vectorstore()
+            self._persist_bm25_vectorstore()
+        return n_docs_removed
+
+
+class EditableVectorstoreFactory:
+    editable_vectorstore_mapping = {
+        IndexTypeNames.qdrant: EditableQdrantVectorstore,
+        IndexTypeNames.faiss: EditableFaissVectorstore,
+        IndexTypeNames.bm25: EditableBM25Vectorstore,
+    }
+
+    @classmethod
+    def get_editable_vectorstore(cls, index_config: IndexingConfig) -> EditableVectorstore:
+        return cls.editable_vectorstore_mapping[index_config.type](config=index_config)
+
+
 class IndexManager(metaclass=Singleton):
     """High-level manager for vector index lifecycle operations.
 
@@ -243,47 +299,64 @@ class IndexManager(metaclass=Singleton):
     ----------
     config : :class:`cardiology_gen_ai.models.IndexingConfig`
         Backend and persistence configuration.
-    embeddings : :class:`cardiology_gen_ai.models.EmbeddingConfig`
-        Embedding model configuration (callable + dimensionality).
     """
     logger: logging.Logger  #: :class:`~logging.Logger` : Named logger ("Indexing based on LangChain VectorStores").
     config: IndexingConfig  #: :class:`cardiology_gen_ai.models.IndexingConfig` : Backend and persistence configuration used by this manager.
     embeddings: EmbeddingConfig  #: :class:`cardiology_gen_ai.models.EmbeddingConfig` : Embedding model (callable and vector dimensionality).
     vectorstore: EditableVectorstore  #: :class:`~src.managers.index_manager.EditableVectorstore` : Concrete editable vector store selected from ``config.type``, either :class:`~src.managers.index_manager.EditableQdrantVectorstore` (wraps :py:class:`~langchain_qdrant.qdrant.QdrantVectorStore`) or :class:`~src.managers.index_manager.EditableFaissVectorstore` (wraps :py:class:`~langchain_community.vectorstores.faiss.FAISS`).
 
-    def __init__(self, config: IndexingConfig, embeddings: EmbeddingConfig):
+    def __init__(self, config: IndexingConfig):
         self.logger = get_logger("Indexing based on LangChain VectorStores")
         self.config = config
-        self.embeddings = embeddings
-        self._save_config()
+        self.embeddings = config.embeddings
         self.vectorstore: EditableVectorstore = (
-            EditableQdrantVectorstore(config=self.config)) if IndexTypeNames(self.config.type) == IndexTypeNames.qdrant \
-            else EditableFaissVectorstore(config=self.config)
+            EditableVectorstoreFactory.get_editable_vectorstore(index_config=self.config)
+        )
+        self._save_config()
 
     def _save_config(self, filename="config.json") -> None:
         """Save configuration to disk."""
         config_file = pathlib.Path(self.config.folder) / filename
         saved = False
         if config_file.is_file():
-            with open(str(config_file), "r") as f:
+            with open(config_file, "r") as f:
                 existing_config_json = json.load(f)
-            existing_config_embedding = existing_config_json["embeddings"]
-            existing_config_indexing = existing_config_json["indexing"]
-            existing_config_indexing["type"] = existing_config_indexing["type"] \
-                if isinstance(existing_config_indexing["type"], list) else [existing_config_indexing["type"]]
-            if (self.config.name == existing_config_indexing["name"] and
-                    self.config.distance.value == existing_config_indexing["distance"] and
-                    self.embeddings.model_name == existing_config_embedding["deployment"]):
-                existing_config_indexing["type"].append(self.config.type.value)
-                existing_config_indexing["type"] = list(set(existing_config_indexing["type"]))
-                with open(str(config_file), "w") as f:
-                    json.dump({"indexing": existing_config_indexing, "embeddings": existing_config_embedding},
-                              f, indent=2)
+            existing_indexing = existing_config_json["indexing"]
+            existing_indexing["type"] = (
+                existing_indexing["type"]
+                if isinstance(existing_indexing["type"], list)
+                else [existing_indexing["type"]]
+            )
+            existing_embedding = existing_config_json.get("embeddings")
+            same_index = (
+                    self.config.name == existing_indexing["name"]
+                    and self.config.distance.value == existing_indexing["distance"]
+            )
+            incompatible_embedding = (
+                    existing_embedding
+                    and self.embeddings
+                    and existing_embedding.get("deployment", "") != self.embeddings.model_name
+            )
+            if same_index and not incompatible_embedding:
+                existing_indexing["type"].append(self.config.type.value)
+                existing_indexing["type"] = list(set(existing_indexing["type"]))
+                if isinstance(existing_indexing["retrieval_mode"], str):
+                    existing_indexing["retrieval_mode"] = [existing_indexing["retrieval_mode"]]
+                existing_indexing["retrieval_mode"].append(self.vectorstore.retrieval_mode.value)
+                existing_indexing["retrieval_mode"] = list(set(existing_indexing["retrieval_mode"]))
+                save_embeddings = self.embeddings.to_dict() if self.embeddings else existing_embedding
+                with open(config_file, "w") as f:
+                    json.dump({
+                        "indexing": existing_indexing,
+                        "embeddings": save_embeddings if save_embeddings else {},
+                    }, f, indent=2)
                 saved = True
         if not saved:
-            with open(str(config_file), "w") as f:
-                json.dump(
-                    {"indexing": self.config.to_config(), "embeddings": self.embeddings.to_config()}, f, indent=2)
+            with open(config_file, "w") as f:
+                json.dump({
+                    "indexing": self.config.to_config(),
+                    "embeddings": self.embeddings.to_dict() if self.embeddings else {}
+                }, f, indent=2)
 
     def create_index(self) -> None:
         """Create the underlying index/collection using the configured backend.
@@ -315,8 +388,9 @@ class IndexManager(metaclass=Singleton):
         Uses backend-specific ``load_vectorstore`` with the configured retrieval mode.
         """
         try:
-            self.vectorstore.load_vectorstore(embeddings_model=self.embeddings,
-                                              retrieval_mode=self.config.retrieval_mode.value)
+            self.vectorstore.load_vectorstore(
+                embeddings_model=self.embeddings, retrieval_mode=self.config.retrieval_mode.value
+            )
             self.logger.info(f"Index {self.config.name} loaded successfully.")
         except Exception as e:
             self.logger.error(f"Error loading {self.config.name} index: {str(e)}")

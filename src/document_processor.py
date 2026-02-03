@@ -1,4 +1,5 @@
 import pathlib
+from logging import Logger
 from typing import List, Optional, Tuple
 import json
 from langchain_core.documents import Document
@@ -124,7 +125,8 @@ class DocumentProcessor:
         return self.index_manager.delete_document(self.md_filepath)
 
     
-    def process_document(self,force_md_conv: bool = True, existing_metadata_path: str | None = None) -> DocumentMetadata:
+    def process_document(self, logger: Logger,
+                         force_md_conv: bool = True, existing_metadata_path: str | None = None) -> DocumentMetadata:
         """
         Run the full pipeline:
         - convert → chunk → index
@@ -143,68 +145,52 @@ class DocumentProcessor:
         -------
         DocumentMetadata
         """
-        # Auto-detect markdown file 
         output_folder = self.markdown_converter.config.output_folder.folder
         filename_stem = pathlib.Path(self.filename).stem
         md_guess = output_folder / f"{filename_stem}.md"
-
-        # print("Looking for existing Markdown at:", md_guess)
-
+        logger.info(f"Looking for existing Markdown at: {str(md_guess)}")
         use_existing_md = (not force_md_conv) and md_guess.is_file()
 
-        # Load existing metadata if provided
         prev_metadata: DocumentMetadata | None = None
-
         if existing_metadata_path is not None:
             try:
                 existing_metadata_path = pathlib.Path(existing_metadata_path)
                 with open(existing_metadata_path, "r", encoding="utf-8") as f:
                     all_metadata = json.load(f)
 
-                # Find the entry matching our filename
                 for entry in all_metadata:
                     if entry.get("filename") == self.filename:
                         prev_metadata = DocumentMetadata(**entry)
                         break
 
                 if prev_metadata:
-                    print(f"Loaded previous metadata for {self.filename}")
+                    logger.info(f"Loaded previous metadata for {self.filename}")
 
             except Exception as e:
-                print(f"Warning: could not load previous metadata ({e})")
+                logger.error(f"Warning: could not load previous metadata ({e})")
 
-        # 3 SKIP conversion 
         if use_existing_md:
-            print(f"Using existing Markdown found at: {md_guess}")
-
+            logger.info(f"Using existing Markdown found at: {md_guess}")
             self.md_filepath = md_guess
-
-            # Use previous metadata if available
             if prev_metadata is not None:
                 doc_metadata = prev_metadata
-                # Update md_filepath
                 doc_metadata.md_filepath = str(md_guess)
             else:
-                # Build minimal metadata using old conversion-independent fields
                 doc_metadata = DocumentMetadata(
                     filename=self.filename,
                     filepath=str(self.filepath) if self.filepath else None,
                     md_filepath=str(md_guess),
                     file_extension="md",
                     n_pages=0,
-                    image_folder=None,
+                    image_folder="",
                     n_chunks=0,
                 )
-
-            # Chunk → index
             n_doc_chunks = self.add_document_to_vectorstore()
             doc_metadata.n_chunks = n_doc_chunks
             return doc_metadata
 
-        # If there are no existing Markdown files, or force_md_conv=True, do full conversion
         successful_conversion, doc_metadata = self.convert_document()
         if successful_conversion:
             n_doc_chunks = self.add_document_to_vectorstore()
             doc_metadata.n_chunks = n_doc_chunks
-
         return doc_metadata

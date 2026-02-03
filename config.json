@@ -1,16 +1,16 @@
 {
     "cardiology_protocols": {
         "indexing": {
-            "name": "cardiology_protocols",
+            "name": "cardiology_protocols_prova",
             "description": "Documents containing medical protocols for cardiologic patients.",
-            "type": "faiss",
+            "type": "bm25",
             "distance": "cosine",
-            "alias": "qdrant_cardio_current"
-        },
-        "embeddings": {
-            "deployment": "jina/jina-embeddings-v2-small-en",
-            "ollama": true,
-            "kwargs": {}
+            "alias": "",
+            "embeddings": {
+                "deployment": "qwen3-embedding:8b",
+                "ollama": true,
+                "kwargs": {}
+            }
         },
         "preprocessing": {
             "storage": {

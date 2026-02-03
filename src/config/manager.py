@@ -6,7 +6,7 @@ from langchain.embeddings import Embeddings
 from pydantic import BaseModel
 
 from src.managers.chunking_manager import TextSplitterConfig, TextSplitterName
-from cardiology_gen_ai import IndexingConfig, EmbeddingConfig
+from cardiology_gen_ai import IndexingConfig
 from cardiology_gen_ai.config.manager import ConfigManager
 
 
@@ -50,7 +50,7 @@ class FileStorageConfig(BaseModel):
 
     def model_post_init(self,  __context: Any) -> None:
         """Resolve the concrete :class:`pathlib.Path` for ``folder`` after init."""
-        self.folder = pathlib.Path(self.parent_folder) / self.child_folder
+        self.folder = pathlib.Path(os.getenv("DATA_ROOT")) / self.parent_folder / self.child_folder
 
 
 class ChunkingManagerConfig(BaseModel):
@@ -64,7 +64,7 @@ class ChunkingManagerConfig(BaseModel):
     splitter: List[TextSplitterConfig]
 
     @classmethod
-    def from_config(cls, config_dict: Dict[str, Any], embeddings: Embeddings) -> "ChunkingManagerConfig":
+    def from_config(cls, config_dict: Dict[str, Any], embeddings: Optional[Embeddings] = None) -> "ChunkingManagerConfig":
         """Construct a :class:`ChunkingManagerConfig` from a plain dictionary.
 
         .. rubric:: Logic
@@ -109,7 +109,7 @@ class PreprocessingConfig(BaseModel):
     chunking_manager: ChunkingManagerConfig #: :class:`ChunkingManagerConfig` : How to split text into chunks.
 
     @classmethod
-    def from_config(cls, config_dict: Dict[str, Any], embeddings: Embeddings) -> "PreprocessingConfig":
+    def from_config(cls, config_dict: Dict[str, Any], embeddings: Optional[Embeddings] = None) -> "PreprocessingConfig":
         """Build a :class:`PreprocessingConfig` from a nested mapping.
 
         .. rubric:: Expected schema
@@ -151,15 +151,17 @@ class PreprocessingConfig(BaseModel):
         image_manager = ImageManagerConfig.from_config(image_manager_dict)
         chunking_manager_dict = config_dict["chunking"]
         chunking_manager = ChunkingManagerConfig.from_config(chunking_manager_dict, embeddings=embeddings)
+        other_keys_dict = {k: v for k, v in config_dict.items() if k not in
+                           ["storage", "allowed_extensions", "parent_folder", "input_folder", "output_folder"]}
         return cls(input_folder=input_folder, output_folder=output_folder, image_manager=image_manager,
-                   chunking_manager=chunking_manager, **config_dict)
+                   chunking_manager=chunking_manager, **other_keys_dict)
 
 
 class ETLConfig(BaseModel):
     """Aggregate configuration for the full ETL stack (i.e. preprocessing and indexing)."""
     preprocessing: PreprocessingConfig #: :class:`~src.config.manager.PreprocessingConfig` : Preprocessing phase configuration.
     indexing: IndexingConfig #: :class:`cardiology_gen_ai.models.IndexingConfig` : Indexing backend and persistence settings.
-    embeddings: EmbeddingConfig #: :class:`cardiology_gen_ai.models.EmbeddingConfig` : Embedding model (callable + dimensionality); also passed to preprocessing.
+    # embeddings: Optional[EmbeddingConfig] = None #: :class:`cardiology_gen_ai.models.EmbeddingConfig` : Embedding model (callable + dimensionality); also passed to preprocessing.
 
     @classmethod
     def from_config(cls, config_dict: Dict[str, Any]) -> "ETLConfig":
@@ -175,17 +177,18 @@ class ETLConfig(BaseModel):
         :class:`~src.config.manager.ETLConfig`
             Aggregated configuration with nested sections validated.
         """
-        embedding_dict = config_dict["embeddings"]
-        embedding_config = EmbeddingConfig.from_config(embedding_dict)
+        # embedding_config = None
+        # if config_dict.get("embeddings"):
+        #    embedding_dict = config_dict["embeddings"]
+        #    embedding_config = EmbeddingConfig.from_config(embedding_dict)
         preprocessing_dict = config_dict["preprocessing"]
-        preprocessing_config = (
-            PreprocessingConfig.from_config(preprocessing_dict, embeddings=embedding_config.model))
+        # preprocessing_config_embeddings = embedding_config.model if embedding_config else None
+        preprocessing_config = PreprocessingConfig.from_config(preprocessing_dict)
         indexing_dict = config_dict["indexing"]
         indexing_config = IndexingConfig.from_config(indexing_dict)
         other_config_dict = \
             {k: v for k, v in config_dict.items() if k not in ["preprocessing", "indexing", "embeddings"]}
-        return cls(preprocessing=preprocessing_config, indexing=indexing_config, embeddings=embedding_config,
-                   **other_config_dict)
+        return cls(preprocessing=preprocessing_config, indexing=indexing_config, **other_config_dict)
 
 
 class ETLConfigManager(ConfigManager):
