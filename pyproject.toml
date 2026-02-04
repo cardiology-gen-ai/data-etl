@@ -24,6 +24,7 @@ dependencies = [
     "langchain-qdrant>=1.0.0",
     "langchain-classic>=1.0.0",
     "langchain-core>=1.0.0",
+    "langchain-experimental>=0.4.0",
     "huggingface-hub==0.34.4",
     "qdrant-client==1.15.1",
     "faiss-cpu==1.12.0",
@@ -34,6 +35,7 @@ dependencies = [
     "faiss-cpu==1.12.0",
     "numpy==1.26.4",
     "transformers==4.56.0",
+    "rank-bm25==0.2.2",
     "cardiologygenai-coordo @ git+https://github.com/cardiology-gen-ai/cardiology-gen-ai.git@main"
 ]
 
