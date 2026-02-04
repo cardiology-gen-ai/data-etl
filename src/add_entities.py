@@ -140,7 +140,7 @@ def extract_concepts(text: str) -> List[Dict[str, str]]:
 def enforce_constraint(tx):
     tx.run(
         """
-        CREATE CONSTRAINT IF NOT EXISTS
+        CREATE CONSTRAINT concept_name IF NOT EXISTS
         FOR (c:Concept)
         REQUIRE c.name IS UNIQUE
         """
