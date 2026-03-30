@@ -87,3 +87,6 @@ index/
 /CardiologyGenAI_DataETL.egg-info/
 /docs/build/
 
+src/azure.py
+old_test_data/
+original_kg/
