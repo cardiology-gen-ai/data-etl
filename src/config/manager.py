@@ -5,7 +5,7 @@ from typing import Tuple, Dict, Any, Optional, List
 from langchain.embeddings import Embeddings
 from pydantic import BaseModel
 
-from src.managers.chunking_manager import TextSplitterConfig, TextSplitterName
+from managers.chunking_manager import TextSplitterConfig, TextSplitterName
 from cardiology_gen_ai import IndexingConfig, EmbeddingConfig
 from cardiology_gen_ai.config.manager import ConfigManager
 
