@@ -15,7 +15,7 @@ import logging
 import re
 from typing import Dict, List, Any, Optional
 
-from markdown_manager import MarkdownManager
+from managers.markdown_manager import MarkdownManager
 
 # Logging
 logger = logging.getLogger("hierarchical_chunker")
