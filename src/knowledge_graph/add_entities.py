@@ -1,14 +1,13 @@
 import json
 import logging
 import re
-from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from neo4j import Driver
 
 from knowledge_graph.llm_utils import (
-    get_azure_openai_client,
-    get_chat_deployment,
+    generate_chat_text,
+    get_chat_model_name,
 )
 from knowledge_graph.prompts import (
     ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT,
@@ -20,32 +19,153 @@ from knowledge_graph.prompts import (
 
 logger = logging.getLogger(__name__)
 
-#TODO: refine this, now just for testing
+
+# Note:
+# - We keep ONE Concept node per normalized name.
+# - We preserve ambiguity with observed_types on both the Concept node
+#   and the Section->Concept MENTIONS relationship.
 ALLOWED_TYPES = {
     "disease",
-    "phenotype",
-    "diagnostic_test",
-    "management",
+    "clinical_finding",
     "risk_factor",
+    "genetic_factor",
+    "biomarker",
+    "diagnostic_test",
+    "imaging_modality",
+    "score_or_risk_model",
+    "drug_or_drug_class",
+    "procedure_or_intervention",
+    "device",
+    "complication_or_comorbidity",
+    "care_strategy",
+    "anatomical_structure",
 }
 
+# Optional normalization layer so the LLM can be a bit imprecise while
+# we still map outputs to a stable ontology.
+TYPE_ALIASES = {
+    # old / generic
+    "phenotype": "clinical_finding",
+    "finding": "clinical_finding",
+    "clinical finding": "clinical_finding",
+    "sign": "clinical_finding",
+    "symptom": "clinical_finding",
+    "sign_or_symptom": "clinical_finding",
 
-@lru_cache(maxsize=1)
-def get_chat_client_and_deployment():
-    client = get_azure_openai_client()
-    deployment = get_chat_deployment()
-    return client, deployment
+    "management": "care_strategy",
+    "therapy": "care_strategy",
+    "treatment_strategy": "care_strategy",
+    "care plan": "care_strategy",
+    "follow_up": "care_strategy",
+    "follow-up": "care_strategy",
+
+    "drug": "drug_or_drug_class",
+    "drug class": "drug_or_drug_class",
+    "drug_class": "drug_or_drug_class",
+    "medication": "drug_or_drug_class",
+    "medication class": "drug_or_drug_class",
+    "pharmacotherapy": "drug_or_drug_class",
+
+    "procedure": "procedure_or_intervention",
+    "intervention": "procedure_or_intervention",
+    "surgery": "procedure_or_intervention",
+    "surgical procedure": "procedure_or_intervention",
+
+    "test": "diagnostic_test",
+    "lab test": "diagnostic_test",
+    "laboratory test": "diagnostic_test",
+
+    "imaging": "imaging_modality",
+    "imaging test": "imaging_modality",
+    "imaging modality": "imaging_modality",
+
+    "biological_marker": "biomarker",
+    "laboratory_marker": "biomarker",
+    "lab_marker": "biomarker",
+    "marker": "biomarker",
+
+    "score": "score_or_risk_model",
+    "risk score": "score_or_risk_model",
+    "risk model": "score_or_risk_model",
+    "prediction rule": "score_or_risk_model",
+    "clinical prediction rule": "score_or_risk_model",
+    "calculator": "score_or_risk_model",
+
+    "complication": "complication_or_comorbidity",
+    "comorbidity": "complication_or_comorbidity",
+
+    "gene": "genetic_factor",
+    "genetic": "genetic_factor",
+    "genetic marker": "genetic_factor",
+    "variant": "genetic_factor",
+    "mutation": "genetic_factor",
+
+    "anatomy": "anatomical_structure",
+    "structure": "anatomical_structure",
+    "anatomical structure": "anatomical_structure",
+}
+
+# Blocklist for clearly non-informative "concepts".
+# Keep this conservative.
+BLOCKLIST_NAMES = {
+    "diagnosis",
+    "treatment",
+    "management",
+    "therapy",
+    "follow-up",
+    "follow up",
+    "recommendation",
+    "recommendations",
+    "patient",
+    "patients",
+    "disease",
+    "risk",
+    "test",
+    "tests",
+    "procedure",
+    "procedures",
+    "drug",
+    "drugs",
+    "care",
+}
 
 
 def parse_llm_json(text: str) -> Any:
     text = text.strip()
-
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"\s*```$", "", text)
         text = text.strip()
-
     return json.loads(text)
+
+
+def normalize_whitespace(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_type(raw_type: Any) -> str:
+    concept_type = str(raw_type).strip().lower()
+    concept_type = concept_type.replace("-", "_")
+    concept_type = normalize_whitespace(concept_type)
+    concept_type = concept_type.replace(" ", "_")
+
+    if concept_type in TYPE_ALIASES:
+        concept_type = TYPE_ALIASES[concept_type]
+
+    return concept_type
+
+
+def normalize_name(raw_name: Any) -> str:
+    name = str(raw_name).strip().lower()
+    name = normalize_whitespace(name)
+
+    # Remove enclosing punctuation/brackets while keeping medically relevant characters
+    # such as hyphens, slashes, parentheses inside the term.
+    name = re.sub(r"^[\s,;:.()\[\]{}'\"`]+", "", name)
+    name = re.sub(r"[\s,;:.()\[\]{}'\"`]+$", "", name)
+    name = normalize_whitespace(name)
+
+    return name
 
 
 def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
@@ -54,10 +174,12 @@ def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
     if "name" not in raw or "type" not in raw:
         return None
 
-    name = str(raw["name"]).strip().lower()
-    concept_type = str(raw["type"]).strip().lower()
+    name = normalize_name(raw["name"])
+    concept_type = normalize_type(raw["type"])
 
     if not name or not concept_type:
+        return None
+    if name in BLOCKLIST_NAMES:
         return None
     if concept_type not in ALLOWED_TYPES:
         return None
@@ -70,8 +192,10 @@ def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
 
 def deduplicate_concepts(concepts: List[Dict[str, str]]) -> List[Dict[str, str]]:
     """
-    Basic exact deduplication only.
-    Acronym-aware merging will come later.
+    Exact deduplication by (name, type).
+    This intentionally preserves the case where the same normalized name
+    is returned with different types, so we can keep those nuances in
+    observed_types later when writing to Neo4j.
     """
     seen = set()
     deduped = []
@@ -93,7 +217,6 @@ def build_source_text(row: Dict[str, Any], use_section_text: bool) -> str:
 
     if title:
         parts.append(f"Title: {title}")
-
     if use_section_text and body:
         parts.append(f"Body:\n{body}")
 
@@ -136,6 +259,7 @@ def pack_rows_for_llm(
             )
 
             oversized_row = dict(row)
+
             if emergency_max_single_chars is not None:
                 oversized_row["source_text"] = emergency_truncate(
                     oversized_row["source_text"],
@@ -171,29 +295,25 @@ def pack_rows_for_llm(
 
 
 def extract_concepts_single(text: str) -> Tuple[Optional[List[Dict[str, str]]], bool]:
-    client, deployment = get_chat_client_and_deployment()
+    messages = [
+        {"role": "system", "content": ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": build_entity_extraction_single_user_prompt(text),
+        },
+    ]
 
     try:
-        response = client.chat.completions.create(
-            model=deployment,
-            messages=[
-                {"role": "system", "content": ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": build_entity_extraction_single_user_prompt(text),
-                },
-            ],
-            temperature=0,
-        )
+        content = generate_chat_text(messages=messages, json_mode=True)
     except Exception as e:
-        logger.exception("Azure OpenAI single request failed: %s", e)
+        logger.exception("Single request failed: %s", e)
         return None, False
 
-    try:
-        content = (response.choices[0].message.content or "").strip()
-    except Exception:
-        logger.error("Malformed Azure OpenAI response object for single extraction")
+    if content is None:
+        logger.error("Single extraction backend returned None")
         return None, False
+
+    content = content.strip()
 
     try:
         data = parse_llm_json(content)
@@ -219,8 +339,6 @@ def extract_concepts_batch(
     if not batch_rows:
         return {}
 
-    client, deployment = get_chat_client_and_deployment()
-
     sections_payload = [
         {
             "uid": row["uid"],
@@ -229,27 +347,25 @@ def extract_concepts_batch(
         for row in batch_rows
     ]
 
-    try:
-        response = client.chat.completions.create(
-            model=deployment,
-            messages=[
-                {"role": "system", "content": ENTITY_EXTRACTION_BATCH_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": build_entity_extraction_batch_user_prompt(sections_payload),
-                },
-            ],
-            temperature=0,
-        )
-    except Exception as e:
-        logger.exception("Azure OpenAI batch request failed: %s", e)
-        return None
+    messages = [
+        {"role": "system", "content": ENTITY_EXTRACTION_BATCH_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": build_entity_extraction_batch_user_prompt(sections_payload),
+        },
+    ]
 
     try:
-        content = (response.choices[0].message.content or "").strip()
-    except Exception:
-        logger.error("Malformed Azure OpenAI response object for batch extraction")
+        content = generate_chat_text(messages=messages, json_mode=True)
+    except Exception as e:
+        logger.exception("Batch request failed: %s", e)
         return None
+
+    if content is None:
+        logger.error("Batch extraction backend returned None")
+        return None
+
+    content = content.strip()
 
     try:
         data = parse_llm_json(content)
@@ -307,28 +423,55 @@ def setup_entity_schema(tx) -> None:
         """
     )
 
+    tx.run(
+        """
+        CREATE INDEX concept_canonical_type IF NOT EXISTS
+        FOR (c:Concept)
+        ON (c.canonical_type)
+        """
+    )
+
 
 def write_section_concepts(tx, section_uid: str, concepts: List[Dict[str, str]]) -> None:
+    """
+    Current strategy:
+    - one Concept node per normalized name
+    - preserve ambiguity with c.observed_types
+    - preserve section-local ambiguity with r.observed_types on (:Section)-[:MENTIONS]->(:Concept)
+    - keep c.canonical_type as the first seen type for now
+    """
     tx.run(
         """
         MATCH (s:Section {uid: $uid})
-        SET
-            s.entity_extracted = true,
-            s.entity_extracted_at = datetime().toString()
+        SET s.entity_extracted = true,
+            s.entity_extracted_at = datetime()
         WITH s, $concepts AS concepts
         UNWIND concepts AS concept
         MERGE (c:Concept {name: concept.name})
         ON CREATE SET
-            c.type = concept.type,
-            c.observed_types = [concept.type]
+            c.canonical_type = concept.type,
+            c.observed_types = [concept.type],
+            c.created_at = datetime()
         ON MATCH SET
             c.observed_types =
                 CASE
                     WHEN c.observed_types IS NULL THEN [concept.type]
                     WHEN concept.type IN c.observed_types THEN c.observed_types
                     ELSE c.observed_types + concept.type
-                END
-        MERGE (s)-[:MENTIONS]->(c)
+                END,
+            c.updated_at = datetime()
+        MERGE (s)-[r:MENTIONS]->(c)
+        ON CREATE SET
+            r.observed_types = [concept.type],
+            r.created_at = datetime()
+        ON MATCH SET
+            r.observed_types =
+                CASE
+                    WHEN r.observed_types IS NULL THEN [concept.type]
+                    WHEN concept.type IN r.observed_types THEN r.observed_types
+                    ELSE r.observed_types + concept.type
+                END,
+            r.updated_at = datetime()
         """,
         uid=section_uid,
         concepts=concepts,
@@ -340,7 +483,7 @@ def add_entities_from_sections(
     doc_id: Optional[str] = None,
     use_section_text: bool = False,
     max_sections: Optional[int] = None,
-    max_sections_per_batch: int = 5,
+    max_sections_per_batch: int = 2,
     max_batch_chars: int = 12000,
     emergency_max_single_chars: Optional[int] = 12000,
     skip_processed: bool = True,
@@ -351,6 +494,8 @@ def add_entities_from_sections(
     """
     if max_sections_per_batch < 1:
         raise ValueError("max_sections_per_batch must be >= 1")
+
+    model_name = get_chat_model_name()
 
     with driver.session() as session:
         session.execute_write(setup_entity_schema)
@@ -366,11 +511,12 @@ def add_entities_from_sections(
             """
 
         query += """
-        RETURN s.uid AS uid,
-               s.doc_id AS doc_id,
-               s.section_id AS section_id,
-               s.title AS title,
-               s.text AS text
+        RETURN
+            s.uid AS uid,
+            s.doc_id AS doc_id,
+            s.section_id AS section_id,
+            s.title AS title,
+            s.text AS text
         ORDER BY s.uid
         """
 
@@ -406,9 +552,11 @@ def add_entities_from_sections(
             prepared_rows.append(row)
 
         logger.info(
-            "Preparing entity extraction for %d sections%s",
+            "Preparing entity extraction for %d sections%s | model=%s | max_sections_per_batch=%d",
             len(prepared_rows),
             f" in document {doc_id}" if doc_id else "",
+            model_name,
+            max_sections_per_batch,
         )
 
         stats = {
@@ -441,6 +589,7 @@ def add_entities_from_sections(
                 for row in batch:
                     section_uid = row["uid"]
                     concepts = batch_result.get(section_uid, [])
+
                     stats["processed_sections"] += 1
                     stats["successful_sections"] += 1
 
@@ -456,7 +605,10 @@ def add_entities_from_sections(
                     )
 
                     if concepts:
-                        logger.info("  → %s", ", ".join(c["name"] for c in concepts))
+                        logger.info(
+                            " -> %s",
+                            ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
+                        )
 
                     session.execute_write(write_section_concepts, section_uid, concepts)
 
@@ -468,6 +620,7 @@ def add_entities_from_sections(
 
                 for row in batch:
                     stats["processed_sections"] += 1
+
                     concepts, success = extract_concepts_single(row["source_text"])
 
                     if not success or concepts is None:
@@ -493,7 +646,10 @@ def add_entities_from_sections(
                     )
 
                     if concepts:
-                        logger.info("  → %s", ", ".join(c["name"] for c in concepts))
+                        logger.info(
+                            " -> %s",
+                            ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
+                        )
 
                     session.execute_write(write_section_concepts, row["uid"], concepts)
 
