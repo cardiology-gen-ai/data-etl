@@ -143,13 +143,37 @@ CHECKS = [
         """,
     },
     {
-        "name": "concepts_without_type",
-        "title": "Concepts without type",
+        "name": "concepts_without_canonical_type",
+        "title": "Concepts without canonical type",
         "level": "ERROR",
         "query": """
             MATCH (c:Concept)
-            WHERE c.type IS NULL
+            WHERE c.canonical_type IS NULL
             RETURN c.name AS name
+        """,
+    },
+    {
+        "name": "concepts_without_observed_types",
+        "title": "Concepts without observed_types",
+        "level": "WARNING",
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.observed_types IS NULL OR size(c.observed_types) = 0
+            RETURN c.name AS name, c.canonical_type AS canonical_type
+        """,
+    },
+    {
+        "name": "canonical_type_not_in_observed_types",
+        "title": "Canonical type not present in observed_types",
+        "level": "WARNING",
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.canonical_type IS NOT NULL
+              AND c.observed_types IS NOT NULL
+              AND NOT c.canonical_type IN c.observed_types
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types
         """,
     },
     {
@@ -159,7 +183,9 @@ CHECKS = [
         "query": """
             MATCH (c:Concept)
             WHERE coalesce(c.needs_type_review, false) = true
-            RETURN c.name AS name, c.type AS type, c.observed_types AS observed_types
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types
         """,
     },
     {
@@ -181,7 +207,9 @@ CHECKS = [
             MATCH (s:Section)-[:MENTIONS]->(c:Concept)
             WITH c, count(s) AS n
             WHERE n > 30
-            RETURN c.name AS name, c.type AS type, n
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   n
             ORDER BY n DESC
         """,
     },
