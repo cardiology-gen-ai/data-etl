@@ -1,12 +1,11 @@
 import logging
-from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Optional
 
 from neo4j import Driver
 
 from knowledge_graph.llm_utils import (
-    get_azure_openai_client,
-    get_embedding_deployment,
+    embed_texts,
+    get_embedding_model_name,
 )
 
 
@@ -19,16 +18,6 @@ def chunked(items: List[Dict[str, Any]], batch_size: int) -> Iterable[List[Dict[
     """
     for i in range(0, len(items), batch_size):
         yield items[i:i + batch_size]
-
-
-@lru_cache(maxsize=1)
-def get_embedding_client_and_deployment():
-    """
-    Initialize the Azure OpenAI client and embedding deployment once.
-    """
-    client = get_azure_openai_client()
-    deployment = get_embedding_deployment()
-    return client, deployment
 
 
 def build_embedding_text(
@@ -60,6 +49,10 @@ def build_embedding_text(
 def emergency_truncate(text: str, max_chars: Optional[int]) -> str:
     """
     Optional safety truncation for very long embedding inputs.
+
+    Note:
+    This is still character-based, not token-based.
+    For now that is acceptable as a first safeguard.
     """
     if max_chars is None:
         return text
@@ -143,9 +136,12 @@ def fetch_sections_to_embed(
         return rows
 
 
-def request_embeddings(texts: List[str]) -> Optional[List[List[float]]]:
+def request_embeddings(
+    texts: List[str],
+    batch_size: int,
+) -> Optional[List[List[float]]]:
     """
-    Request embeddings for a batch of texts.
+    Request embeddings for a batch of texts from the local embedding backend.
 
     Returns:
         list of embedding vectors on success
@@ -154,22 +150,14 @@ def request_embeddings(texts: List[str]) -> Optional[List[List[float]]]:
     if not texts:
         return []
 
-    client, deployment = get_embedding_client_and_deployment()
-
     try:
-        response = client.embeddings.create(
-            model=deployment,
-            input=texts,
-        )
+        vectors = embed_texts(texts=texts, batch_size=batch_size)
     except Exception as e:
-        logger.exception("Azure OpenAI embedding request failed: %s", e)
+        logger.exception("Local embedding request failed: %s", e)
         return None
 
-    try:
-        data = response.data
-        vectors = [item.embedding for item in data]
-    except Exception:
-        logger.error("Malformed Azure OpenAI embedding response")
+    if vectors is None:
+        logger.error("Embedding backend returned None")
         return None
 
     if len(vectors) != len(texts):
@@ -179,6 +167,11 @@ def request_embeddings(texts: List[str]) -> Optional[List[List[float]]]:
             len(vectors),
         )
         return None
+
+    for i, vector in enumerate(vectors):
+        if not isinstance(vector, list) or not vector:
+            logger.error("Invalid embedding vector at index %d", i)
+            return None
 
     return vectors
 
@@ -200,24 +193,10 @@ def write_embeddings_batch(
             s.has_embedding = true,
             s.embedding_model = $embedding_model,
             s.embedding_dim = row.embedding_dim,
-            s.embedding_updated_at = datetime().toString()
+            s.embedding_updated_at = datetime()
         """,
         rows=rows_with_embeddings,
         embedding_model=embedding_model,
-    )
-
-
-def clear_embedding_failure_flags(tx) -> None:
-    """
-    Optional helper if later you want to track embedding failures more explicitly.
-    Included for symmetry / future extension.
-    """
-    tx.run(
-        """
-        MATCH (s:Section)
-        WHERE s.embedding_failed IS NOT NULL
-        REMOVE s.embedding_failed
-        """
     )
 
 
@@ -225,7 +204,7 @@ def add_embeddings_to_sections(
     driver: Driver,
     doc_id: Optional[str] = None,
     max_sections: Optional[int] = None,
-    batch_size: int = 32,
+    batch_size: int = 8,
     force_reembed: bool = False,
     include_title: bool = True,
     include_body: bool = True,
@@ -238,7 +217,7 @@ def add_embeddings_to_sections(
         driver: Neo4j driver
         doc_id: if provided, only embed sections from one document
         max_sections: optional cap on number of sections
-        batch_size: number of sections per embedding API call
+        batch_size: number of sections per local embedding call
         force_reembed: if True, embed even sections that already have embeddings
         include_title: whether to include the title in the embedding text
         include_body: whether to include body text in the embedding text
@@ -260,14 +239,15 @@ def add_embeddings_to_sections(
         max_chars_per_section=max_chars_per_section,
     )
 
+    embedding_model = get_embedding_model_name()
+
     logger.info(
-        "Preparing embeddings for %d sections%s",
+        "Preparing embeddings for %d sections%s | model=%s | batch_size=%d",
         len(rows),
         f" in document {doc_id}" if doc_id else "",
+        embedding_model,
+        batch_size,
     )
-
-    client, deployment = get_embedding_client_and_deployment()
-    del client  # only used to ensure lazy init early; deployment is used below
 
     stats = {
         "processed_sections": 0,
@@ -276,11 +256,17 @@ def add_embeddings_to_sections(
         "written_embeddings": 0,
     }
 
+    if not rows:
+        return stats
+
     for batch in chunked(rows, batch_size):
         texts = [row["embedding_text"] for row in batch]
 
         logger.info("Requesting embeddings for batch of %d sections", len(batch))
-        vectors = request_embeddings(texts)
+        vectors = request_embeddings(
+            texts=texts,
+            batch_size=len(batch),
+        )
 
         stats["processed_sections"] += len(batch)
 
@@ -306,7 +292,7 @@ def add_embeddings_to_sections(
             session.execute_write(
                 write_embeddings_batch,
                 rows_with_embeddings,
-                deployment,
+                embedding_model,
             )
 
         stats["successful_sections"] += len(rows_with_embeddings)
