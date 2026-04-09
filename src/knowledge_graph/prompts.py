@@ -2,62 +2,85 @@ import json
 from typing import List, Dict, Any
 
 
-ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT = """You are a medical terminology expert.
+ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT = """You are a medical terminology expert working on cardiology guidelines.
 
-Extract normalized, reusable cardiology-related concepts.
+Task:
+Extract normalized, reusable cardiology-related concepts from the provided text.
 
-Rules:
+General rules:
 - Use lowercase
-- Use singular form
+- Use singular form when appropriate
 - Prefer standard clinical terminology
-- Do NOT include trivial words (e.g. management, approach, recommendations)
-- Merge obvious synonyms when the expansion is explicit in the text
-- Only return concepts that are explicitly supported by the text
-- Assign exactly one type to each concept
+- Only extract concepts that are explicitly supported by the text
+- Do NOT invent concepts that are only implied
+- Do NOT include overly generic or trivial words such as:
+  management, treatment, therapy, recommendation, patient, disease, risk, test, procedure, care
+- Merge obvious synonyms only when the equivalence is explicit in the text
+- Each extracted concept must have exactly one canonical type chosen from the allowed types below
+- Return JSON only
+- Do not add explanations or commentary
 
-Allowed types:
+Allowed canonical types:
 - disease
-- phenotype
+- clinical_finding
+- risk_factor
+- genetic_factor
+- biomarker
 - diagnostic_test
 - imaging_modality
-- management
-- risk_factor
-
-Return JSON only.
+- score_or_risk_model
+- drug_or_drug_class
+- procedure_or_intervention
+- device
+- complication_or_comorbidity
+- care_strategy
+- anatomical_structure
 """
 
 
-ENTITY_EXTRACTION_BATCH_SYSTEM_PROMPT = """You are a medical terminology expert.
+ENTITY_EXTRACTION_BATCH_SYSTEM_PROMPT = """You are a medical terminology expert working on cardiology guidelines.
 
+Task:
 For each provided section, extract normalized, reusable cardiology-related concepts.
 
-Rules:
+General rules:
 - Use lowercase
-- Use singular form
+- Use singular form when appropriate
 - Prefer standard clinical terminology
-- Do NOT include trivial words (e.g. management, approach, recommendations)
-- Merge obvious synonyms when the expansion is explicit in the text
-- Only return concepts that are explicitly supported by the text
-- Assign exactly one type to each concept
+- Only extract concepts that are explicitly supported by the text
+- Do NOT invent concepts that are only implied
+- Do NOT include overly generic or trivial words such as:
+  management, treatment, therapy, recommendation, patient, disease, risk, test, procedure, care
+- Merge obvious synonyms only when the equivalence is explicit in the text
+- Each extracted concept must have exactly one canonical type chosen from the allowed types below
 - Keep concepts separated by section uid
 - Return every provided uid exactly once, even if its concept list is empty
+- Return JSON only
+- Do not add explanations or commentary
 
-Allowed types:
+Allowed canonical types:
 - disease
-- phenotype
+- clinical_finding
+- risk_factor
+- genetic_factor
+- biomarker
 - diagnostic_test
 - imaging_modality
-- management
-- risk_factor
-
-Return JSON only.
+- score_or_risk_model
+- drug_or_drug_class
+- procedure_or_intervention
+- device
+- complication_or_comorbidity
+- care_strategy
+- anatomical_structure
 
 Expected format:
 [
   {
     "uid": "section_uid_1",
     "concepts": [
-      {"name": "hypertrophic cardiomyopathy", "type": "disease"}
+      {"name": "hypertrophic cardiomyopathy", "type": "disease"},
+      {"name": "left ventricular outflow tract obstruction", "type": "clinical_finding"}
     ]
   },
   {
@@ -75,12 +98,11 @@ Text:
 {text}
 """
 
-Return a JSON array of objects.
-
-Example:
+Return a JSON array of objects in this format:
 [
   {{"name": "hypertrophic cardiomyopathy", "type": "disease"}},
-  {{"name": "sudden cardiac death", "type": "risk_factor"}}
+  {{"name": "late gadolinium enhancement", "type": "biomarker"}},
+  {{"name": "echocardiography", "type": "imaging_modality"}}
 ]
 '''.strip()
 
