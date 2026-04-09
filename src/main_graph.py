@@ -1,11 +1,9 @@
-import os
 import json
-import socket
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -25,7 +23,6 @@ class GraphPipelineConfig:
     Important:
     - pdf_dir must match preprocessing_config.input_folder.folder
     - markdown_dir must match preprocessing_config.output_folder.folder
-
     """
     pdf_dir: Path
     toc_dir: Path
@@ -34,6 +31,9 @@ class GraphPipelineConfig:
     anchor_dir: Path
     chunk_dir: Path
     preprocessing_config: Any
+
+    # Preprocessing stage toggle
+    run_preprocessing: bool = False
 
     # Cache / recomputation flags
     force_toc: bool = False
@@ -50,18 +50,19 @@ class GraphPipelineConfig:
 
     # Graph loader
     graph_loader_batch_size: int = 200
+    graph_loader_replace_existing_document: bool = True
 
     # Entity extraction
     entity_use_section_text: bool = False
     entity_max_sections: Optional[int] = None
-    entity_max_sections_per_batch: int = 5
+    entity_max_sections_per_batch: int = 2
     entity_max_batch_chars: int = 12000
     entity_emergency_max_single_chars: int = 12000
     entity_skip_processed: bool = True
 
     # Embeddings
     embedding_max_sections: Optional[int] = None
-    embedding_batch_size: int = 32
+    embedding_batch_size: int = 8
     embedding_force_reembed: bool = False
     embedding_include_title: bool = True
     embedding_include_body: bool = True
@@ -70,6 +71,38 @@ class GraphPipelineConfig:
     # Sanity checks
     sanity_sample_limit: int = 10
     sanity_log_samples: bool = True
+
+
+def _get_optional_env(name: str) -> Optional[str]:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value if value else None
+
+
+def _resolve_config_path_from_env() -> Path:
+    """
+    Resolve CONFIG_PATH from the environment.
+
+    Handles occasional malformed values like:
+        CONFIG_PATH=CONFIG_PATH=/some/path/config.json
+    by stripping the repeated prefix if present.
+    """
+    raw = _get_optional_env("CONFIG_PATH")
+    if not raw:
+        raise RuntimeError("Missing required environment variable: CONFIG_PATH")
+
+    if raw.startswith("CONFIG_PATH="):
+        raw = raw[len("CONFIG_PATH="):].strip()
+
+    path = Path(raw)
+    if not path.is_absolute():
+        path = path.resolve()
+    else:
+        path = path.resolve()
+
+    return path
 
 
 def clear_graph_data() -> None:
@@ -114,11 +147,13 @@ def make_graph_pipeline_config(
     preprocessing_config: Any,
     pdf_dir: Path,
     work_root: Path,
+    run_preprocessing: bool = False,
     run_graph_loader: bool = True,
     run_entity_extraction: bool = False,
     run_embeddings: bool = False,
     run_entity_disambiguation: bool = False,
     run_sanity_checks: bool = True,
+    graph_loader_replace_existing_document: bool = True,
 ) -> GraphPipelineConfig:
     """
     Build the graph pipeline config.
@@ -135,6 +170,8 @@ def make_graph_pipeline_config(
         chunk_dir=(work_root / "chunks").resolve(),
         preprocessing_config=preprocessing_config,
 
+        run_preprocessing=run_preprocessing,
+
         force_toc=False,
         force_markdown=False,
         force_anchors=False,
@@ -147,16 +184,17 @@ def make_graph_pipeline_config(
         run_sanity_checks=run_sanity_checks,
 
         graph_loader_batch_size=200,
+        graph_loader_replace_existing_document=graph_loader_replace_existing_document,
 
         entity_use_section_text=False,
         entity_max_sections=None,
-        entity_max_sections_per_batch=5,
+        entity_max_sections_per_batch=2,
         entity_max_batch_chars=12000,
         entity_emergency_max_single_chars=12000,
         entity_skip_processed=True,
 
         embedding_max_sections=None,
-        embedding_batch_size=32,
+        embedding_batch_size=8,
         embedding_force_reembed=False,
         embedding_include_title=True,
         embedding_include_body=True,
@@ -167,43 +205,59 @@ def make_graph_pipeline_config(
     )
 
 
-def check_azure_dns() -> None:
+def inject_kg_runtime_env(
+    kg_chat_model: Optional[str] = None,
+    kg_chat_model_path: Optional[str] = None,
+    kg_embedding_model: Optional[str] = None,
+    kg_embedding_model_path: Optional[str] = None,
+    kg_local_files_only: bool = True,
+    kg_chat_max_new_tokens: int = 512,
+) -> None:
     """
-    Fail fast if the Azure OpenAI endpoint hostname cannot be resolved.
-    This avoids wasting time on retries for every batch/section.
+    Inject temporary runtime environment variables for llm_utils.py.
+
+    This is a pragmatic bridge solution until these settings are moved
+    into a cleaner config structure.
     """
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    if not endpoint:
-        raise RuntimeError("AZURE_OPENAI_ENDPOINT is not set in the environment")
+    if kg_chat_model_path:
+        os.environ["KG_CHAT_MODEL_PATH"] = kg_chat_model_path
+    elif kg_chat_model:
+        os.environ["KG_CHAT_MODEL"] = kg_chat_model
 
-    endpoint = endpoint.strip()
-    parsed = urlparse(endpoint)
-    host = parsed.hostname
+    if kg_embedding_model_path:
+        os.environ["KG_EMBEDDING_MODEL_PATH"] = kg_embedding_model_path
+    elif kg_embedding_model:
+        os.environ["KG_EMBEDDING_MODEL"] = kg_embedding_model
 
-    if not host:
-        raise RuntimeError(f"Malformed AZURE_OPENAI_ENDPOINT: {endpoint!r}")
+    os.environ["KG_LOCAL_FILES_ONLY"] = "true" if kg_local_files_only else "false"
+    os.environ["KG_CHAT_MAX_NEW_TOKENS"] = str(kg_chat_max_new_tokens)
 
-    logger.info("Checking Azure endpoint DNS: %s", host)
-
-    try:
-        ip = socket.gethostbyname(host)
-        logger.info("Azure endpoint DNS OK: %s -> %s", host, ip)
-    except Exception as e:
-        raise RuntimeError(
-            f"Azure endpoint hostname does not resolve: {host}. "
-            "Check the endpoint in Azure Portal or the resource networking settings."
-        ) from e
+    logger.info(
+        "Injected KG runtime env | chat=%s | embedding=%s | local_files_only=%s | max_new_tokens=%s",
+        kg_chat_model_path or kg_chat_model,
+        kg_embedding_model_path or kg_embedding_model,
+        kg_local_files_only,
+        kg_chat_max_new_tokens,
+    )
 
 
 def main(
     pdf_dir: Path,
     work_root: Path,
     clear_neo4j_before_run: bool = False,
+    run_preprocessing: bool = False,
     run_graph_loader: bool = True,
     run_entity_extraction: bool = False,
     run_embeddings: bool = False,
     run_entity_disambiguation: bool = False,
     run_sanity_checks: bool = True,
+    graph_loader_replace_existing_document: bool = True,
+    kg_chat_model: Optional[str] = None,
+    kg_chat_model_path: Optional[str] = None,
+    kg_embedding_model: Optional[str] = None,
+    kg_embedding_model_path: Optional[str] = None,
+    kg_local_files_only: bool = True,
+    kg_chat_max_new_tokens: int = 512,
 ):
     """
     Run the KG pipeline.
@@ -216,26 +270,25 @@ def main(
 
     required_env = [
         "CONFIG_PATH",
-        "AZURE_OPENAI_ENDPOINT",
-        "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_API_VERSION",
-        "AZURE_OPENAI_DEPLOYMENT_NAME",
     ]
-    missing = [k for k in required_env if not os.getenv(k)]
+    missing = [k for k in required_env if not _get_optional_env(k)]
     if missing:
         raise RuntimeError(
             f"Missing required environment variables: {missing}. "
             f"Expected .env at {env_path}"
         )
 
-    check_azure_dns()
+    inject_kg_runtime_env(
+        kg_chat_model=kg_chat_model,
+        kg_chat_model_path=kg_chat_model_path,
+        kg_embedding_model=kg_embedding_model,
+        kg_embedding_model_path=kg_embedding_model_path,
+        kg_local_files_only=kg_local_files_only,
+        kg_chat_max_new_tokens=kg_chat_max_new_tokens,
+    )
 
-    config_path_raw = os.environ["CONFIG_PATH"]
-    config_path = Path(config_path_raw)
-    if not config_path.is_absolute():
-        config_path = (env_path.parent / config_path).resolve()
-    else:
-        config_path = config_path.resolve()
+    config_path = _resolve_config_path_from_env()
+    logger.info("Using config path: %s", config_path)
 
     app_id = "cardiology_protocols"
 
@@ -262,11 +315,13 @@ def main(
         preprocessing_config=preprocessing_config,
         pdf_dir=pdf_dir,
         work_root=work_root,
+        run_preprocessing=run_preprocessing,
         run_graph_loader=run_graph_loader,
         run_entity_extraction=run_entity_extraction,
         run_embeddings=run_embeddings,
         run_entity_disambiguation=run_entity_disambiguation,
         run_sanity_checks=run_sanity_checks,
+        graph_loader_replace_existing_document=graph_loader_replace_existing_document,
     )
 
     if clear_neo4j_before_run:
@@ -301,23 +356,46 @@ if __name__ == "__main__":
     pdf_dir = project_root / "test_data" / "pdfdocs"
     work_root = project_root / "test_data" / "graph_cache"
 
-    # TODO:Scegli una tra queste opzioni: "graph", "entities", "embeddings", "full" cambiando il valore di pipeline phase
-    # Con la prima carichi solo i chunk e le realzioni di base su neo4j 
-    # La seconda prova connettersi a openai per estrarre le entità e salvarle su neo4j
-    # La terza esegue solo il processo di embedding dei chunk e salvataggio su neo4j, senza estrazione entità
-    # La quarta esegue tutto il processo
-    PIPELINE_PHASE = "graph"
+    PIPELINE_PHASE = "preprocess"  # 'preprocess', 'graph', 'entities', 'embeddings', 'full'
 
-    if PIPELINE_PHASE == "graph":
+    # Temporary runtime model settings.
+    # Later these can be moved into a proper config.
+    KG_CHAT_MODEL = "Qwen/Qwen2.5-14B-Instruct"
+    KG_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-8B"
+
+    if PIPELINE_PHASE == "preprocess":
+        main(
+            pdf_dir=pdf_dir,
+            work_root=work_root,
+            clear_neo4j_before_run=False,
+            run_preprocessing=True,
+            run_graph_loader=False,
+            run_entity_extraction=False,
+            run_embeddings=False,
+            run_entity_disambiguation=False,
+            run_sanity_checks=False,
+            kg_chat_model=KG_CHAT_MODEL,
+            kg_embedding_model=KG_EMBEDDING_MODEL,
+            kg_local_files_only=True,
+            kg_chat_max_new_tokens=512,
+        )
+
+    elif PIPELINE_PHASE == "graph":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
             clear_neo4j_before_run=True,
+            run_preprocessing=True,
             run_graph_loader=True,
             run_entity_extraction=False,
             run_embeddings=False,
             run_entity_disambiguation=False,
             run_sanity_checks=True,
+            graph_loader_replace_existing_document=True,
+            kg_chat_model=KG_CHAT_MODEL,
+            kg_embedding_model=KG_EMBEDDING_MODEL,
+            kg_local_files_only=True,
+            kg_chat_max_new_tokens=512,
         )
 
     elif PIPELINE_PHASE == "entities":
@@ -325,11 +403,16 @@ if __name__ == "__main__":
             pdf_dir=pdf_dir,
             work_root=work_root,
             clear_neo4j_before_run=False,
+            run_preprocessing=False,
             run_graph_loader=False,
             run_entity_extraction=True,
             run_embeddings=False,
             run_entity_disambiguation=True,
             run_sanity_checks=True,
+            kg_chat_model=KG_CHAT_MODEL,
+            kg_embedding_model=KG_EMBEDDING_MODEL,
+            kg_local_files_only=True,
+            kg_chat_max_new_tokens=512,
         )
 
     elif PIPELINE_PHASE == "embeddings":
@@ -337,11 +420,16 @@ if __name__ == "__main__":
             pdf_dir=pdf_dir,
             work_root=work_root,
             clear_neo4j_before_run=False,
+            run_preprocessing=False,
             run_graph_loader=False,
             run_entity_extraction=False,
             run_embeddings=True,
             run_entity_disambiguation=False,
             run_sanity_checks=True,
+            kg_chat_model=KG_CHAT_MODEL,
+            kg_embedding_model=KG_EMBEDDING_MODEL,
+            kg_local_files_only=True,
+            kg_chat_max_new_tokens=512,
         )
 
     elif PIPELINE_PHASE == "full":
@@ -349,15 +437,21 @@ if __name__ == "__main__":
             pdf_dir=pdf_dir,
             work_root=work_root,
             clear_neo4j_before_run=True,
+            run_preprocessing=True,
             run_graph_loader=True,
             run_entity_extraction=True,
             run_embeddings=True,
             run_entity_disambiguation=True,
             run_sanity_checks=True,
+            graph_loader_replace_existing_document=True,
+            kg_chat_model=KG_CHAT_MODEL,
+            kg_embedding_model=KG_EMBEDDING_MODEL,
+            kg_local_files_only=True,
+            kg_chat_max_new_tokens=512,
         )
 
     else:
         raise ValueError(
             f"Unsupported PIPELINE_PHASE='{PIPELINE_PHASE}'. "
-            "Use one of: 'graph', 'entities', 'embeddings', 'full'."
+            "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', 'full'."
         )
