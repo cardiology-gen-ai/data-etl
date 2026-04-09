@@ -19,6 +19,14 @@ def setup_disambiguation_schema(tx) -> None:
         """
     )
 
+    tx.run(
+        """
+        CREATE INDEX concept_type_resolution_status IF NOT EXISTS
+        FOR (c:Concept)
+        ON (c.type_resolution_status)
+        """
+    )
+
 
 def initialize_missing_observed_types(tx) -> None:
     """
@@ -28,9 +36,9 @@ def initialize_missing_observed_types(tx) -> None:
     tx.run(
         """
         MATCH (c:Concept)
-        WHERE c.type IS NOT NULL
+        WHERE c.canonical_type IS NOT NULL
           AND (c.observed_types IS NULL OR size(c.observed_types) = 0)
-        SET c.observed_types = [c.type]
+        SET c.observed_types = [c.canonical_type]
         """
     )
 
@@ -45,7 +53,7 @@ def resolve_single_type_concepts(tx) -> None:
         MATCH (c:Concept)
         WHERE c.observed_types IS NOT NULL
           AND size(c.observed_types) = 1
-        SET c.type = c.observed_types[0],
+        SET c.canonical_type = c.observed_types[0],
             c.needs_type_review = false,
             c.type_resolution_status = 'resolved_single_observed_type'
         """
@@ -62,9 +70,10 @@ def mark_ambiguous_concepts(tx) -> None:
         MATCH (c:Concept)
         WHERE c.observed_types IS NOT NULL
           AND size(c.observed_types) > 1
-        SET c.type =
+        SET c.canonical_type =
             CASE
-                WHEN c.type IS NOT NULL AND c.type IN c.observed_types THEN c.type
+                WHEN c.canonical_type IS NOT NULL AND c.canonical_type IN c.observed_types
+                    THEN c.canonical_type
                 ELSE c.observed_types[0]
             END,
             c.needs_type_review = true,
@@ -80,7 +89,7 @@ def mark_missing_type_concepts(tx) -> None:
     tx.run(
         """
         MATCH (c:Concept)
-        WHERE c.type IS NULL
+        WHERE c.canonical_type IS NULL
         SET c.needs_type_review = true,
             c.type_resolution_status = 'missing_type_after_disambiguation'
         """
