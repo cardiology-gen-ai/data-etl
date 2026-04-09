@@ -110,30 +110,62 @@ def create_document(tx, doc_id: str) -> None:
     )
 
 
+def delete_existing_document_sections(tx, doc_id: str) -> None:
+    """
+    Remove all existing sections for one document before reloading them.
+    """
+    tx.run(
+        """
+        MATCH (:Document {doc_id: $doc_id})-[:HAS_SECTION]->(s:Section {doc_id: $doc_id})
+        DETACH DELETE s
+        """,
+        doc_id=doc_id,
+    )
+
+
+def delete_orphan_concepts(tx) -> None:
+    """
+    Remove Concept nodes no longer mentioned by any section.
+    Useful after deleting/reloading document sections.
+    """
+    tx.run(
+        """
+        MATCH (c:Concept)
+        WHERE NOT (:Section)-[:MENTIONS]->(c)
+        DETACH DELETE c
+        """
+    )
+
+
 def create_sections_batch(tx, sections: List[Dict[str, Any]]) -> None:
     """
-    Create/update Section nodes in batch.
-    Embedding-related fields are initialized but not populated with actual vectors.
+    Create Section nodes in batch.
+    Embedding/entity-related fields are initialized but not populated yet.
     """
     tx.run(
         """
         UNWIND $sections AS section
-        MERGE (s:Section {uid: section.uid})
-        SET
-            s.doc_id = section.doc_id,
-            s.section_id = section.section_id,
-            s.title = section.title,
-            s.level = section.level,
-            s.text = section.text,
-            s.is_empty = section.is_empty,
-            s.embed = section.embed,
-            s.page_start = section.page_start,
-            s.page_end = section.page_end,
-            s.has_embedding = coalesce(s.has_embedding, false),
-            s.embedding = coalesce(s.embedding, null),
-            s.embedding_model = coalesce(s.embedding_model, null),
-            s.embedding_dim = coalesce(s.embedding_dim, null),
-            s.embedding_updated_at = coalesce(s.embedding_updated_at, null)
+        CREATE (s:Section {
+            uid: section.uid,
+            doc_id: section.doc_id,
+            section_id: section.section_id,
+            title: section.title,
+            level: section.level,
+            text: section.text,
+            is_empty: section.is_empty,
+            embed: section.embed,
+            page_start: section.page_start,
+            page_end: section.page_end,
+
+            has_embedding: false,
+            embedding: null,
+            embedding_model: null,
+            embedding_dim: null,
+            embedding_updated_at: null,
+
+            entity_extracted: false,
+            entity_extracted_at: null
+        })
         """,
         sections=sections,
     )
@@ -209,9 +241,17 @@ def build_graph_from_chunks(
     driver: Driver,
     chunk_file: Path,
     batch_size: int = 200,
+    replace_existing_document: bool = True,
 ) -> Optional[str]:
     """
     Build the structural graph for one document from a chunk JSON file.
+
+    Parameters:
+        driver: Neo4j driver
+        chunk_file: JSON file containing hierarchical chunks for one document
+        batch_size: number of rows/relationships written per batch
+        replace_existing_document: if True, delete existing sections for this
+            document before reloading them from the chunk file
 
     Returns:
         doc_id if ingestion succeeded, else None.
@@ -230,7 +270,11 @@ def build_graph_from_chunks(
         )
 
     doc_id = next(iter(doc_ids))
-    logger.info("Building graph structure for document: %s", doc_id)
+    logger.info(
+        "Building graph structure for document: %s | replace_existing_document=%s",
+        doc_id,
+        replace_existing_document,
+    )
 
     normalized_sections = [normalize_section_record(chunk) for chunk in chunks]
     section_uids = [section["uid"] for section in normalized_sections]
@@ -259,6 +303,10 @@ def build_graph_from_chunks(
     with driver.session() as session:
         session.execute_write(setup_schema)
         session.execute_write(create_document, doc_id)
+
+        if replace_existing_document:
+            session.execute_write(delete_existing_document_sections, doc_id)
+            session.execute_write(delete_orphan_concepts)
 
         for batch in chunked(normalized_sections, batch_size):
             session.execute_write(create_sections_batch, batch)
