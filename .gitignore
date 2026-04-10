@@ -90,3 +90,4 @@ index/
 src/azure.py
 old_test_data/
 original_kg/
+old_pyproject.toml
