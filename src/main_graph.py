@@ -356,7 +356,7 @@ if __name__ == "__main__":
     pdf_dir = project_root / "test_data" / "pdfdocs"
     work_root = project_root / "test_data" / "graph_cache"
 
-    PIPELINE_PHASE = "preprocess"  # 'preprocess', 'graph', 'entities', 'embeddings', 'full'
+    PIPELINE_PHASE = os.getenv("KG_PIPELINE_PHASE", "preprocess")  # 'preprocess', 'graph', 'entities', 'embeddings', 'full'
 
     # Temporary runtime model settings.
     # Later these can be moved into a proper config.
