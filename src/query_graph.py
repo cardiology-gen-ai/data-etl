@@ -1,10 +1,6 @@
 import os
 from knowledge_graph.neo4j_utils import get_neo4j_driver, close_driver
 
-# ---------------------------------------------------------
-# Dictionary containing our 10 Cypher exploration queries
-# Updated to match graph_loader.py schema logic
-# ---------------------------------------------------------
 QUERIES = {
     "1. Node Types Count": """
         MATCH (n) 

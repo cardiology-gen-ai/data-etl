@@ -29,7 +29,6 @@ module load python/3.11
 source "$VENV_DIR/bin/activate"
 export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
 
-# Funzione di spegnimento sicuro
 NEO4J_STARTED=0
 cleanup() {
   if [[ "$NEO4J_STARTED" -eq 1 ]]; then
@@ -44,7 +43,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Avvio di Neo4j (usando le tue cartelle!)
 NEO4J_DATA="${NEO4J_DATA:-$WORK/neo4j_data_marta}"
 NEO4J_LOGS="${NEO4J_LOGS:-$WORK/neo4j_logs_marta}"
 NEO4J_RUN="${NEO4J_RUN:-$WORK/neo4j_run_marta}"
@@ -68,7 +66,6 @@ export NEO4J_URI="${NEO4J_URI:-bolt://localhost:7687}"
 export NEO4J_USERNAME="${NEO4J_USERNAME:-neo4j}"
 export NEO4J_PASSWORD="${NEO4J_PASSWORD:-}"
 
-# Lancia le query!
 echo "[INFO] Eseguo le query sul grafo..."
 python -m src.query_graph
 RC=$?
