@@ -2,7 +2,6 @@
 #SBATCH -A IscrC_CardioAI
 #SBATCH -p boost_usr_prod
 #SBATCH --time=00:15:00
-#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --job-name=query_kg
 #SBATCH --output=logs_kg/%x-%j.out
@@ -27,7 +26,7 @@ fi
 # Python environment
 module load python/3.11
 source "$VENV_DIR/bin/activate"
-export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
+export PYTHONPATH="$PROJECT_DIR/src:$PROJECT_DIR:${PYTHONPATH:-}"
 
 NEO4J_STARTED=0
 cleanup() {
@@ -67,7 +66,7 @@ export NEO4J_USERNAME="${NEO4J_USERNAME:-neo4j}"
 export NEO4J_PASSWORD="${NEO4J_PASSWORD:-}"
 
 echo "[INFO] Eseguo le query sul grafo..."
-python -m src.query_graph
+python -m knowledge_graph.query_graph
 RC=$?
 
 echo "[INFO] Job completato con codice: $RC"
