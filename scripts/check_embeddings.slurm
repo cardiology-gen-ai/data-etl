@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-# Path config 
+# Path config
 PROJECT_DIR="/leonardo_work/IscrC_CardioAI/data-etl"
 VENV_DIR="/leonardo_scratch/large/userexternal/mlucas00/data-etl"
 ENV_FILE="$PROJECT_DIR/.env.leonardo"
@@ -50,7 +50,7 @@ singularity exec \
 sleep 25
 
 echo "[INFO] Validating Embeddings..."
-python src/check_embeddings.py
+python -m knowledge_graph.check_embeddings
 
 echo "[INFO] Stopping Neo4j..."
 singularity exec \
