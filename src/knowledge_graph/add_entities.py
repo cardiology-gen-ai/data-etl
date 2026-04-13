@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
 from neo4j import Driver
 
@@ -41,10 +41,8 @@ ALLOWED_TYPES = {
     "anatomical_structure",
 }
 
-# Optional normalization layer so the LLM can be a bit imprecise while
-# we still map outputs to a stable ontology.
+# Optional normalization layer to map common type variants to canonical types.
 TYPE_ALIASES = {
-    # old / generic
     "phenotype": "clinical_finding",
     "finding": "clinical_finding",
     "clinical finding": "clinical_finding",
@@ -83,12 +81,14 @@ TYPE_ALIASES = {
     "laboratory_marker": "biomarker",
     "lab_marker": "biomarker",
     "marker": "biomarker",
+    "lab value": "biomarker",
 
     "score": "score_or_risk_model",
     "risk score": "score_or_risk_model",
     "risk model": "score_or_risk_model",
     "prediction rule": "score_or_risk_model",
     "clinical prediction rule": "score_or_risk_model",
+    "clinical score": "score_or_risk_model",
     "calculator": "score_or_risk_model",
 
     "complication": "complication_or_comorbidity",
@@ -97,6 +97,8 @@ TYPE_ALIASES = {
     "gene": "genetic_factor",
     "genetic": "genetic_factor",
     "genetic marker": "genetic_factor",
+    "genetic variant": "genetic_factor",
+    "gene variant": "genetic_factor",
     "variant": "genetic_factor",
     "mutation": "genetic_factor",
 
@@ -127,16 +129,65 @@ BLOCKLIST_NAMES = {
     "drug",
     "drugs",
     "care",
+    "clinical finding",
+    "clinical findings",
+    "symptom",
+    "symptoms",
+    "sign",
+    "signs",
+    "biomarker",
+    "biomarkers",
+    "diagnostic test",
+    "diagnostic tests",
+    "imaging modality",
+    "imaging modalities",
+    "score",
+    "scores",
+    "model",
+    "models",
 }
 
 
-def parse_llm_json(text: str) -> Any:
+def truncate_for_log(text: str, max_chars: int = 2000) -> str:
+    text = text.strip()
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + "\n...[truncated]"
+
+
+def strip_code_fences(text: str) -> str:
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"\s*```$", "", text)
-        text = text.strip()
-    return json.loads(text)
+    return text.strip()
+
+
+def parse_llm_json(text: str) -> Any:
+    text = text.strip()
+    candidates = [text, strip_code_fences(text)]
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    decoder = json.JSONDecoder()
+
+    for candidate in candidates:
+        for i, ch in enumerate(candidate):
+            if ch not in "[{":
+                continue
+            try:
+                parsed, _ = decoder.raw_decode(candidate[i:])
+                return parsed
+            except json.JSONDecodeError:
+                continue
+
+    raise ValueError("Could not parse JSON from LLM output")
 
 
 def normalize_whitespace(text: str) -> str:
@@ -145,8 +196,10 @@ def normalize_whitespace(text: str) -> str:
 
 def normalize_type(raw_type: Any) -> str:
     concept_type = str(raw_type).strip().lower()
-    concept_type = concept_type.replace("-", "_")
+    concept_type = re.sub(r"^[\s,;:.()\[\]{}'\"`]+", "", concept_type)
+    concept_type = re.sub(r"[\s,;:.()\[\]{}'\"`]+$", "", concept_type)
     concept_type = normalize_whitespace(concept_type)
+    concept_type = concept_type.replace("-", "_")
     concept_type = concept_type.replace(" ", "_")
 
     if concept_type in TYPE_ALIASES:
@@ -170,18 +223,27 @@ def normalize_name(raw_name: Any) -> str:
 
 def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
     if not isinstance(raw, dict):
+        logger.debug("Discarding non-dict concept payload: %r", raw)
         return None
     if "name" not in raw or "type" not in raw:
+        logger.debug("Discarding concept without required keys: %r", raw)
         return None
 
     name = normalize_name(raw["name"])
     concept_type = normalize_type(raw["type"])
 
     if not name or not concept_type:
+        logger.debug("Discarding concept with empty normalized fields: %r", raw)
         return None
     if name in BLOCKLIST_NAMES:
+        logger.debug("Discarding blocklisted concept name: %s", name)
         return None
     if concept_type not in ALLOWED_TYPES:
+        logger.debug(
+            "Discarding concept with non-allowed type | name=%s | type=%s",
+            name,
+            concept_type,
+        )
         return None
 
     return {
@@ -294,7 +356,7 @@ def pack_rows_for_llm(
         yield batch
 
 
-def extract_concepts_single(text: str) -> Tuple[Optional[List[Dict[str, str]]], bool]:
+def extract_concepts_single(text: str) -> Optional[List[Dict[str, str]]]:
     messages = [
         {"role": "system", "content": ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT},
         {
@@ -307,11 +369,11 @@ def extract_concepts_single(text: str) -> Tuple[Optional[List[Dict[str, str]]], 
         content = generate_chat_text(messages=messages, json_mode=True)
     except Exception as e:
         logger.exception("Single request failed: %s", e)
-        return None, False
+        return None
 
     if content is None:
         logger.error("Single extraction backend returned None")
-        return None, False
+        return None
 
     content = content.strip()
 
@@ -326,11 +388,14 @@ def extract_concepts_single(text: str) -> Tuple[Optional[List[Dict[str, str]]], 
             if normalized is not None:
                 concepts.append(normalized)
 
-        return deduplicate_concepts(concepts), True
+        return deduplicate_concepts(concepts)
 
     except Exception:
-        logger.error("Failed to parse single-section LLM output: %s", content)
-        return None, False
+        logger.error(
+            "Failed to parse single-section LLM output: %s",
+            truncate_for_log(content),
+        )
+        return None
 
 
 def extract_concepts_batch(
@@ -384,6 +449,8 @@ def extract_concepts_batch(
 
             if uid not in expected_uids:
                 continue
+            if uid in out:
+                raise ValueError(f"Duplicate uid in batch result: {uid}")
             if not isinstance(concepts_raw, list):
                 raise ValueError(f"Invalid concepts field for uid={uid}")
 
@@ -402,7 +469,10 @@ def extract_concepts_batch(
         return out
 
     except Exception:
-        logger.error("Failed to parse batch LLM output: %s", content)
+        logger.error(
+            "Failed to parse batch LLM output: %s",
+            truncate_for_log(content),
+        )
         return None
 
 
@@ -432,19 +502,35 @@ def setup_entity_schema(tx) -> None:
     )
 
 
-def write_section_concepts(tx, section_uid: str, concepts: List[Dict[str, str]]) -> None:
-    """
-    Current strategy:
-    - one Concept node per normalized name
-    - preserve ambiguity with c.observed_types
-    - preserve section-local ambiguity with r.observed_types on (:Section)-[:MENTIONS]->(:Concept)
-    - keep c.canonical_type as the first seen type for now
-    """
+def write_section_concepts(
+    tx,
+    section_uid: str,
+    concepts: List[Dict[str, str]],
+    replace_section_mentions: bool = True,
+) -> None:
     tx.run(
         """
         MATCH (s:Section {uid: $uid})
         SET s.entity_extracted = true,
-            s.entity_extracted_at = datetime()
+            s.entity_extracted_at = datetime(),
+            s.entity_extraction_status = 'success'
+        WITH s
+        OPTIONAL MATCH (s)-[old:MENTIONS]->(:Concept)
+        FOREACH (
+            _ IN CASE WHEN $replace_section_mentions THEN [1] ELSE [] END |
+            DELETE old
+        )
+        """,
+        uid=section_uid,
+        replace_section_mentions=replace_section_mentions,
+    )
+
+    if not concepts:
+        return
+
+    tx.run(
+        """
+        MATCH (s:Section {uid: $uid})
         WITH s, $concepts AS concepts
         UNWIND concepts AS concept
         MERGE (c:Concept {name: concept.name})
@@ -453,12 +539,6 @@ def write_section_concepts(tx, section_uid: str, concepts: List[Dict[str, str]])
             c.observed_types = [concept.type],
             c.created_at = datetime()
         ON MATCH SET
-            c.observed_types =
-                CASE
-                    WHEN c.observed_types IS NULL THEN [concept.type]
-                    WHEN concept.type IN c.observed_types THEN c.observed_types
-                    ELSE c.observed_types + concept.type
-                END,
             c.updated_at = datetime()
         MERGE (s)-[r:MENTIONS]->(c)
         ON CREATE SET
@@ -487,6 +567,7 @@ def add_entities_from_sections(
     max_batch_chars: int = 12000,
     emergency_max_single_chars: Optional[int] = 12000,
     skip_processed: bool = True,
+    replace_section_mentions: bool = True,
 ) -> Dict[str, int]:
     """
     Extract concepts from section titles (and optionally text)
@@ -610,7 +691,12 @@ def add_entities_from_sections(
                             ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
                         )
 
-                    session.execute_write(write_section_concepts, section_uid, concepts)
+                    session.execute_write(
+                        write_section_concepts,
+                        section_uid,
+                        concepts,
+                        replace_section_mentions,
+                    )
 
             else:
                 logger.warning(
@@ -621,9 +707,9 @@ def add_entities_from_sections(
                 for row in batch:
                     stats["processed_sections"] += 1
 
-                    concepts, success = extract_concepts_single(row["source_text"])
+                    concepts = extract_concepts_single(row["source_text"])
 
-                    if not success or concepts is None:
+                    if concepts is None:
                         stats["failed_sections"] += 1
                         logger.warning(
                             "Skipping section after failed extraction | doc=%s section=%s",
@@ -651,7 +737,12 @@ def add_entities_from_sections(
                             ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
                         )
 
-                    session.execute_write(write_section_concepts, row["uid"], concepts)
+                    session.execute_write(
+                        write_section_concepts,
+                        row["uid"],
+                        concepts,
+                        replace_section_mentions,
+                    )
 
         logger.info(
             "Entity extraction completed | processed=%d | successful=%d | failed=%d | sections_with_concepts=%d | concepts_written=%d",
