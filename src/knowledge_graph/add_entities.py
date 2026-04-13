@@ -502,6 +502,29 @@ def setup_entity_schema(tx) -> None:
     )
 
 
+def mark_section_extraction_failed(tx, section_uid: str) -> None:
+    tx.run(
+        """
+        MATCH (s:Section {uid: $uid})
+        SET s.entity_extraction_status = 'failed',
+            s.entity_extraction_failed_at = datetime()
+        """,
+        uid=section_uid,
+    )
+
+
+def mark_section_extraction_skipped_empty(tx, section_uid: str) -> None:
+    tx.run(
+        """
+        MATCH (s:Section {uid: $uid})
+        SET s.entity_extracted = true,
+            s.entity_extracted_at = datetime(),
+            s.entity_extraction_status = 'skipped_empty'
+        """,
+        uid=section_uid,
+    )
+
+
 def write_section_concepts(
     tx,
     section_uid: str,
@@ -627,6 +650,12 @@ def add_entities_from_sections(
             )
 
             if not source_text.strip():
+                session.execute_write(mark_section_extraction_skipped_empty, row["uid"])
+                logger.info(
+                    "Skipping empty section | doc=%s section=%s",
+                    row["doc_id"],
+                    row["section_id"],
+                )
                 continue
 
             row["source_text"] = source_text
@@ -648,19 +677,20 @@ def add_entities_from_sections(
             "concepts_written": 0,
         }
 
-        batches = list(
-            pack_rows_for_llm(
-                prepared_rows,
-                max_sections_per_batch=max_sections_per_batch,
-                max_batch_chars=max_batch_chars,
-                emergency_max_single_chars=emergency_max_single_chars,
+        batch_count = 0
+
+        for batch in pack_rows_for_llm(
+            prepared_rows,
+            max_sections_per_batch=max_sections_per_batch,
+            max_batch_chars=max_batch_chars,
+            emergency_max_single_chars=emergency_max_single_chars,
+        ):
+            batch_count += 1
+            logger.info(
+                "Extracting entities for batch %d of size %d sections",
+                batch_count,
+                len(batch),
             )
-        )
-
-        logger.info("Built %d LLM batches", len(batches))
-
-        for batch in batches:
-            logger.info("Extracting entities for batch of %d sections", len(batch))
 
             batch_result = None
             if len(batch) > 1:
@@ -711,6 +741,7 @@ def add_entities_from_sections(
 
                     if concepts is None:
                         stats["failed_sections"] += 1
+                        session.execute_write(mark_section_extraction_failed, row["uid"])
                         logger.warning(
                             "Skipping section after failed extraction | doc=%s section=%s",
                             row["doc_id"],
@@ -743,6 +774,8 @@ def add_entities_from_sections(
                         concepts,
                         replace_section_mentions,
                     )
+
+        logger.info("Processed %d LLM batches", batch_count)
 
         logger.info(
             "Entity extraction completed | processed=%d | successful=%d | failed=%d | sections_with_concepts=%d | concepts_written=%d",

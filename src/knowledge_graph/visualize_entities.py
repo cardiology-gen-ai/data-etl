@@ -42,15 +42,16 @@ QUERIES = {
         LIMIT 5
     """,
 
-    "5. Isolated Concepts (No Mentions)": """
-        MATCH (c:Concept)
-        WHERE NOT (:Section)-[:MENTIONS]->(c)
-        RETURN
-            c.name AS Orphan_Concept,
-            c.canonical_type AS Type,
-            c.type_resolution_status AS Resolution_Status
-        ORDER BY Orphan_Concept ASC
-    """,
+    "5. Ambiguous Concepts with Tied Support": """
+    MATCH (c:Concept)
+    WHERE c.type_resolution_status = 'ambiguous_tied_section_support'
+    RETURN
+        c.name AS Concept,
+        c.observed_types AS Types,
+        c.type_support_pairs AS Type_Support,
+        c.canonical_type AS Chosen_Canonical
+    ORDER BY Concept ASC
+""",
 
     "6. Cross-Document Concepts (Shared Knowledge)": """
         MATCH (c:Concept)<-[:MENTIONS]-(s:Section)

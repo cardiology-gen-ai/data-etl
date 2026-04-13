@@ -82,7 +82,8 @@ def resolve_types_by_section_support(tx) -> None:
                     WHEN size(observed_types) = 1 THEN 'resolved_single_supported_type'
                     WHEN size(top_types) = 1 THEN 'resolved_by_section_support'
                     ELSE 'ambiguous_tied_section_support'
-                END
+                END,
+            c.type_resolution_updated_at = datetime()
         """
     )
 
@@ -99,9 +100,27 @@ def mark_concepts_without_supported_types(tx) -> None:
         SET c.canonical_type = null,
             c.type_support_pairs = [],
             c.needs_type_review = true,
-            c.type_resolution_status = 'no_supported_types_after_recompute'
+            c.type_resolution_status = 'no_supported_types_after_recompute',
+            c.type_resolution_updated_at = datetime()
         """
     )
+
+
+def delete_orphan_concepts(tx) -> int:
+    """
+    Delete Concept nodes that are no longer referenced by any Section.
+    """
+    result = tx.run(
+        """
+        MATCH (c:Concept)
+        WHERE NOT (:Section)-[:MENTIONS]->(c)
+        WITH collect(c) AS concepts_to_delete
+        FOREACH (c IN concepts_to_delete | DETACH DELETE c)
+        RETURN size(concepts_to_delete) AS deleted_count
+        """
+    )
+    record = result.single()
+    return int(record["deleted_count"]) if record is not None else 0
 
 
 def summarize_disambiguation(tx):
@@ -120,7 +139,10 @@ def summarize_disambiguation(tx):
     return result.single()
 
 
-def disambiguate_concepts(driver: Driver) -> Dict[str, int]:
+def disambiguate_concepts(
+    driver: Driver,
+    delete_orphans: bool = True,
+) -> Dict[str, int]:
     """
     Recompute concept type resolution from current section-level support.
 
@@ -131,12 +153,17 @@ def disambiguate_concepts(driver: Driver) -> Dict[str, int]:
     - resolve multi-type concepts by majority support when there is a unique winner
     - flag concepts that remain tied across top-supported types
     - flag concepts with no current supported types
+    - optionally delete orphan concepts
     """
     with driver.session() as session:
         session.execute_write(setup_disambiguation_schema)
         session.execute_write(reset_type_resolution_state)
         session.execute_write(resolve_types_by_section_support)
         session.execute_write(mark_concepts_without_supported_types)
+
+        deleted_orphan_concepts = 0
+        if delete_orphans:
+            deleted_orphan_concepts = session.execute_write(delete_orphan_concepts)
 
         summary = session.execute_read(summarize_disambiguation)
 
@@ -147,15 +174,17 @@ def disambiguate_concepts(driver: Driver) -> Dict[str, int]:
         "resolved_by_support": summary["resolved_by_support"],
         "ambiguous_tied_support": summary["ambiguous_tied_support"],
         "no_supported_types": summary["no_supported_types"],
+        "deleted_orphan_concepts": deleted_orphan_concepts,
     }
 
     logger.info(
-        "Concept disambiguation completed | total=%d | resolved_single=%d | resolved_by_support=%d | ambiguous_tied=%d | no_supported_types=%d | needs_review=%d",
+        "Concept disambiguation completed | total=%d | resolved_single=%d | resolved_by_support=%d | ambiguous_tied=%d | no_supported_types=%d | deleted_orphans=%d | needs_review=%d",
         stats["total_concepts"],
         stats["resolved_single_type"],
         stats["resolved_by_support"],
         stats["ambiguous_tied_support"],
         stats["no_supported_types"],
+        stats["deleted_orphan_concepts"],
         stats["concepts_needing_review"],
     )
 

@@ -15,7 +15,7 @@ PROJECT_DIR="/leonardo_work/IscrC_CardioAI/data-etl"
 VENV_DIR="/leonardo_scratch/large/userexternal/mlucas00/data-etl"
 ENV_FILE="$PROJECT_DIR/.env.leonardo"
 
-# Neo4j paths (form now with that folder, because of permission issues)
+# Neo4j paths
 NEO4J_DATA="/leonardo_work/IscrC_CardioAI/neo4j_data_marta"
 NEO4J_LOGS="/leonardo_work/IscrC_CardioAI/neo4j_logs_marta"
 NEO4J_RUN="/leonardo_work/IscrC_CardioAI/neo4j_run_marta"
@@ -25,7 +25,6 @@ CONTAINER_IMG="/leonardo_work/IscrC_CardioAI/containers/neo4j_5.18.0.sif"
 cd "$PROJECT_DIR"
 mkdir -p logs_kg "$NEO4J_LOGS" "$NEO4J_RUN"
 
-# Load env and variables
 module load python/3.11
 source "$VENV_DIR/bin/activate"
 
@@ -53,13 +52,12 @@ echo "[INFO] Waiting 30s for Neo4j startup..."
 sleep 30
 
 echo "[INFO] Running Entity Analysis Queries..."
-if python src/visualize_entities.py; then
+if python -m knowledge_graph.visualize_entities; then
     echo "[INFO] Analysis completed successfully."
 else
     echo "[ERROR] Python script failed. Check the error log."
 fi
 
-# Cleanup
 echo "[INFO] Stopping Neo4j..."
 singularity exec \
   --bind "$NEO4J_DATA:/data" \
