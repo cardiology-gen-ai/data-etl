@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from neo4j import Driver
 
@@ -63,6 +63,29 @@ def emergency_truncate(text: str, max_chars: Optional[int]) -> str:
     return text[:max_chars].rstrip() + "\n...[truncated]"
 
 
+def mark_sections_embedding_failed(tx, section_uids: List[str]) -> None:
+    tx.run(
+        """
+        UNWIND $uids AS uid
+        MATCH (s:Section {uid: uid})
+        SET s.embedding_status = 'failed',
+            s.embedding_failed_at = datetime()
+        """,
+        uids=section_uids,
+    )
+
+
+def mark_sections_embedding_skipped_empty(tx, section_uids: List[str]) -> None:
+    tx.run(
+        """
+        UNWIND $uids AS uid
+        MATCH (s:Section {uid: uid})
+        SET s.embedding_status = 'skipped_empty'
+        """,
+        uids=section_uids,
+    )
+
+
 def fetch_sections_to_embed(
     driver: Driver,
     doc_id: Optional[str] = None,
@@ -71,9 +94,12 @@ def fetch_sections_to_embed(
     include_title: bool = True,
     include_body: bool = True,
     max_chars_per_section: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], int]:
     """
     Fetch embed-eligible sections and build their embedding text.
+
+    Returns:
+        (rows_to_embed, skipped_empty_count)
     """
     with driver.session() as session:
         query = """
@@ -85,6 +111,7 @@ def fetch_sections_to_embed(
         if not force_reembed:
             query += """
               AND coalesce(s.has_embedding, false) = false
+              AND coalesce(s.embedding_status, '') <> 'skipped_empty'
             """
 
         query += """
@@ -105,9 +132,11 @@ def fetch_sections_to_embed(
             max_sections=max_sections,
         )
 
+        records = list(result)
         rows = []
+        skipped_empty_uids = []
 
-        for record in result:
+        for record in records:
             row = {
                 "uid": record["uid"],
                 "doc_id": record["doc_id"],
@@ -123,6 +152,12 @@ def fetch_sections_to_embed(
             )
 
             if not embedding_text.strip():
+                skipped_empty_uids.append(row["uid"])
+                logger.info(
+                    "Skipping empty embedding text | doc=%s section=%s",
+                    row["doc_id"],
+                    row["section_id"],
+                )
                 continue
 
             embedding_text = emergency_truncate(
@@ -133,7 +168,13 @@ def fetch_sections_to_embed(
             row["embedding_text"] = embedding_text
             rows.append(row)
 
-        return rows
+        if skipped_empty_uids:
+            session.execute_write(
+                mark_sections_embedding_skipped_empty,
+                skipped_empty_uids,
+            )
+
+        return rows, len(skipped_empty_uids)
 
 
 def request_embeddings(
@@ -193,7 +234,9 @@ def write_embeddings_batch(
             s.has_embedding = true,
             s.embedding_model = $embedding_model,
             s.embedding_dim = row.embedding_dim,
-            s.embedding_updated_at = datetime()
+            s.embedding_updated_at = datetime(),
+            s.embedding_status = 'success',
+            s.embedding_failed_at = null
         """,
         rows=rows_with_embeddings,
         embedding_model=embedding_model,
@@ -209,6 +252,7 @@ def add_embeddings_to_sections(
     include_title: bool = True,
     include_body: bool = True,
     max_chars_per_section: Optional[int] = 8000,
+    allow_title_only: bool = False,
 ) -> Dict[str, int]:
     """
     Compute and store embeddings for eligible Section nodes.
@@ -222,6 +266,7 @@ def add_embeddings_to_sections(
         include_title: whether to include the title in the embedding text
         include_body: whether to include body text in the embedding text
         max_chars_per_section: optional safety truncation for very long inputs
+        allow_title_only: if True, allow embedding text to be built from title only
 
     Returns:
         summary statistics
@@ -229,7 +274,16 @@ def add_embeddings_to_sections(
     if batch_size < 1:
         raise ValueError("batch_size must be >= 1")
 
-    rows = fetch_sections_to_embed(
+    if not include_title and not include_body:
+        raise ValueError("At least one of include_title or include_body must be True")
+
+    if include_title and not include_body and not allow_title_only:
+        raise ValueError(
+            "Title-only embeddings are disabled by default. "
+            "Set include_body=True or pass allow_title_only=True."
+        )
+
+    rows, skipped_sections = fetch_sections_to_embed(
         driver=driver,
         doc_id=doc_id,
         max_sections=max_sections,
@@ -253,62 +307,68 @@ def add_embeddings_to_sections(
         "processed_sections": 0,
         "successful_sections": 0,
         "failed_sections": 0,
+        "skipped_sections": skipped_sections,
         "written_embeddings": 0,
     }
 
     if not rows:
         return stats
 
-    for batch in chunked(rows, batch_size):
-        texts = [row["embedding_text"] for row in batch]
+    with driver.session() as session:
+        for batch in chunked(rows, batch_size):
+            texts = [row["embedding_text"] for row in batch]
 
-        logger.info("Requesting embeddings for batch of %d sections", len(batch))
-        vectors = request_embeddings(
-            texts=texts,
-            batch_size=len(batch),
-        )
-
-        stats["processed_sections"] += len(batch)
-
-        if vectors is None:
-            stats["failed_sections"] += len(batch)
-            logger.warning(
-                "Skipping batch after embedding failure | batch_size=%d",
-                len(batch),
-            )
-            continue
-
-        rows_with_embeddings = []
-        for row, vector in zip(batch, vectors):
-            rows_with_embeddings.append(
-                {
-                    "uid": row["uid"],
-                    "embedding": vector,
-                    "embedding_dim": len(vector),
-                }
+            logger.info("Requesting embeddings for batch of %d sections", len(batch))
+            vectors = request_embeddings(
+                texts=texts,
+                batch_size=len(batch),
             )
 
-        with driver.session() as session:
+            stats["processed_sections"] += len(batch)
+
+            if vectors is None:
+                stats["failed_sections"] += len(batch)
+                session.execute_write(
+                    mark_sections_embedding_failed,
+                    [row["uid"] for row in batch],
+                )
+                logger.warning(
+                    "Skipping batch after embedding failure | batch_size=%d",
+                    len(batch),
+                )
+                continue
+
+            rows_with_embeddings = []
+            for row, vector in zip(batch, vectors):
+                rows_with_embeddings.append(
+                    {
+                        "uid": row["uid"],
+                        "embedding": vector,
+                        "embedding_dim": len(vector),
+                    }
+                )
+
             session.execute_write(
                 write_embeddings_batch,
                 rows_with_embeddings,
                 embedding_model,
             )
 
-        stats["successful_sections"] += len(rows_with_embeddings)
-        stats["written_embeddings"] += len(rows_with_embeddings)
+            stats["successful_sections"] += len(rows_with_embeddings)
+            stats["written_embeddings"] += len(rows_with_embeddings)
 
-        logger.info(
-            "Stored embeddings for %d sections | dim=%d",
-            len(rows_with_embeddings),
-            rows_with_embeddings[0]["embedding_dim"] if rows_with_embeddings else 0,
-        )
+            logger.info(
+                "Stored embeddings for %d sections | dim=%d",
+                len(rows_with_embeddings),
+                rows_with_embeddings[0]["embedding_dim"] if rows_with_embeddings else 0,
+            )
 
     logger.info(
-        "Embedding completed | processed=%d | successful=%d | failed=%d | written=%d",
+        "Embedding completed | processed=%d | successful=%d | failed=%d | skipped=%d | written=%d",
         stats["processed_sections"],
         stats["successful_sections"],
         stats["failed_sections"],
+        stats["skipped_sections"],
         stats["written_embeddings"],
     )
 

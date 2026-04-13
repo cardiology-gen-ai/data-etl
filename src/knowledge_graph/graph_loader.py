@@ -110,6 +110,18 @@ def create_document(tx, doc_id: str) -> None:
     )
 
 
+def document_sections_exist(tx, doc_id: str) -> bool:
+    result = tx.run(
+        """
+        MATCH (:Document {doc_id: $doc_id})-[:HAS_SECTION]->(s:Section {doc_id: $doc_id})
+        RETURN count(s) > 0 AS has_sections
+        """,
+        doc_id=doc_id,
+    )
+    record = result.single()
+    return bool(record["has_sections"]) if record is not None else False
+
+
 def delete_existing_document_sections(tx, doc_id: str) -> None:
     """
     Remove all existing sections for one document before reloading them.
@@ -162,9 +174,13 @@ def create_sections_batch(tx, sections: List[Dict[str, Any]]) -> None:
             embedding_model: null,
             embedding_dim: null,
             embedding_updated_at: null,
+            embedding_status: null,
+            embedding_failed_at: null,
 
             entity_extracted: false,
-            entity_extracted_at: null
+            entity_extracted_at: null,
+            entity_extraction_status: null,
+            entity_extraction_failed_at: null
         })
         """,
         sections=sections,
@@ -307,6 +323,12 @@ def build_graph_from_chunks(
         if replace_existing_document:
             session.execute_write(delete_existing_document_sections, doc_id)
             session.execute_write(delete_orphan_concepts)
+        else:
+            if session.execute_read(document_sections_exist, doc_id):
+                raise ValueError(
+                    f"Document {doc_id} already has sections in the graph. "
+                    "Use replace_existing_document=True to reload it."
+                )
 
         for batch in chunked(normalized_sections, batch_size):
             session.execute_write(create_sections_batch, batch)
