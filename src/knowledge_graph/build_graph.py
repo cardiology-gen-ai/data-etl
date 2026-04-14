@@ -46,13 +46,20 @@ def requires_neo4j(config) -> bool:
 
 def requires_preprocessing(config) -> bool:
     """
-    Preprocessing is required when:
-    - the user explicitly wants preprocessing, or
-    - graph loading is requested and chunk files may need to be built.
+    Preprocessing is required only when explicitly requested.
+    Graph loading can also run directly from cached chunk files.
+    """
+    return bool(getattr(config, "run_preprocessing", False))
+
+
+def needs_document_level_processing(config) -> bool:
+    """
+    Whether the pipeline needs to iterate document-by-document for graph/enrichment work.
     """
     return any([
-        getattr(config, "run_preprocessing", False),
         getattr(config, "run_graph_loader", False),
+        getattr(config, "run_entity_extraction", False),
+        getattr(config, "run_embeddings", False),
     ])
 
 
@@ -104,10 +111,10 @@ def load_or_extract_toc(config, pdf_path: Path, doc_id: str) -> Dict[str, Any]:
     toc_path = Path(config.toc_dir) / f"{doc_id}_toc.json"
 
     if toc_path.exists() and not getattr(config, "force_toc", False):
-        logger.info("TOC exists, loading cached version")
+        logger.info("TOC exists, loading cached version for %s", doc_id)
         return json.loads(toc_path.read_text(encoding="utf-8"))
 
-    logger.info("Extracting TOC")
+    logger.info("Extracting TOC for %s", doc_id)
     extractor = GuidelineTOCExtractor(
         pdf_path=str(pdf_path),
         doc_id=doc_id,
@@ -129,9 +136,9 @@ def load_or_convert_markdown(
     md_path = Path(config.markdown_dir) / f"{doc_id}.md"
 
     if md_path.exists() and not getattr(config, "force_markdown", False):
-        logger.info("Markdown exists, loading cached version")
+        logger.info("Markdown exists, loading cached version for %s", doc_id)
     else:
-        logger.info("Converting PDF to Markdown")
+        logger.info("Converting PDF to Markdown for %s", doc_id)
         success, meta = md_converter(pdf_path.name)
         del meta
 
@@ -161,10 +168,10 @@ def load_or_compute_anchors(
     )
 
     if getattr(config, "force_anchors", False) and anchor_path.exists():
-        logger.info("Forcing page anchor recomputation")
+        logger.info("Forcing page anchor recomputation for %s", doc_id)
         anchor_path.unlink()
 
-    logger.info("Loading or computing page anchors")
+    logger.info("Loading or computing page anchors for %s", doc_id)
     anchors = markdown_manager.get_page_anchors(cache_path=anchor_path)
 
     return markdown_manager, anchors
@@ -197,6 +204,36 @@ def get_cached_chunk_path(config, doc_id: str) -> Path:
     return Path(config.chunk_dir) / f"{doc_id}_hier_chunks.json"
 
 
+def list_cached_chunk_paths(config) -> List[Path]:
+    chunk_dir = Path(config.chunk_dir)
+    if not chunk_dir.exists():
+        return []
+    return sorted(chunk_dir.glob("*_hier_chunks.json"))
+
+
+def chunk_path_to_doc_id(chunk_path: Path) -> str:
+    suffix = "_hier_chunks.json"
+    name = chunk_path.name
+    if not name.endswith(suffix):
+        raise ValueError(f"Unexpected chunk file name: {chunk_path}")
+    return name[:-len(suffix)]
+
+
+def get_graph_document_ids(driver) -> List[str]:
+    """
+    Return document ids currently present in Neo4j.
+    """
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (d:Document)
+            RETURN d.doc_id AS doc_id
+            ORDER BY d.doc_id
+            """
+        )
+        return [record["doc_id"] for record in result]
+
+
 def load_or_build_chunks(
     config,
     toc: Dict[str, Any],
@@ -210,10 +247,10 @@ def load_or_build_chunks(
     chunk_path = get_cached_chunk_path(config, doc_id)
 
     if chunk_path.exists() and not getattr(config, "force_chunks", False):
-        logger.info("Chunks exist, loading cached version")
+        logger.info("Chunks exist, loading cached version for %s", doc_id)
         return chunk_path
 
-    logger.info("Building hierarchical chunks")
+    logger.info("Building hierarchical chunks for %s", doc_id)
 
     toc_tree = resolve_toc_tree(toc, doc_id)
 
@@ -250,6 +287,7 @@ def preprocess_single_document(
         return {
             "doc_id": doc_id,
             "chunk_path": str(chunk_path),
+            "source": "preprocessing_cache",
         }
 
     toc = load_or_extract_toc(config, pdf_path, doc_id)
@@ -271,6 +309,7 @@ def preprocess_single_document(
     return {
         "doc_id": doc_id,
         "chunk_path": str(chunk_path),
+        "source": "preprocessing_built",
     }
 
 
@@ -348,15 +387,72 @@ def process_document_graph_and_enrichment(
     }
 
 
+def build_document_work_items(
+    config,
+    driver,
+    preprocessing_results: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    Decide which documents should be processed for graph/enrichment work.
+
+    Modes:
+    - if preprocessing ran in this execution, use those results
+    - else if graph loading is requested, use cached chunk files
+    - else if only enrichment is requested, use documents already present in Neo4j
+    """
+    if preprocessing_results:
+        logger.info(
+            "Using %d preprocessing results as document source for graph/enrichment",
+            len(preprocessing_results),
+        )
+        return [
+            {
+                "doc_id": row["doc_id"],
+                "chunk_path": Path(row["chunk_path"]),
+                "source": row.get("source", "preprocessing"),
+            }
+            for row in preprocessing_results
+        ]
+
+    if getattr(config, "run_graph_loader", False):
+        chunk_paths = list_cached_chunk_paths(config)
+        logger.info(
+            "Using %d cached chunk files as document source for graph loading",
+            len(chunk_paths),
+        )
+        return [
+            {
+                "doc_id": chunk_path_to_doc_id(chunk_path),
+                "chunk_path": chunk_path,
+                "source": "chunk_cache",
+            }
+            for chunk_path in chunk_paths
+        ]
+
+    doc_ids = get_graph_document_ids(driver)
+    logger.info(
+        "Using %d existing Neo4j documents as source for enrichment-only run",
+        len(doc_ids),
+    )
+    return [
+        {
+            "doc_id": doc_id,
+            "chunk_path": None,
+            "source": "neo4j",
+        }
+        for doc_id in doc_ids
+    ]
+
+
 def run_graph_pipeline(config) -> Dict[str, Any]:
     """
     Flexible graph pipeline.
 
     Supported usage patterns:
     - preprocessing only
-    - graph loading only
-    - entities only
-    - embeddings only
+    - graph loading only (from cached chunks)
+    - entities only (from existing Neo4j graph)
+    - embeddings only (from existing Neo4j graph)
     - full pipeline
     """
     ensure_pipeline_dirs(config)
@@ -367,6 +463,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
 
     need_preprocessing = requires_preprocessing(config)
     need_neo4j = requires_neo4j(config)
+    need_doc_level_processing = needs_document_level_processing(config)
 
     if need_preprocessing:
         validate_preprocessing_paths(config)
@@ -374,12 +471,19 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     md_converter = get_markdown_converter(config) if need_preprocessing else None
     driver = get_neo4j_driver(verify=True) if need_neo4j else None
 
+    preprocessing_results: List[Dict[str, Any]] = []
     document_results: List[Dict[str, Any]] = []
     disambiguation_stats = None
     sanity_summary = None
 
     try:
         if need_preprocessing:
+            if not pdf_files:
+                logger.warning(
+                    "Preprocessing requested but no PDF files were found in %s",
+                    pdf_dir,
+                )
+
             for pdf_path in pdf_files:
                 try:
                     prep_result = preprocess_single_document(
@@ -387,51 +491,59 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                         md_converter=md_converter,
                         pdf_path=pdf_path,
                     )
+                    preprocessing_results.append(prep_result)
 
-                    if need_neo4j and any([
-                        getattr(config, "run_graph_loader", False),
-                        getattr(config, "run_entity_extraction", False),
-                        getattr(config, "run_embeddings", False),
-                    ]):
-                        result = process_document_graph_and_enrichment(
-                            driver=driver,
-                            config=config,
-                            doc_id=prep_result["doc_id"],
-                            chunk_path=Path(prep_result["chunk_path"]),
-                        )
-                    else:
-                        result = prep_result
-
-                    document_results.append(result)
+                    if not need_doc_level_processing:
+                        document_results.append(prep_result)
 
                 except Exception as e:
-                    logger.exception("Failed processing document %s: %s", pdf_path.stem, e)
-                    document_results.append(
-                        {
-                            "doc_id": pdf_path.stem,
-                            "error": str(e),
-                        }
-                    )
+                    logger.exception("Failed preprocessing document %s: %s", pdf_path.stem, e)
+                    error_result = {
+                        "doc_id": pdf_path.stem,
+                        "error": str(e),
+                        "stage": "preprocessing",
+                    }
+                    preprocessing_results.append(error_result)
+                    document_results.append(error_result)
 
-        else:
-            # No preprocessing requested: use document ids from available PDFs only
-            # to scope document-level enrichment steps.
-            for pdf_path in pdf_files:
+        if need_neo4j and need_doc_level_processing:
+            work_items = build_document_work_items(
+                config=config,
+                driver=driver,
+                preprocessing_results=[
+                    row for row in preprocessing_results if "chunk_path" in row
+                ],
+            )
+
+            if not work_items:
+                logger.warning(
+                    "No document work items found for graph/enrichment processing"
+                )
+
+            for item in work_items:
                 try:
                     result = process_document_graph_and_enrichment(
                         driver=driver,
                         config=config,
-                        doc_id=pdf_path.stem,
-                        chunk_path=None,
+                        doc_id=item["doc_id"],
+                        chunk_path=item["chunk_path"],
                     )
+                    result["source"] = item["source"]
                     document_results.append(result)
 
                 except Exception as e:
-                    logger.exception("Failed processing document %s: %s", pdf_path.stem, e)
+                    logger.exception("Failed processing document %s: %s", item["doc_id"], e)
                     document_results.append(
                         {
-                            "doc_id": pdf_path.stem,
+                            "doc_id": item["doc_id"],
+                            "chunk_path": (
+                                str(item["chunk_path"])
+                                if item["chunk_path"] is not None
+                                else None
+                            ),
+                            "source": item["source"],
                             "error": str(e),
+                            "stage": "graph_or_enrichment",
                         }
                     )
 

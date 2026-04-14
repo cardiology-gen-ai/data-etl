@@ -88,11 +88,14 @@ def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]
         local_files_only=local_files_only,
     )
 
+    if tokenizer.pad_token is None and tokenizer.eos_token is not None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     model = AutoModelForCausalLM.from_pretrained(
         model_ref,
         token=hf_token,
         local_files_only=local_files_only,
-        torch_dtype="auto",
+        dtype="auto",
         device_map="auto",
     )
 
@@ -158,12 +161,15 @@ def generate_chat_text(
         return_tensors="pt",
     )
 
+    attention_mask = torch.ones_like(input_ids)
+
     try:
         model_device = model.device
     except Exception:
         model_device = next(model.parameters()).device
 
     input_ids = input_ids.to(model_device)
+    attention_mask = attention_mask.to(model_device)
 
     effective_max_new_tokens = max_new_tokens or int(
         _get_optional_env("KG_CHAT_MAX_NEW_TOKENS") or "512"
@@ -175,7 +181,8 @@ def generate_chat_text(
 
     with torch.no_grad():
         outputs = model.generate(
-            input_ids,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
             max_new_tokens=effective_max_new_tokens,
             do_sample=False,
             pad_token_id=pad_token_id,

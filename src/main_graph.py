@@ -53,7 +53,7 @@ class GraphPipelineConfig:
     graph_loader_replace_existing_document: bool = True
 
     # Entity extraction
-    entity_use_section_text: bool = False
+    entity_use_section_text: bool = True
     entity_max_sections: Optional[int] = None
     entity_max_sections_per_batch: int = 2
     entity_max_batch_chars: int = 12000
@@ -96,12 +96,7 @@ def _resolve_config_path_from_env() -> Path:
     if raw.startswith("CONFIG_PATH="):
         raw = raw[len("CONFIG_PATH="):].strip()
 
-    path = Path(raw)
-    if not path.is_absolute():
-        path = path.resolve()
-    else:
-        path = path.resolve()
-
+    path = Path(raw).expanduser().resolve()
     return path
 
 
@@ -154,6 +149,7 @@ def make_graph_pipeline_config(
     run_entity_disambiguation: bool = False,
     run_sanity_checks: bool = True,
     graph_loader_replace_existing_document: bool = True,
+    entity_use_section_text: bool = True,
 ) -> GraphPipelineConfig:
     """
     Build the graph pipeline config.
@@ -186,7 +182,7 @@ def make_graph_pipeline_config(
         graph_loader_batch_size=200,
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
 
-        entity_use_section_text=False,
+        entity_use_section_text=entity_use_section_text,
         entity_max_sections=None,
         entity_max_sections_per_batch=2,
         entity_max_batch_chars=12000,
@@ -207,26 +203,20 @@ def make_graph_pipeline_config(
 
 def inject_kg_runtime_env(
     kg_chat_model: Optional[str] = None,
-    kg_chat_model_path: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
-    kg_embedding_model_path: Optional[str] = None,
     kg_local_files_only: bool = True,
     kg_chat_max_new_tokens: int = 512,
 ) -> None:
     """
-    Inject temporary runtime environment variables for llm_utils.py.
+    Inject runtime environment variables for knowledge_graph.llm_utils.
 
-    This is a pragmatic bridge solution until these settings are moved
-    into a cleaner config structure.
+    This remains a pragmatic bridge until model/runtime settings are moved
+    into a cleaner explicit config object.
     """
-    if kg_chat_model_path:
-        os.environ["KG_CHAT_MODEL_PATH"] = kg_chat_model_path
-    elif kg_chat_model:
+    if kg_chat_model:
         os.environ["KG_CHAT_MODEL"] = kg_chat_model
 
-    if kg_embedding_model_path:
-        os.environ["KG_EMBEDDING_MODEL_PATH"] = kg_embedding_model_path
-    elif kg_embedding_model:
+    if kg_embedding_model:
         os.environ["KG_EMBEDDING_MODEL"] = kg_embedding_model
 
     os.environ["KG_LOCAL_FILES_ONLY"] = "true" if kg_local_files_only else "false"
@@ -234,8 +224,8 @@ def inject_kg_runtime_env(
 
     logger.info(
         "Injected KG runtime env | chat=%s | embedding=%s | local_files_only=%s | max_new_tokens=%s",
-        kg_chat_model_path or kg_chat_model,
-        kg_embedding_model_path or kg_embedding_model,
+        kg_chat_model,
+        kg_embedding_model,
         kg_local_files_only,
         kg_chat_max_new_tokens,
     )
@@ -252,10 +242,9 @@ def main(
     run_entity_disambiguation: bool = False,
     run_sanity_checks: bool = True,
     graph_loader_replace_existing_document: bool = True,
+    entity_use_section_text: bool = True,
     kg_chat_model: Optional[str] = None,
-    kg_chat_model_path: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
-    kg_embedding_model_path: Optional[str] = None,
     kg_local_files_only: bool = True,
     kg_chat_max_new_tokens: int = 512,
 ):
@@ -280,9 +269,7 @@ def main(
 
     inject_kg_runtime_env(
         kg_chat_model=kg_chat_model,
-        kg_chat_model_path=kg_chat_model_path,
         kg_embedding_model=kg_embedding_model,
-        kg_embedding_model_path=kg_embedding_model_path,
         kg_local_files_only=kg_local_files_only,
         kg_chat_max_new_tokens=kg_chat_max_new_tokens,
     )
@@ -290,7 +277,7 @@ def main(
     config_path = _resolve_config_path_from_env()
     logger.info("Using config path: %s", config_path)
 
-    app_id = "cardiology_protocols"
+    app_id = _get_optional_env("KG_APP_ID") or "cardiology_protocols"
 
     with open(config_path, "r", encoding="utf-8") as f:
         raw_config = json.load(f)
@@ -322,6 +309,7 @@ def main(
         run_entity_disambiguation=run_entity_disambiguation,
         run_sanity_checks=run_sanity_checks,
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
+        entity_use_section_text=entity_use_section_text,
     )
 
     if clear_neo4j_before_run:
@@ -354,12 +342,14 @@ if __name__ == "__main__":
 
     project_root = Path(__file__).resolve().parent.parent
     pdf_dir = project_root / "test_data" / "pdfdocs"
-    work_root = project_root / "test_data" / "graph_cache"
+    work_root = project_root / "test_data" / "graph_cache_test"
 
-    PIPELINE_PHASE = os.getenv("KG_PIPELINE_PHASE", "preprocess")  # 'preprocess', 'graph', 'entities', 'embeddings', 'full'
+    PIPELINE_PHASE = os.getenv(
+        "KG_PIPELINE_PHASE",
+        "preprocess",
+    )  # preprocess, graph, entities, embeddings, full
 
-    # Temporary runtime model settings.
-    # Later these can be moved into a proper config.
+    # Runtime model settings
     KG_CHAT_MODEL = "Qwen/Qwen2.5-14B-Instruct"
     KG_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-8B"
 
@@ -374,6 +364,7 @@ if __name__ == "__main__":
             run_embeddings=False,
             run_entity_disambiguation=False,
             run_sanity_checks=False,
+            entity_use_section_text=True,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -385,13 +376,14 @@ if __name__ == "__main__":
             pdf_dir=pdf_dir,
             work_root=work_root,
             clear_neo4j_before_run=True,
-            run_preprocessing=True,
+            run_preprocessing=False,
             run_graph_loader=True,
             run_entity_extraction=False,
             run_embeddings=False,
             run_entity_disambiguation=False,
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
+            entity_use_section_text=True,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -409,6 +401,7 @@ if __name__ == "__main__":
             run_embeddings=False,
             run_entity_disambiguation=True,
             run_sanity_checks=True,
+            entity_use_section_text=True,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -426,6 +419,7 @@ if __name__ == "__main__":
             run_embeddings=True,
             run_entity_disambiguation=False,
             run_sanity_checks=True,
+            entity_use_section_text=True,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -444,6 +438,7 @@ if __name__ == "__main__":
             run_entity_disambiguation=True,
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
+            entity_use_section_text=True,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,

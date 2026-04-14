@@ -23,7 +23,22 @@ NEO4J_RUN="/leonardo_work/IscrC_CardioAI/neo4j_run_marta"
 NEO4J_CONF="/leonardo_work/IscrC_CardioAI/neo4j_conf"
 
 cd "$PROJECT_DIR"
-mkdir -p logs_kg "$NEO4J_LOGS" "$NEO4J_RUN"
+mkdir -p logs_kg "$NEO4J_DATA" "$NEO4J_LOGS" "$NEO4J_RUN"
+
+cleanup() {
+  echo "[INFO] Stopping Neo4j..."
+  singularity exec \
+    --bind "$NEO4J_DATA:/data" \
+    --bind "$NEO4J_LOGS:/logs" \
+    --bind "$NEO4J_LOGS:/var/lib/neo4j/logs" \
+    --bind "$NEO4J_RUN:/run" \
+    --bind "$NEO4J_RUN:/var/lib/neo4j/run" \
+    --bind "$NEO4J_CONF/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf" \
+    "$CONTAINER_IMG" \
+    neo4j stop || true
+}
+
+trap cleanup EXIT
 
 # Load env
 module load python/3.11
@@ -49,16 +64,8 @@ singularity exec \
 
 sleep 25
 
-echo "[INFO] Validating Embeddings..."
+echo "[INFO] Validating embeddings..."
 python -m knowledge_graph.check_embeddings
 
-echo "[INFO] Stopping Neo4j..."
-singularity exec \
-  --bind "$NEO4J_DATA:/data" \
-  --bind "$NEO4J_RUN:/var/lib/neo4j/run" \
-  --bind "$NEO4J_LOGS:/var/lib/neo4j/logs" \
-  --bind "$NEO4J_CONF/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf" \
-  "$CONTAINER_IMG" \
-  neo4j stop || true
-
+echo "[INFO] Embedding validation completed"
 exit 0
