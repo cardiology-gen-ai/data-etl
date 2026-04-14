@@ -9,15 +9,22 @@ Responsibilities:
 - safely close the driver
 """
 
-import os
 import logging
+import os
 from typing import Optional
 
-from dotenv import load_dotenv
-from neo4j import GraphDatabase, Driver
+from neo4j import Driver, GraphDatabase
 
 
 logger = logging.getLogger(__name__)
+
+
+def _get_optional_env(name: str, default: Optional[str] = None) -> Optional[str]:
+    value = os.getenv(name, default)
+    if value is None:
+        return None
+    value = value.strip()
+    return value if value else None
 
 
 def load_neo4j_config() -> dict:
@@ -28,23 +35,17 @@ def load_neo4j_config() -> dict:
     - authenticated connection:
         NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
     - no-auth local connection:
-        NEO4J_URI, optional NEO4J_USERNAME, empty/missing NEO4J_PASSWORD
+        NEO4J_URI only
     """
-    load_dotenv()
+    uri = _get_optional_env("NEO4J_URI", "bolt://localhost:7687")
+    username = _get_optional_env("NEO4J_USERNAME", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD")
 
-    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687").strip()
-    username = os.getenv("NEO4J_USERNAME", "neo4j").strip()
-    password = os.getenv("NEO4J_PASSWORD", "")
-
-    if not uri:
+    if uri is None:
         raise RuntimeError("Missing Neo4j environment variable: NEO4J_URI")
 
-    # For local single-instance Neo4j, prefer direct bolt connection
-    if uri.startswith("neo4j://"):
-        uri = uri.replace("neo4j://", "bolt://", 1)
-        logger.info("Switched Neo4j URI to direct bolt connection: %s", uri)
-
-    auth = (username, password) if password else None
+    # Enable auth only when both username and password are present.
+    auth = (username, password) if username and password else None
 
     return {
         "uri": uri,

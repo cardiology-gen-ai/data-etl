@@ -4,14 +4,11 @@ from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 
 import torch
-from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 
 def _get_env_bool(name: str, default: bool) -> bool:
@@ -36,23 +33,52 @@ def _get_required_env(name: str) -> str:
     return value
 
 
-def get_chat_model_name() -> str:
+def get_chat_model_ref() -> str:
+    """
+    Return the model reference used to load the chat model.
+
+    Loading can still come from a local path if KG_CHAT_MODEL_PATH is set,
+    but model metadata elsewhere in the repo should use KG_CHAT_MODEL,
+    not the filesystem path.
+    """
     return _get_optional_env("KG_CHAT_MODEL_PATH") or _get_required_env("KG_CHAT_MODEL")
 
 
-def get_embedding_model_name() -> str:
+def get_embedding_model_ref() -> str:
+    """
+    Return the model reference used to load the embedding model.
+
+    Loading can still come from a local path if KG_EMBEDDING_MODEL_PATH is set,
+    but model metadata elsewhere in the repo should use KG_EMBEDDING_MODEL,
+    not the filesystem path.
+    """
     return _get_optional_env("KG_EMBEDDING_MODEL_PATH") or _get_required_env("KG_EMBEDDING_MODEL")
+
+
+def get_chat_model_name() -> str:
+    """
+    Return the canonical chat model name to be logged/stored in metadata.
+    """
+    return _get_required_env("KG_CHAT_MODEL")
+
+
+def get_embedding_model_name() -> str:
+    """
+    Return the canonical embedding model name to be logged/stored in metadata.
+    """
+    return _get_required_env("KG_EMBEDDING_MODEL")
 
 
 @lru_cache(maxsize=1)
 def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]:
-    model_ref = get_chat_model_name()
+    model_ref = get_chat_model_ref()
     hf_token = _get_optional_env("HF_TOKEN")
     local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
 
     logger.info(
-        "Loading chat model | model=%s | local_files_only=%s",
+        "Loading chat model | model_ref=%s | model_name=%s | local_files_only=%s",
         model_ref,
+        get_chat_model_name(),
         local_files_only,
     )
 
@@ -76,14 +102,15 @@ def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]
 
 @lru_cache(maxsize=1)
 def get_embedding_model() -> SentenceTransformer:
-    model_ref = get_embedding_model_name()
+    model_ref = get_embedding_model_ref()
     hf_token = _get_optional_env("HF_TOKEN")
     local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     logger.info(
-        "Loading embedding model | model=%s | local_files_only=%s | device=%s",
+        "Loading embedding model | model_ref=%s | model_name=%s | local_files_only=%s | device=%s",
         model_ref,
+        get_embedding_model_name(),
         local_files_only,
         device,
     )
@@ -107,6 +134,12 @@ def generate_chat_text(
         raise ValueError("messages must not be empty")
 
     tokenizer, model = get_chat_tokenizer_and_model()
+
+    if not getattr(tokenizer, "chat_template", None):
+        raise RuntimeError(
+            f"Tokenizer for model '{get_chat_model_name()}' has no chat template. "
+            "Use a chat/instruct model or implement a manual prompt formatter."
+        )
 
     prepared_messages = [dict(m) for m in messages]
 
@@ -136,12 +169,16 @@ def generate_chat_text(
         _get_optional_env("KG_CHAT_MAX_NEW_TOKENS") or "512"
     )
 
+    pad_token_id = tokenizer.pad_token_id
+    if pad_token_id is None:
+        pad_token_id = tokenizer.eos_token_id
+
     with torch.no_grad():
         outputs = model.generate(
             input_ids,
             max_new_tokens=effective_max_new_tokens,
             do_sample=False,
-            pad_token_id=tokenizer.eos_token_id,
+            pad_token_id=pad_token_id,
         )
 
     generated_ids = outputs[0][input_ids.shape[-1]:]
