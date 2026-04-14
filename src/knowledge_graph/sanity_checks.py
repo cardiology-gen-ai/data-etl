@@ -106,6 +106,17 @@ CHECKS = [
     # SECTION CONTENT
     # -------------------------
     {
+        "name": "sections_missing_text",
+        "title": "Sections missing text",
+        "level": "INFO",
+        "query": """
+            MATCH (s:Section)
+            WHERE coalesce(trim(s.text), '') = ''
+            RETURN s.uid AS uid, s.title AS title
+            LIMIT 20
+        """,
+    },
+    {
         "name": "empty_leaf_sections",
         "title": "Empty leaf sections",
         "level": "WARNING",
@@ -135,7 +146,7 @@ CHECKS = [
     {
         "name": "orphan_concepts",
         "title": "Orphan concepts",
-        "level": "WARNING",
+        "level": "INFO",
         "query": """
             MATCH (c:Concept)
             WHERE NOT (:Section)-[:MENTIONS]->(c)
@@ -185,6 +196,20 @@ CHECKS = [
             WHERE coalesce(c.needs_type_review, false) = true
             RETURN c.name AS name,
                    c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.type_support_pairs AS type_support_pairs,
+                   c.type_resolution_status AS type_resolution_status
+        """,
+    },
+    {
+        "name": "concepts_missing_type_resolution_status",
+        "title": "Concepts missing type resolution status",
+        "level": "WARNING",
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.type_resolution_status IS NULL
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
                    c.observed_types AS observed_types
         """,
     },
@@ -220,10 +245,56 @@ CHECKS = [
     {
         "name": "sections_missing_entity_extracted_flag",
         "title": "Sections missing entity_extracted flag",
-        "level": "INFO",
+        "level": "ERROR",
         "query": """
             MATCH (s:Section)
             WHERE s.entity_extracted IS NULL
+            RETURN s.uid AS uid
+        """,
+    },
+    {
+        "name": "entity_extraction_status_summary",
+        "title": "Entity extraction status summary",
+        "level": "INFO",
+        "query": """
+            MATCH (s:Section)
+            RETURN coalesce(s.entity_extraction_status, 'UNSET') AS status,
+                   count(s) AS n
+            ORDER BY n DESC, status ASC
+        """,
+    },
+    {
+        "name": "entity_status_success_but_not_extracted",
+        "title": "Sections marked entity success but not extracted",
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.entity_extraction_status = 'success'
+              AND coalesce(s.entity_extracted, false) = false
+            RETURN s.uid AS uid,
+                   s.entity_extraction_status AS status,
+                   s.entity_extracted AS entity_extracted
+        """,
+    },
+    {
+        "name": "entity_extracted_but_missing_status",
+        "title": "Sections extracted but missing entity status",
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)
+            WHERE coalesce(s.entity_extracted, false) = true
+              AND s.entity_extraction_status IS NULL
+            RETURN s.uid AS uid
+        """,
+    },
+    {
+        "name": "entity_failed_without_timestamp",
+        "title": "Sections with failed entity extraction but no timestamp",
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.entity_extraction_status = 'failed'
+              AND s.entity_extraction_failed_at IS NULL
             RETURN s.uid AS uid
         """,
     },
@@ -231,6 +302,27 @@ CHECKS = [
     # -------------------------
     # EMBEDDING STATE
     # -------------------------
+    {
+        "name": "sections_missing_has_embedding_flag",
+        "title": "Sections missing has_embedding flag",
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.has_embedding IS NULL
+            RETURN s.uid AS uid
+        """,
+    },
+    {
+        "name": "embedding_status_summary",
+        "title": "Embedding status summary",
+        "level": "INFO",
+        "query": """
+            MATCH (s:Section)
+            RETURN coalesce(s.embedding_status, 'UNSET') AS status,
+                   count(s) AS n
+            ORDER BY n DESC, status ASC
+        """,
+    },
     {
         "name": "embedding_flag_inconsistencies",
         "title": "Embedding flag inconsistencies",
@@ -242,6 +334,64 @@ CHECKS = [
             RETURN s.uid AS uid,
                    s.has_embedding AS has_embedding,
                    s.embedding IS NOT NULL AS has_embedding_vector
+        """,
+    },
+    {
+        "name": "embedding_metadata_inconsistencies",
+        "title": "Embedding metadata inconsistencies",
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.embedding IS NOT NULL
+              AND (
+                    s.embedding_dim IS NULL
+                 OR s.embedding_model IS NULL
+                 OR s.embedding_updated_at IS NULL
+                 OR size(s.embedding) <> s.embedding_dim
+              )
+            RETURN s.uid AS uid,
+                   s.embedding_dim AS embedding_dim,
+                   size(s.embedding) AS actual_dim,
+                   s.embedding_model AS embedding_model,
+                   s.embedding_updated_at AS embedding_updated_at
+        """,
+    },
+    {
+        "name": "embedding_status_success_but_no_vector",
+        "title": "Sections marked embedding success but with no vector",
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.embedding_status = 'success'
+              AND (s.embedding IS NULL OR coalesce(s.has_embedding, false) = false)
+            RETURN s.uid AS uid,
+                   s.embedding_status AS status,
+                   s.has_embedding AS has_embedding
+        """,
+    },
+    {
+        "name": "embedding_failed_without_timestamp",
+        "title": "Sections with failed embedding but no timestamp",
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.embedding_status = 'failed'
+              AND s.embedding_failed_at IS NULL
+            RETURN s.uid AS uid
+        """,
+    },
+    {
+        "name": "eligible_sections_missing_embeddings",
+        "title": "Eligible sections still missing embeddings",
+        "level": "INFO",
+        "query": """
+            MATCH (s:Section)
+            WHERE coalesce(s.embed, false) = true
+              AND s.embedding IS NULL
+            RETURN s.uid AS uid,
+                   s.doc_id AS doc_id,
+                   s.embedding_status AS embedding_status
+            LIMIT 20
         """,
     },
 ]
