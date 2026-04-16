@@ -69,6 +69,7 @@ class GraphPipelineConfig:
     embedding_max_chars_per_section: int = 8000
 
     # Sanity checks
+    sanity_mode: Optional[str] = "full"
     sanity_sample_limit: int = 10
     sanity_log_samples: bool = True
 
@@ -98,6 +99,36 @@ def _resolve_config_path_from_env() -> Path:
 
     path = Path(raw).expanduser().resolve()
     return path
+
+
+def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
+    """
+    Map pipeline phase to sanity-check mode.
+
+    Mapping:
+    - preprocess -> None
+    - graph -> structure
+    - entities -> entities
+    - embeddings -> embeddings
+    - full -> full
+    """
+    phase = phase.strip().lower()
+
+    mapping = {
+        "preprocess": None,
+        "graph": "structure",
+        "entities": "entities",
+        "embeddings": "embeddings",
+        "full": "full",
+    }
+
+    if phase not in mapping:
+        raise ValueError(
+            f"Unsupported PIPELINE_PHASE='{phase}'. "
+            "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', 'full'."
+        )
+
+    return mapping[phase]
 
 
 def clear_graph_data() -> None:
@@ -150,6 +181,7 @@ def make_graph_pipeline_config(
     run_sanity_checks: bool = True,
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
+    sanity_mode: Optional[str] = "full",
 ) -> GraphPipelineConfig:
     """
     Build the graph pipeline config.
@@ -196,6 +228,7 @@ def make_graph_pipeline_config(
         embedding_include_body=True,
         embedding_max_chars_per_section=8000,
 
+        sanity_mode=sanity_mode,
         sanity_sample_limit=10,
         sanity_log_samples=True,
     )
@@ -243,6 +276,7 @@ def main(
     run_sanity_checks: bool = True,
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
+    sanity_mode: Optional[str] = "full",
     kg_chat_model: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
     kg_local_files_only: bool = True,
@@ -266,6 +300,9 @@ def main(
             f"Missing required environment variables: {missing}. "
             f"Expected .env at {env_path}"
         )
+
+    if run_sanity_checks and sanity_mode is None:
+        raise ValueError("sanity_mode must be set when run_sanity_checks=True")
 
     inject_kg_runtime_env(
         kg_chat_model=kg_chat_model,
@@ -310,6 +347,7 @@ def main(
         run_sanity_checks=run_sanity_checks,
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
         entity_use_section_text=entity_use_section_text,
+        sanity_mode=sanity_mode,
     )
 
     if clear_neo4j_before_run:
@@ -324,7 +362,8 @@ def main(
 
     if summary.get("sanity_summary") is not None:
         logger.info(
-            "Sanity summary | issue_checks=%d | error_checks=%d | warning_checks=%d | info_checks=%d",
+            "Sanity summary | mode=%s | issue_checks=%d | error_checks=%d | warning_checks=%d | info_checks=%d",
+            summary["sanity_summary"].get("mode"),
             summary["sanity_summary"]["checks_with_issues"],
             summary["sanity_summary"]["error_checks_with_issues"],
             summary["sanity_summary"]["warning_checks_with_issues"],
@@ -347,7 +386,9 @@ if __name__ == "__main__":
     PIPELINE_PHASE = os.getenv(
         "KG_PIPELINE_PHASE",
         "preprocess",
-    )  # preprocess, graph, entities, embeddings, full
+    ).strip().lower()  # preprocess, graph, entities, embeddings, full
+
+    SANITY_MODE = _resolve_sanity_mode_from_phase(PIPELINE_PHASE)
 
     # Runtime model settings
     KG_CHAT_MODEL = "Qwen/Qwen2.5-14B-Instruct"
@@ -365,6 +406,7 @@ if __name__ == "__main__":
             run_entity_disambiguation=False,
             run_sanity_checks=False,
             entity_use_section_text=True,
+            sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -384,6 +426,7 @@ if __name__ == "__main__":
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
+            sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -402,6 +445,7 @@ if __name__ == "__main__":
             run_entity_disambiguation=True,
             run_sanity_checks=True,
             entity_use_section_text=True,
+            sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -420,6 +464,7 @@ if __name__ == "__main__":
             run_entity_disambiguation=False,
             run_sanity_checks=True,
             entity_use_section_text=True,
+            sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
@@ -439,6 +484,7 @@ if __name__ == "__main__":
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
+            sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
