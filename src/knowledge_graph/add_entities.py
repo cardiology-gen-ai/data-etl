@@ -1,3 +1,19 @@
+"""
+add_entities.py
+
+Entity extraction pipeline for Section nodes in the knowledge graph.
+
+Main notes:
+- Concepts are normalized before being written.
+- We keep ONE Concept node per normalized concept name.
+- Type ambiguity is preserved at relationship level through MENTIONS.observed_types.
+- Concept-level type state is later finalized by entity_disambiguation.py.
+- TYPE_ALIASES are normalized once at load time so alias lookup is consistent
+  with normalize_type().
+- When replace_section_mentions=True, stale MENTIONS are also cleared on failed
+  or skipped-empty sections so section state stays consistent across reruns.
+"""
+
 import json
 import logging
 import re
@@ -16,14 +32,9 @@ from knowledge_graph.prompts import (
     build_entity_extraction_batch_user_prompt,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
-# Note:
-# - We keep ONE Concept node per normalized name.
-# - We preserve ambiguity with observed_types on both the Concept node
-#   and the Section->Concept MENTIONS relationship.
 ALLOWED_TYPES = {
     "disease",
     "clinical_finding",
@@ -41,8 +52,8 @@ ALLOWED_TYPES = {
     "anatomical_structure",
 }
 
-# Optional normalization layer to map common type variants to canonical types.
-TYPE_ALIASES = {
+
+_RAW_TYPE_ALIASES = {
     "phenotype": "clinical_finding",
     "finding": "clinical_finding",
     "clinical finding": "clinical_finding",
@@ -107,8 +118,7 @@ TYPE_ALIASES = {
     "anatomical structure": "anatomical_structure",
 }
 
-# Blocklist for clearly non-informative "concepts".
-# Keep this conservative.
+
 BLOCKLIST_NAMES = {
     "diagnosis",
     "treatment",
@@ -194,13 +204,29 @@ def normalize_whitespace(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def normalize_type(raw_type: Any) -> str:
+def normalize_type_token(raw_type: Any) -> str:
+    """
+    Normalize type strings into the same canonical lookup format used for:
+    - incoming LLM types
+    - TYPE_ALIASES keys
+    """
     concept_type = str(raw_type).strip().lower()
     concept_type = re.sub(r"^[\s,;:.()\[\]{}'\"`]+", "", concept_type)
     concept_type = re.sub(r"[\s,;:.()\[\]{}'\"`]+$", "", concept_type)
     concept_type = normalize_whitespace(concept_type)
     concept_type = concept_type.replace("-", "_")
     concept_type = concept_type.replace(" ", "_")
+    return concept_type
+
+
+TYPE_ALIASES = {
+    normalize_type_token(alias): normalize_type_token(target)
+    for alias, target in _RAW_TYPE_ALIASES.items()
+}
+
+
+def normalize_type(raw_type: Any) -> str:
+    concept_type = normalize_type_token(raw_type)
 
     if concept_type in TYPE_ALIASES:
         concept_type = TYPE_ALIASES[concept_type]
@@ -212,8 +238,8 @@ def normalize_name(raw_name: Any) -> str:
     name = str(raw_name).strip().lower()
     name = normalize_whitespace(name)
 
-    # Remove enclosing punctuation/brackets while keeping medically relevant characters
-    # such as hyphens, slashes, parentheses inside the term.
+    # Remove only enclosing punctuation while preserving medically relevant
+    # internal characters such as hyphens, slashes, and parentheses.
     name = re.sub(r"^[\s,;:.()\[\]{}'\"`]+", "", name)
     name = re.sub(r"[\s,;:.()\[\]{}'\"`]+$", "", name)
     name = normalize_whitespace(name)
@@ -225,6 +251,7 @@ def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
     if not isinstance(raw, dict):
         logger.debug("Discarding non-dict concept payload: %r", raw)
         return None
+
     if "name" not in raw or "type" not in raw:
         logger.debug("Discarding concept without required keys: %r", raw)
         return None
@@ -235,9 +262,11 @@ def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
     if not name or not concept_type:
         logger.debug("Discarding concept with empty normalized fields: %r", raw)
         return None
+
     if name in BLOCKLIST_NAMES:
         logger.debug("Discarding blocklisted concept name: %s", name)
         return None
+
     if concept_type not in ALLOWED_TYPES:
         logger.debug(
             "Discarding concept with non-allowed type | name=%s | type=%s",
@@ -255,9 +284,10 @@ def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
 def deduplicate_concepts(concepts: List[Dict[str, str]]) -> List[Dict[str, str]]:
     """
     Exact deduplication by (name, type).
-    This intentionally preserves the case where the same normalized name
-    is returned with different types, so we can keep those nuances in
-    observed_types later when writing to Neo4j.
+
+    This intentionally preserves the case where the same normalized name is
+    returned with different types, so type ambiguity can be preserved and
+    later resolved in the disambiguation step.
     """
     seen = set()
     deduped = []
@@ -323,14 +353,24 @@ def pack_rows_for_llm(
             oversized_row = dict(row)
 
             if emergency_max_single_chars is not None:
+                effective_single_limit = min(emergency_max_single_chars, max_batch_chars)
                 oversized_row["source_text"] = emergency_truncate(
                     oversized_row["source_text"],
-                    emergency_max_single_chars,
+                    effective_single_limit,
                 )
                 logger.warning(
-                    "Emergency truncation applied to oversized section | uid=%s | new_chars=%d",
+                    "Emergency truncation applied to oversized section | uid=%s | new_chars=%d | effective_limit=%d",
                     oversized_row["uid"],
                     len(oversized_row["source_text"]),
+                    effective_single_limit,
+                )
+
+            if len(oversized_row["source_text"]) > max_batch_chars:
+                logger.warning(
+                    "Oversized section still exceeds batch budget after truncation | uid=%s | chars=%d | budget=%d",
+                    oversized_row["uid"],
+                    len(oversized_row["source_text"]),
+                    max_batch_chars,
                 )
 
             if batch:
@@ -502,24 +542,52 @@ def setup_entity_schema(tx) -> None:
     )
 
 
-def mark_section_extraction_failed(tx, section_uid: str) -> None:
+def clear_section_mentions(tx, section_uid: str) -> None:
     tx.run(
         """
         MATCH (s:Section {uid: $uid})
-        SET s.entity_extraction_status = 'failed',
-            s.entity_extraction_failed_at = datetime()
+        OPTIONAL MATCH (s)-[r:MENTIONS]->(:Concept)
+        DELETE r
         """,
         uid=section_uid,
     )
 
 
-def mark_section_extraction_skipped_empty(tx, section_uid: str) -> None:
+def mark_section_extraction_failed(
+    tx,
+    section_uid: str,
+    replace_section_mentions: bool = True,
+) -> None:
+    if replace_section_mentions:
+        clear_section_mentions(tx, section_uid)
+
+    tx.run(
+        """
+        MATCH (s:Section {uid: $uid})
+        SET s.entity_extracted = false,
+            s.entity_extraction_status = 'failed',
+            s.entity_extraction_failed_at = datetime()
+        REMOVE s.entity_extracted_at
+        """,
+        uid=section_uid,
+    )
+
+
+def mark_section_extraction_skipped_empty(
+    tx,
+    section_uid: str,
+    replace_section_mentions: bool = True,
+) -> None:
+    if replace_section_mentions:
+        clear_section_mentions(tx, section_uid)
+
     tx.run(
         """
         MATCH (s:Section {uid: $uid})
         SET s.entity_extracted = true,
             s.entity_extracted_at = datetime(),
             s.entity_extraction_status = 'skipped_empty'
+        REMOVE s.entity_extraction_failed_at
         """,
         uid=section_uid,
     )
@@ -537,6 +605,7 @@ def write_section_concepts(
         SET s.entity_extracted = true,
             s.entity_extracted_at = datetime(),
             s.entity_extraction_status = 'success'
+        REMOVE s.entity_extraction_failed_at
         WITH s
         OPTIONAL MATCH (s)-[old:MENTIONS]->(:Concept)
         FOREACH (
@@ -562,6 +631,12 @@ def write_section_concepts(
             c.observed_types = [concept.type],
             c.created_at = datetime()
         ON MATCH SET
+            c.observed_types =
+                CASE
+                    WHEN c.observed_types IS NULL THEN [concept.type]
+                    WHEN concept.type IN c.observed_types THEN c.observed_types
+                    ELSE c.observed_types + concept.type
+                END,
             c.updated_at = datetime()
         MERGE (s)-[r:MENTIONS]->(c)
         ON CREATE SET
@@ -593,8 +668,8 @@ def add_entities_from_sections(
     replace_section_mentions: bool = True,
 ) -> Dict[str, int]:
     """
-    Extract concepts from section titles (and optionally text)
-    and attach them to the Neo4j graph.
+    Extract concepts from section titles and optionally section text,
+    then attach them to the Neo4j graph.
     """
     if max_sections_per_batch < 1:
         raise ValueError("max_sections_per_batch must be >= 1")
@@ -650,7 +725,11 @@ def add_entities_from_sections(
             )
 
             if not source_text.strip():
-                session.execute_write(mark_section_extraction_skipped_empty, row["uid"])
+                session.execute_write(
+                    mark_section_extraction_skipped_empty,
+                    row["uid"],
+                    replace_section_mentions,
+                )
                 logger.info(
                     "Skipping empty section | doc=%s section=%s",
                     row["doc_id"],
@@ -741,7 +820,11 @@ def add_entities_from_sections(
 
                     if concepts is None:
                         stats["failed_sections"] += 1
-                        session.execute_write(mark_section_extraction_failed, row["uid"])
+                        session.execute_write(
+                            mark_section_extraction_failed,
+                            row["uid"],
+                            replace_section_mentions,
+                        )
                         logger.warning(
                             "Skipping section after failed extraction | doc=%s section=%s",
                             row["doc_id"],

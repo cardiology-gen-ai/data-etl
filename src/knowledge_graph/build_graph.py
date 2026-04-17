@@ -377,6 +377,11 @@ def process_document_graph_and_enrichment(
                 12000,
             ),
             skip_processed=getattr(config, "entity_skip_processed", True),
+            replace_section_mentions=getattr(
+                config,
+                "entity_replace_section_mentions",
+                True,
+            ),
         )
 
     if getattr(config, "run_embeddings", False):
@@ -575,7 +580,14 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
 
         if need_neo4j and getattr(config, "run_entity_disambiguation", False):
             logger.info("Running global concept disambiguation")
-            disambiguation_stats = disambiguate_concepts(driver)
+            disambiguation_stats = disambiguate_concepts(
+                driver,
+                delete_orphans=getattr(
+                    config,
+                    "disambiguation_delete_orphans",
+                    True,
+                ),
+            )
 
         if need_neo4j and getattr(config, "run_sanity_checks", False):
             sanity_mode = getattr(config, "sanity_mode", "full")

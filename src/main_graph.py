@@ -55,10 +55,11 @@ class GraphPipelineConfig:
     # Entity extraction
     entity_use_section_text: bool = True
     entity_max_sections: Optional[int] = None
-    entity_max_sections_per_batch: int = 1 # For small models, best to keep this set at one, to avoid errros in the json output from the LLM.
+    entity_max_sections_per_batch: int = 1
     entity_max_batch_chars: int = 12000
     entity_emergency_max_single_chars: int = 12000
     entity_skip_processed: bool = True
+    entity_replace_section_mentions: bool = True
 
     # Embeddings
     embedding_max_sections: Optional[int] = None
@@ -67,6 +68,9 @@ class GraphPipelineConfig:
     embedding_include_title: bool = True
     embedding_include_body: bool = True
     embedding_max_chars_per_section: int = 8000
+
+    # Entity disambiguation
+    disambiguation_delete_orphans: bool = True
 
     # Sanity checks
     sanity_mode: Optional[str] = "full"
@@ -97,8 +101,7 @@ def _resolve_config_path_from_env() -> Path:
     if raw.startswith("CONFIG_PATH="):
         raw = raw[len("CONFIG_PATH="):].strip()
 
-    path = Path(raw).expanduser().resolve()
-    return path
+    return Path(raw).expanduser().resolve()
 
 
 def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
@@ -181,6 +184,8 @@ def make_graph_pipeline_config(
     run_sanity_checks: bool = True,
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
+    entity_replace_section_mentions: bool = True,
+    disambiguation_delete_orphans: bool = True,
     sanity_mode: Optional[str] = "full",
 ) -> GraphPipelineConfig:
     """
@@ -216,10 +221,11 @@ def make_graph_pipeline_config(
 
         entity_use_section_text=entity_use_section_text,
         entity_max_sections=None,
-        entity_max_sections_per_batch=2,
+        entity_max_sections_per_batch=1,
         entity_max_batch_chars=12000,
         entity_emergency_max_single_chars=12000,
         entity_skip_processed=True,
+        entity_replace_section_mentions=entity_replace_section_mentions,
 
         embedding_max_sections=None,
         embedding_batch_size=8,
@@ -227,6 +233,8 @@ def make_graph_pipeline_config(
         embedding_include_title=True,
         embedding_include_body=True,
         embedding_max_chars_per_section=8000,
+
+        disambiguation_delete_orphans=disambiguation_delete_orphans,
 
         sanity_mode=sanity_mode,
         sanity_sample_limit=10,
@@ -276,6 +284,8 @@ def main(
     run_sanity_checks: bool = True,
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
+    entity_replace_section_mentions: bool = True,
+    disambiguation_delete_orphans: bool = True,
     sanity_mode: Optional[str] = "full",
     kg_chat_model: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
@@ -347,6 +357,8 @@ def main(
         run_sanity_checks=run_sanity_checks,
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
         entity_use_section_text=entity_use_section_text,
+        entity_replace_section_mentions=entity_replace_section_mentions,
+        disambiguation_delete_orphans=disambiguation_delete_orphans,
         sanity_mode=sanity_mode,
     )
 
@@ -406,6 +418,8 @@ if __name__ == "__main__":
             run_entity_disambiguation=False,
             run_sanity_checks=False,
             entity_use_section_text=True,
+            entity_replace_section_mentions=True,
+            disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
@@ -426,6 +440,8 @@ if __name__ == "__main__":
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
+            entity_replace_section_mentions=True,
+            disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
@@ -445,6 +461,8 @@ if __name__ == "__main__":
             run_entity_disambiguation=True,
             run_sanity_checks=True,
             entity_use_section_text=True,
+            entity_replace_section_mentions=True,
+            disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
@@ -464,6 +482,8 @@ if __name__ == "__main__":
             run_entity_disambiguation=False,
             run_sanity_checks=True,
             entity_use_section_text=True,
+            entity_replace_section_mentions=True,
+            disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
@@ -484,6 +504,8 @@ if __name__ == "__main__":
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
+            entity_replace_section_mentions=True,
+            disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,

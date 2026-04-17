@@ -1,3 +1,20 @@
+"""
+entity_disambiguation.py
+
+Post-processing step for Concept nodes after entity extraction.
+
+Goal:
+- recompute concept-level type evidence from current Section-[:MENTIONS]->Concept links
+- choose a canonical_type when the evidence is clear enough
+- flag concepts that still need manual review
+- optionally delete orphan concepts that are no longer referenced by any Section
+
+Important note:
+- We intentionally do NOT wipe canonical_type during reset.
+  This allows a previous/manual canonical_type to be preserved in tie cases
+  if it is still among the top-supported types.
+"""
+
 import logging
 from typing import Dict
 
@@ -30,7 +47,11 @@ def setup_disambiguation_schema(tx) -> None:
 
 def reset_type_resolution_state(tx) -> None:
     """
-    Recompute concept-level type state from current graph evidence.
+    Reset recomputed type-resolution fields before rebuilding them from current evidence.
+
+    We intentionally keep c.canonical_type untouched here so that, if the next
+    recomputation ends in a tie, an existing/manual canonical_type can be kept
+    provided it is still among the top-supported types.
     """
     tx.run(
         """
@@ -91,7 +112,10 @@ def resolve_types_by_section_support(tx) -> None:
 def mark_concepts_without_supported_types(tx) -> None:
     """
     Mark concepts for which no current section-level type support could be recomputed.
-    This typically means stale/orphan concepts or malformed old graph state.
+
+    After optional orphan deletion, this should mostly catch malformed old graph state,
+    for example concepts still linked by MENTIONS relationships whose observed_types are
+    missing or empty.
     """
     tx.run(
         """
@@ -123,7 +147,7 @@ def delete_orphan_concepts(tx) -> int:
     return int(record["deleted_count"]) if record is not None else 0
 
 
-def summarize_disambiguation(tx):
+def summarize_disambiguation(tx) -> Dict[str, int]:
     result = tx.run(
         """
         MATCH (c:Concept)
@@ -136,7 +160,26 @@ def summarize_disambiguation(tx):
             count(CASE WHEN c.type_resolution_status = 'no_supported_types_after_recompute' THEN 1 END) AS no_supported_types
         """
     )
-    return result.single()
+    record = result.single()
+
+    if record is None:
+        return {
+            "total_concepts": 0,
+            "concepts_needing_review": 0,
+            "resolved_single_type": 0,
+            "resolved_by_support": 0,
+            "ambiguous_tied_support": 0,
+            "no_supported_types": 0,
+        }
+
+    return {
+        "total_concepts": int(record["total_concepts"]),
+        "concepts_needing_review": int(record["concepts_needing_review"]),
+        "resolved_single_type": int(record["resolved_single_type"]),
+        "resolved_by_support": int(record["resolved_by_support"]),
+        "ambiguous_tied_support": int(record["ambiguous_tied_support"]),
+        "no_supported_types": int(record["no_supported_types"]),
+    }
 
 
 def disambiguate_concepts(
@@ -149,22 +192,22 @@ def disambiguate_concepts(
     Strategy:
     - reset concept-level type state
     - aggregate current support from Section-[:MENTIONS]->Concept relationships
+    - optionally delete orphan concepts
+    - flag concepts with no current supported types
     - resolve concepts with a single supported type
     - resolve multi-type concepts by majority support when there is a unique winner
     - flag concepts that remain tied across top-supported types
-    - flag concepts with no current supported types
-    - optionally delete orphan concepts
     """
     with driver.session() as session:
         session.execute_write(setup_disambiguation_schema)
         session.execute_write(reset_type_resolution_state)
         session.execute_write(resolve_types_by_section_support)
-        session.execute_write(mark_concepts_without_supported_types)
 
         deleted_orphan_concepts = 0
         if delete_orphans:
             deleted_orphan_concepts = session.execute_write(delete_orphan_concepts)
 
+        session.execute_write(mark_concepts_without_supported_types)
         summary = session.execute_read(summarize_disambiguation)
 
     stats = {
