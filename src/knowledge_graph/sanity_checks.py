@@ -1,33 +1,38 @@
-
 """
 sanity_checks.py
 
 Utility module for running consistency and state checks on the Neo4j knowledge graph.
 
-This module validates:
-- document/section structural integrity
-- section identity and hierarchy consistency
-- concept graph consistency
-- entity extraction state
-- embedding state
+Main ideas:
+- checks are grouped by graph area (structure, concepts, entity state, embedding state)
+- checks are selected according to the current pipeline phase
+- later phases automatically include the relevant structural checks
+- the module returns a structured summary and logs compact diagnostics
 
-Checks can be run by phase:
-- "structure": document/section graph only
-- "entities": structure + entity-related checks
-- "embeddings": structure + embedding-related checks
+Supported modes:
+- "structure": only document/section graph checks
+- "entities": structure + concept/entity checks
+- "embeddings": structure + embedding checks
 - "full": all checks
-
-The module returns a structured summary and logs compact diagnostic output.
 """
-
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from neo4j import Driver
 
+
+
 logger = logging.getLogger(__name__)
 
+
 ALLOWED_MODES = {"structure", "entities", "embeddings", "full"}
+
+PHASE_EXPANSION: Dict[str, Set[str]] = {
+    "structure": {"structure"},
+    "entities": {"structure", "entities"},
+    "embeddings": {"structure", "embeddings"},
+    "full": {"structure", "entities", "embeddings"},
+}
 
 
 CHECKS: List[Dict[str, Any]] = [
@@ -35,7 +40,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "documents_without_sections",
         "title": "Documents without sections",
         "group": "Document structure",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (d:Document)
@@ -48,7 +53,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "sections_linked_to_multiple_documents",
         "title": "Sections linked to multiple documents",
         "group": "Document structure",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (d1:Document)-[:HAS_SECTION]->(s:Section)<-[:HAS_SECTION]-(d2:Document)
@@ -61,7 +66,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "orphan_sections",
         "title": "Orphan sections (no document)",
         "group": "Document structure",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -74,7 +79,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "duplicate_section_uids",
         "title": "Duplicate section UID values",
         "group": "Section identity",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -88,7 +93,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "uid_doc_id_mismatch",
         "title": "UID / doc_id mismatch",
         "group": "Section identity",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -101,7 +106,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "sections_with_multiple_parents",
         "title": "Sections with multiple parents",
         "group": "Hierarchy",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (p:Section)-[:HAS_CHILD]->(c:Section)
@@ -115,7 +120,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "cycles_in_has_child",
         "title": "Cycles in HAS_CHILD",
         "group": "Hierarchy",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -128,7 +133,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "next_edges_crossing_documents",
         "title": "NEXT edges crossing documents",
         "group": "Hierarchy",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (a:Section)-[:NEXT]->(b:Section)
@@ -141,7 +146,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "sections_missing_text",
         "title": "Sections missing text",
         "group": "Section content",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "INFO",
         "query": """
             MATCH (s:Section)
@@ -154,7 +159,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "empty_leaf_sections",
         "title": "Empty leaf sections",
         "group": "Section content",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "INFO",
         "query": """
             MATCH (s:Section)
@@ -168,7 +173,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "non_empty_parent_sections",
         "title": "Non-empty parent sections",
         "group": "Section content",
-        "phases": {"structure", "full"},
+        "phases": {"structure"},
         "level": "INFO",
         "query": """
             MATCH (s:Section)-[:HAS_CHILD]->(:Section)
@@ -183,7 +188,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "orphan_concepts",
         "title": "Orphan concepts",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "INFO",
         "query": """
             MATCH (c:Concept)
@@ -196,7 +201,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "concepts_without_canonical_type",
         "title": "Concepts without canonical type",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "ERROR",
         "query": """
             MATCH (c:Concept)
@@ -209,7 +214,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "concepts_without_observed_types",
         "title": "Concepts without observed_types",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (c:Concept)
@@ -222,7 +227,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "canonical_type_not_in_observed_types",
         "title": "Canonical type not present in observed_types",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (c:Concept)
@@ -239,7 +244,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "ambiguous_concepts_needing_review",
         "title": "Ambiguous concepts needing review",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (c:Concept)
@@ -256,7 +261,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "concepts_missing_type_resolution_status",
         "title": "Concepts missing type resolution status",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (c:Concept)
@@ -271,7 +276,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "concepts_used_in_only_one_document",
         "title": "Concepts used in only one document",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "INFO",
         "query": """
             MATCH (c:Concept)<-[:MENTIONS]-(s:Section)
@@ -285,7 +290,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "highly_overused_concepts",
         "title": "Highly overused concepts",
         "group": "Concepts",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (s:Section)-[:MENTIONS]->(c:Concept)
@@ -301,7 +306,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "sections_missing_entity_extracted_flag",
         "title": "Sections missing entity_extracted flag",
         "group": "Entity extraction state",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -314,7 +319,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "entity_extraction_status_summary",
         "title": "Entity extraction status summary",
         "group": "Entity extraction state",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "INFO",
         "is_summary": True,
         "query": """
@@ -328,7 +333,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "entity_status_success_but_not_extracted",
         "title": "Sections marked entity success but not extracted",
         "group": "Entity extraction state",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -344,7 +349,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "entity_extracted_but_missing_status",
         "title": "Sections extracted but missing entity status",
         "group": "Entity extraction state",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
@@ -358,7 +363,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "entity_failed_without_timestamp",
         "title": "Sections with failed entity extraction but no timestamp",
         "group": "Entity extraction state",
-        "phases": {"entities", "full"},
+        "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
@@ -372,7 +377,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "sections_missing_has_embedding_flag",
         "title": "Sections missing has_embedding flag",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -385,7 +390,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "embedding_status_summary",
         "title": "Embedding status summary",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "INFO",
         "is_summary": True,
         "query": """
@@ -399,7 +404,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "embedding_flag_inconsistencies",
         "title": "Embedding flag inconsistencies",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
@@ -415,7 +420,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "embedding_metadata_inconsistencies",
         "title": "Embedding metadata inconsistencies",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
@@ -438,7 +443,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "embedding_status_success_but_no_vector",
         "title": "Sections marked embedding success but with no vector",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
@@ -454,7 +459,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "embedding_failed_without_timestamp",
         "title": "Sections with failed embedding but no timestamp",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
@@ -468,7 +473,7 @@ CHECKS: List[Dict[str, Any]] = [
         "name": "eligible_sections_missing_embeddings",
         "title": "Eligible sections still missing embeddings",
         "group": "Embedding state",
-        "phases": {"embeddings", "full"},
+        "phases": {"embeddings"},
         "level": "INFO",
         "query": """
             MATCH (s:Section)
@@ -573,10 +578,11 @@ def run_sanity_checks(
         Structured summary dictionary with per-check results and aggregate counters.
     """
     mode = _normalize_mode(mode)
+    included_phases = PHASE_EXPANSION[mode]
 
     checks_to_run = [
         check for check in CHECKS
-        if mode == "full" or mode in check["phases"]
+        if bool(check["phases"] & included_phases)
     ]
 
     results: List[Dict[str, Any]] = []

@@ -1,3 +1,18 @@
+"""
+build_graph.py
+
+Flexible graph pipeline for the knowledge graph workflow.
+
+Main responsibilities:
+- optionally run preprocessing and chunk preparation from PDFs
+- optionally load graph structure into Neo4j from cached chunk files
+- optionally run entity extraction and embeddings on existing graph data
+- optionally run global concept disambiguation
+- optionally run sanity checks, using the phase-aware sanity_mode provided
+  by the pipeline config (for example: structure, entities, embeddings, full)
+
+"""
+
 import json
 import logging
 from pathlib import Path
@@ -35,6 +50,9 @@ def ensure_pipeline_dirs(config) -> None:
 
 
 def requires_neo4j(config) -> bool:
+    """
+    Neo4j is needed whenever we touch graph/enrichment/sanity stages.
+    """
     return any([
         getattr(config, "run_graph_loader", False),
         getattr(config, "run_entity_extraction", False),
@@ -497,7 +515,11 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                         document_results.append(prep_result)
 
                 except Exception as e:
-                    logger.exception("Failed preprocessing document %s: %s", pdf_path.stem, e)
+                    logger.exception(
+                        "Failed preprocessing document %s: %s",
+                        pdf_path.stem,
+                        e,
+                    )
                     error_result = {
                         "doc_id": pdf_path.stem,
                         "error": str(e),
@@ -532,7 +554,11 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                     document_results.append(result)
 
                 except Exception as e:
-                    logger.exception("Failed processing document %s: %s", item["doc_id"], e)
+                    logger.exception(
+                        "Failed processing document %s: %s",
+                        item["doc_id"],
+                        e,
+                    )
                     document_results.append(
                         {
                             "doc_id": item["doc_id"],
@@ -552,9 +578,14 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
             disambiguation_stats = disambiguate_concepts(driver)
 
         if need_neo4j and getattr(config, "run_sanity_checks", False):
-            logger.info("Running global graph sanity checks")
+            sanity_mode = getattr(config, "sanity_mode", "full")
+            logger.info(
+                "Running global graph sanity checks | mode=%s",
+                sanity_mode,
+            )
             sanity_summary = run_sanity_checks(
                 driver=driver,
+                mode=sanity_mode,
                 sample_limit=getattr(config, "sanity_sample_limit", 10),
                 log_samples=getattr(config, "sanity_log_samples", True),
             )
