@@ -33,24 +33,52 @@ def _get_required_env(name: str) -> str:
     return value
 
 
+def _get_env_int(name: str, default: int) -> int:
+    value = _get_optional_env(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError as e:
+        raise RuntimeError(
+            f"Environment variable {name} must be an integer, got: {value!r}"
+        ) from e
+
+
+def _ensure_json_only_instruction(text: str) -> str:
+    """
+    Append a JSON-only instruction if none is already present.
+    """
+    text = text.rstrip()
+
+    normalized = text.lower()
+    already_requests_json_only = (
+        "return json only" in normalized
+        or "return valid json only" in normalized
+    )
+
+    if not already_requests_json_only:
+        text += "\n\nReturn valid JSON only."
+
+    return text
+
+
 def get_chat_model_ref() -> str:
     """
-    Return the model reference used to load the chat model.
+    Return the reference used to load the chat model.
 
-    Loading can still come from a local path if KG_CHAT_MODEL_PATH is set,
-    but model metadata elsewhere in the repo should use KG_CHAT_MODEL,
-    not the filesystem path.
+    If KG_CHAT_MODEL_PATH is set, loading uses that local/custom path.
+    Otherwise KG_CHAT_MODEL is used.
     """
     return _get_optional_env("KG_CHAT_MODEL_PATH") or _get_required_env("KG_CHAT_MODEL")
 
 
 def get_embedding_model_ref() -> str:
     """
-    Return the model reference used to load the embedding model.
+    Return the reference used to load the embedding model.
 
-    Loading can still come from a local path if KG_EMBEDDING_MODEL_PATH is set,
-    but model metadata elsewhere in the repo should use KG_EMBEDDING_MODEL,
-    not the filesystem path.
+    If KG_EMBEDDING_MODEL_PATH is set, loading uses that local/custom path.
+    Otherwise KG_EMBEDDING_MODEL is used.
     """
     return _get_optional_env("KG_EMBEDDING_MODEL_PATH") or _get_required_env("KG_EMBEDDING_MODEL")
 
@@ -132,7 +160,7 @@ def generate_chat_text(
     messages: List[Dict[str, str]],
     json_mode: bool = False,
     max_new_tokens: Optional[int] = None,
-) -> Optional[str]:
+) -> str:
     if not messages:
         raise ValueError("messages must not be empty")
 
@@ -149,10 +177,7 @@ def generate_chat_text(
     if json_mode and prepared_messages:
         last = prepared_messages[-1]
         if last.get("role") == "user":
-            content = (last.get("content") or "").rstrip()
-            if "Return JSON only." not in content:
-                content += "\n\nReturn JSON only."
-            last["content"] = content
+            last["content"] = _ensure_json_only_instruction(last.get("content") or "")
 
     input_ids = tokenizer.apply_chat_template(
         prepared_messages,
@@ -171,8 +196,10 @@ def generate_chat_text(
     input_ids = input_ids.to(model_device)
     attention_mask = attention_mask.to(model_device)
 
-    effective_max_new_tokens = max_new_tokens or int(
-        _get_optional_env("KG_CHAT_MAX_NEW_TOKENS") or "512"
+    effective_max_new_tokens = (
+        max_new_tokens
+        if max_new_tokens is not None
+        else _get_env_int("KG_CHAT_MAX_NEW_TOKENS", 512)
     )
 
     pad_token_id = tokenizer.pad_token_id
@@ -196,7 +223,7 @@ def generate_chat_text(
 def embed_texts(
     texts: List[str],
     batch_size: int = 8,
-) -> Optional[List[List[float]]]:
+) -> List[List[float]]:
     if not texts:
         return []
 

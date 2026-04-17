@@ -752,6 +752,7 @@ def add_entities_from_sections(
             "processed_sections": 0,
             "successful_sections": 0,
             "failed_sections": 0,
+            "skipped_sections": 0,
             "sections_with_concepts": 0,
             "concepts_written": 0,
         }
@@ -771,9 +772,56 @@ def add_entities_from_sections(
                 len(batch),
             )
 
-            batch_result = None
-            if len(batch) > 1:
-                batch_result = extract_concepts_batch(batch)
+            # Direct single-section path: no fake "batch failed" warning when batch size is 1.
+            if len(batch) == 1:
+                row = batch[0]
+                stats["processed_sections"] += 1
+
+                concepts = extract_concepts_single(row["source_text"])
+
+                if concepts is None:
+                    stats["failed_sections"] += 1
+                    session.execute_write(
+                        mark_section_extraction_failed,
+                        row["uid"],
+                        replace_section_mentions,
+                    )
+                    logger.warning(
+                        "Skipping section after failed extraction | doc=%s section=%s",
+                        row["doc_id"],
+                        row["section_id"],
+                    )
+                    continue
+
+                stats["successful_sections"] += 1
+
+                if concepts:
+                    stats["sections_with_concepts"] += 1
+                    stats["concepts_written"] += len(concepts)
+
+                logger.info(
+                    "Section doc=%s section=%s -> %d concepts",
+                    row["doc_id"],
+                    row["section_id"],
+                    len(concepts),
+                )
+
+                if concepts:
+                    logger.info(
+                        " -> %s",
+                        ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
+                    )
+
+                session.execute_write(
+                    write_section_concepts,
+                    row["uid"],
+                    concepts,
+                    replace_section_mentions,
+                )
+                continue
+
+            # True multi-section batch path
+            batch_result = extract_concepts_batch(batch)
 
             if batch_result is not None:
                 for row in batch:
@@ -858,13 +906,21 @@ def add_entities_from_sections(
                         replace_section_mentions,
                     )
 
+        # Count skipped sections from current run only if you want visibility in stats.
+        # These were skipped earlier while building prepared_rows.
+        total_seen = len(prepared_rows)
+        stats["skipped_sections"] = (
+            0 if max_sections is not None and total_seen == max_sections else stats["skipped_sections"]
+        )
+
         logger.info("Processed %d LLM batches", batch_count)
 
         logger.info(
-            "Entity extraction completed | processed=%d | successful=%d | failed=%d | sections_with_concepts=%d | concepts_written=%d",
+            "Entity extraction completed | processed=%d | successful=%d | failed=%d | skipped=%d | sections_with_concepts=%d | concepts_written=%d",
             stats["processed_sections"],
             stats["successful_sections"],
             stats["failed_sections"],
+            stats["skipped_sections"],
             stats["sections_with_concepts"],
             stats["concepts_written"],
         )

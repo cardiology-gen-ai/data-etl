@@ -1,25 +1,7 @@
-"""
-sanity_checks.py
-
-Utility module for running consistency and state checks on the Neo4j knowledge graph.
-
-Main ideas:
-- checks are grouped by graph area (structure, concepts, entity state, embedding state)
-- checks are selected according to the current pipeline phase
-- later phases automatically include the relevant structural checks
-- the module returns a structured summary and logs compact diagnostics
-
-Supported modes:
-- "structure": only document/section graph checks
-- "entities": structure + concept/entity checks
-- "embeddings": structure + embedding checks
-- "full": all checks
-"""
 import logging
 from typing import Any, Dict, List, Set
 
 from neo4j import Driver
-
 
 
 logger = logging.getLogger(__name__)
@@ -489,7 +471,9 @@ CHECKS: List[Dict[str, Any]] = [
 
 
 def _log_with_level(level: str, message: str, *args) -> None:
-    """Log a message using the requested severity level."""
+    """
+    Log a message using the requested severity level.
+    """
     level = level.upper()
 
     if level == "ERROR":
@@ -501,7 +485,9 @@ def _log_with_level(level: str, message: str, *args) -> None:
 
 
 def _normalize_mode(mode: str) -> str:
-    """Validate and normalize the requested sanity-check mode."""
+    """
+    Validate and normalize the requested sanity-check mode.
+    """
     normalized = mode.lower().strip()
     if normalized not in ALLOWED_MODES:
         raise ValueError(
@@ -511,7 +497,9 @@ def _normalize_mode(mode: str) -> str:
 
 
 def _build_count_query(query: str) -> str:
-    """Wrap a check query so it returns only the total number of matching rows."""
+    """
+    Wrap a check query so it returns only the total number of matching rows.
+    """
     return f"""
         CALL {{
             {query.strip()}
@@ -521,7 +509,9 @@ def _build_count_query(query: str) -> str:
 
 
 def _build_sample_query(query: str) -> str:
-    """Wrap a check query so it returns only a limited sample of matching rows."""
+    """
+    Wrap a check query so it returns only a limited sample of matching rows.
+    """
     return f"""
         CALL {{
             {query.strip()}
@@ -535,9 +525,8 @@ def _run_check(tx, check: Dict[str, Any], sample_limit: int) -> Dict[str, Any]:
     """
     Execute a single check and return a structured result.
 
-    Each check is run twice:
-    - once to compute the exact count
-    - once to fetch a limited sample for logging
+    Each check is run once for the exact count and, only when useful,
+    once more to fetch a limited sample for logging.
     """
     count_query = check.get("count_query") or _build_count_query(check["query"])
     sample_query = check.get("sample_query") or _build_sample_query(check["query"])
@@ -545,8 +534,12 @@ def _run_check(tx, check: Dict[str, Any], sample_limit: int) -> Dict[str, Any]:
     count_record = tx.run(count_query).single()
     count = int(count_record["n"]) if count_record is not None else 0
 
-    sample_rows = list(tx.run(sample_query, sample_limit=sample_limit))
-    sample = [dict(row) for row in sample_rows]
+    is_summary = bool(check.get("is_summary", False))
+
+    sample: List[Dict[str, Any]] = []
+    if sample_limit > 0 and (is_summary or count > 0):
+        sample_rows = list(tx.run(sample_query, sample_limit=sample_limit))
+        sample = [dict(row) for row in sample_rows]
 
     return {
         "name": check["name"],
@@ -555,7 +548,7 @@ def _run_check(tx, check: Dict[str, Any], sample_limit: int) -> Dict[str, Any]:
         "level": check["level"],
         "count": count,
         "sample": sample,
-        "is_summary": bool(check.get("is_summary", False)),
+        "is_summary": is_summary,
     }
 
 
@@ -578,6 +571,10 @@ def run_sanity_checks(
         Structured summary dictionary with per-check results and aggregate counters.
     """
     mode = _normalize_mode(mode)
+
+    if sample_limit < 0:
+        raise ValueError("sample_limit must be >= 0")
+
     included_phases = PHASE_EXPANSION[mode]
 
     checks_to_run = [

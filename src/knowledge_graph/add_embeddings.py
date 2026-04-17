@@ -12,7 +12,10 @@ from knowledge_graph.llm_utils import (
 logger = logging.getLogger(__name__)
 
 
-def chunked(items: List[Dict[str, Any]], batch_size: int) -> Iterable[List[Dict[str, Any]]]:
+def chunked(
+    items: List[Dict[str, Any]],
+    batch_size: int,
+) -> Iterable[List[Dict[str, Any]]]:
     """
     Yield successive batches from a list.
     """
@@ -51,8 +54,7 @@ def emergency_truncate(text: str, max_chars: Optional[int]) -> str:
     Optional safety truncation for very long embedding inputs.
 
     Note:
-    This is still character-based, not token-based.
-    For now that is acceptable as a first safeguard.
+    This is character-based, not token-based.
     """
     if max_chars is None:
         return text
@@ -68,7 +70,8 @@ def mark_sections_embedding_failed(tx, section_uids: List[str]) -> None:
         """
         UNWIND $uids AS uid
         MATCH (s:Section {uid: uid})
-        SET s.embedding_status = 'failed',
+        SET s.has_embedding = false,
+            s.embedding_status = 'failed',
             s.embedding_failed_at = datetime()
         """,
         uids=section_uids,
@@ -80,7 +83,9 @@ def mark_sections_embedding_skipped_empty(tx, section_uids: List[str]) -> None:
         """
         UNWIND $uids AS uid
         MATCH (s:Section {uid: uid})
-        SET s.embedding_status = 'skipped_empty'
+        SET s.has_embedding = false,
+            s.embedding_status = 'skipped_empty',
+            s.embedding_failed_at = null
         """,
         uids=section_uids,
     )
@@ -132,11 +137,10 @@ def fetch_sections_to_embed(
             max_sections=max_sections,
         )
 
-        records = list(result)
-        rows = []
-        skipped_empty_uids = []
+        rows: List[Dict[str, Any]] = []
+        skipped_empty_uids: List[str] = []
 
-        for record in records:
+        for record in result:
             row = {
                 "uid": record["uid"],
                 "doc_id": record["doc_id"],
@@ -160,12 +164,10 @@ def fetch_sections_to_embed(
                 )
                 continue
 
-            embedding_text = emergency_truncate(
+            row["embedding_text"] = emergency_truncate(
                 embedding_text,
                 max_chars=max_chars_per_section,
             )
-
-            row["embedding_text"] = embedding_text
             rows.append(row)
 
         if skipped_empty_uids:
@@ -197,10 +199,6 @@ def request_embeddings(
         logger.exception("Local embedding request failed: %s", e)
         return None
 
-    if vectors is None:
-        logger.error("Embedding backend returned None")
-        return None
-
     if len(vectors) != len(texts):
         logger.error(
             "Embedding response size mismatch | expected=%d | received=%d",
@@ -229,8 +227,7 @@ def write_embeddings_batch(
         """
         UNWIND $rows AS row
         MATCH (s:Section {uid: row.uid})
-        SET
-            s.embedding = row.embedding,
+        SET s.embedding = row.embedding,
             s.has_embedding = true,
             s.embedding_model = $embedding_model,
             s.embedding_dim = row.embedding_dim,
@@ -338,15 +335,14 @@ def add_embeddings_to_sections(
                 )
                 continue
 
-            rows_with_embeddings = []
-            for row, vector in zip(batch, vectors):
-                rows_with_embeddings.append(
-                    {
-                        "uid": row["uid"],
-                        "embedding": vector,
-                        "embedding_dim": len(vector),
-                    }
-                )
+            rows_with_embeddings = [
+                {
+                    "uid": row["uid"],
+                    "embedding": vector,
+                    "embedding_dim": len(vector),
+                }
+                for row, vector in zip(batch, vectors)
+            ]
 
             session.execute_write(
                 write_embeddings_batch,
