@@ -55,7 +55,7 @@ class GraphPipelineConfig:
     # Entity extraction
     entity_use_section_text: bool = True
     entity_max_sections: Optional[int] = None
-    entity_max_sections_per_batch: int = 2
+    entity_max_sections_per_batch: int = 1 # For small models, best to keep this set at one, to avoid errros in the json output from the LLM.
     entity_max_batch_chars: int = 12000
     entity_emergency_max_single_chars: int = 12000
     entity_skip_processed: bool = True
@@ -238,7 +238,7 @@ def inject_kg_runtime_env(
     kg_chat_model: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
     kg_local_files_only: bool = True,
-    kg_chat_max_new_tokens: int = 512,
+    kg_chat_max_new_tokens: int = 2048,
 ) -> None:
     """
     Inject runtime environment variables for knowledge_graph.llm_utils.
@@ -280,7 +280,7 @@ def main(
     kg_chat_model: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
     kg_local_files_only: bool = True,
-    kg_chat_max_new_tokens: int = 512,
+    kg_chat_max_new_tokens: int = 2048,
 ):
     """
     Run the KG pipeline.
@@ -410,7 +410,7 @@ if __name__ == "__main__":
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
-            kg_chat_max_new_tokens=512,
+            kg_chat_max_new_tokens=2048,
         )
 
     elif PIPELINE_PHASE == "graph":
@@ -430,7 +430,7 @@ if __name__ == "__main__":
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
-            kg_chat_max_new_tokens=512,
+            kg_chat_max_new_tokens=2048,
         )
 
     elif PIPELINE_PHASE == "entities":
@@ -449,7 +449,7 @@ if __name__ == "__main__":
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
-            kg_chat_max_new_tokens=512,
+            kg_chat_max_new_tokens=2048,
         )
 
     elif PIPELINE_PHASE == "embeddings":
@@ -468,7 +468,7 @@ if __name__ == "__main__":
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
-            kg_chat_max_new_tokens=512,
+            kg_chat_max_new_tokens=2048,
         )
 
     elif PIPELINE_PHASE == "full":
@@ -488,7 +488,7 @@ if __name__ == "__main__":
             kg_chat_model=KG_CHAT_MODEL,
             kg_embedding_model=KG_EMBEDDING_MODEL,
             kg_local_files_only=True,
-            kg_chat_max_new_tokens=512,
+            kg_chat_max_new_tokens=2048,
         )
 
     else:

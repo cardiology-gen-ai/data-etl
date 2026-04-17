@@ -34,10 +34,10 @@ source "$VENV_DIR/bin/activate"
 export PYTHONPATH="$PROJECT_DIR/src:$PROJECT_DIR:${PYTHONPATH:-}"
 
 NEO4J_STARTED=0
-NEO4J_DATA="${NEO4J_DATA:-$WORK/neo4j_data_marta}"
-NEO4J_LOGS="${NEO4J_LOGS:-$WORK/neo4j_logs_marta}"
-NEO4J_RUN="${NEO4J_RUN:-$WORK/neo4j_run_marta}"
-NEO4J_TMP="${NEO4J_TMP:-$WORK/neo4j_tmp_marta}"
+NEO4J_DATA="${NEO4J_DATA:-$WORK/neo4j_data_test}"
+NEO4J_LOGS="${NEO4J_LOGS:-$WORK/neo4j_logs_test}"
+NEO4J_RUN="${NEO4J_RUN:-$WORK/neo4j_run_test}"
+NEO4J_TMP="${NEO4J_TMP:-$WORK/neo4j_tmp_test}"
 NEO4J_CONF="${NEO4J_CONF:-$WORK/neo4j_conf}"
 
 cleanup() {

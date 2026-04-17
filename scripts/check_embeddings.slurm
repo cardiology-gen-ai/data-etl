@@ -17,9 +17,9 @@ VENV_DIR="/leonardo_scratch/large/userexternal/mlucas00/data-etl"
 ENV_FILE="$PROJECT_DIR/.env.leonardo"
 CONTAINER_IMG="/leonardo_work/IscrC_CardioAI/containers/neo4j_5.18.0.sif"
 
-NEO4J_DATA="/leonardo_work/IscrC_CardioAI/neo4j_data_marta"
-NEO4J_LOGS="/leonardo_work/IscrC_CardioAI/neo4j_logs_marta"
-NEO4J_RUN="/leonardo_work/IscrC_CardioAI/neo4j_run_marta"
+NEO4J_DATA="/leonardo_work/IscrC_CardioAI/neo4j_data_test"
+NEO4J_LOGS="/leonardo_work/IscrC_CardioAI/neo4j_logs_test"
+NEO4J_RUN="/leonardo_work/IscrC_CardioAI/neo4j_run_test"
 NEO4J_CONF="/leonardo_work/IscrC_CardioAI/neo4j_conf"
 
 cd "$PROJECT_DIR"
