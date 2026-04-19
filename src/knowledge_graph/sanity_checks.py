@@ -1,3 +1,16 @@
+"""
+Sanity checks for the knowledge-graph pipeline.
+
+This module defines phase-aware Neo4j checks used to validate:
+- graph structure after loading
+- entity extraction outputs
+- embedding outputs
+
+Each check is tagged by phase so the pipeline can run only the
+relevant validations for the current stage.
+"""
+
+from neo4j import Driver
 import logging
 from typing import Any, Dict, List, Set
 
@@ -151,9 +164,9 @@ CHECKS: List[Dict[str, Any]] = [
             ORDER BY uid
         """,
     },
-    {
-        "name": "non_empty_parent_sections",
-        "title": "Non-empty parent sections",
+     {
+        "name": "parent_sections_with_direct_body_text",
+        "title": "Parent sections with direct body text",
         "group": "Section content",
         "phases": {"structure"},
         "level": "INFO",
