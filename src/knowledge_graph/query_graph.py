@@ -1,4 +1,21 @@
+"""
+query_graph.py
+
+Lightweight Neo4j inspection script for the graph-loading phase.
+
+Purpose:
+- connect to the project's Neo4j instance
+- run only structure-safe diagnostic queries
+- print results in a simple readable format
+
+Important:
+This script is intended to run after the graph phase only.
+It intentionally avoids queries that depend on later enrichment steps
+such as embeddings, entity extraction, Concept nodes, or MENTIONS edges.
+"""
+
 from knowledge_graph.neo4j_utils import get_neo4j_driver, close_driver
+
 
 QUERIES = {
     "1. Node Types Count": """
@@ -55,75 +72,22 @@ QUERIES = {
         RETURN s.uid AS Section_ID, s.title AS Title
         LIMIT 10
     """,
-
-    "12. Embedding Status Summary": """
-        MATCH (s:Section)
-        RETURN coalesce(s.embedding_status, 'UNSET') AS Embedding_Status, count(*) AS Count
-        ORDER BY Count DESC, Embedding_Status ASC
-    """,
-
-    "13. Entity Extraction Status Summary": """
-        MATCH (s:Section)
-        RETURN coalesce(s.entity_extraction_status, 'UNSET') AS Entity_Status, count(*) AS Count
-        ORDER BY Count DESC, Entity_Status ASC
-    """,
-
-    "14. Eligible Sections Still Missing Embeddings": """
-        MATCH (s:Section)
-        WHERE coalesce(s.embed, false) = true
-          AND s.embedding IS NULL
-        RETURN s.uid AS Section_ID,
-               s.doc_id AS Document,
-               s.embedding_status AS Embedding_Status
-        ORDER BY Section_ID
-        LIMIT 20
-    """,
-
-    "15. Sections Not Yet Entity-Processed": """
-        MATCH (s:Section)
-        WHERE coalesce(s.entity_extracted, false) = false
-        RETURN s.uid AS Section_ID,
-               s.doc_id AS Document,
-               s.entity_extraction_status AS Entity_Status
-        ORDER BY Section_ID
-        LIMIT 20
-    """,
-
-    "16. Sections Mentioning the Most Concepts": """
-        MATCH (s:Section)-[:MENTIONS]->(c:Concept)
-        RETURN s.uid AS Section_ID,
-               s.title AS Title,
-               count(c) AS Concept_Count
-        ORDER BY Concept_Count DESC, Section_ID ASC
-        LIMIT 10
-    """,
-
-    "17. Concepts Still Needing Review": """
-        MATCH (c:Concept)
-        WHERE c.needs_type_review = true
-        RETURN c.name AS Concept,
-               c.observed_types AS Observed_Types,
-               c.type_support_pairs AS Type_Support,
-               c.canonical_type AS Canonical_Type
-        ORDER BY Concept ASC
-        LIMIT 20
-    """,
-
-    "18. Documents with Section Counts by Processing State": """
+    "12. Documents with Section Counts by Processing State": """
         MATCH (d:Document)-[:HAS_SECTION]->(s:Section)
         RETURN d.doc_id AS Document,
                count(s) AS Total_Sections,
                count(CASE WHEN coalesce(s.has_embedding, false) = true THEN 1 END) AS Embedded_Sections,
                count(CASE WHEN coalesce(s.entity_extracted, false) = true THEN 1 END) AS Entity_Processed_Sections
         ORDER BY Document
-    """
+    """,
 }
 
 
 def run_queries():
     """
-    Connects to the Neo4j database using the project's utility driver,
-    executes all defined queries, and prints the results cleanly.
+    Connect to Neo4j using the project's utility driver,
+    execute all defined graph-phase-safe queries,
+    and print the results cleanly.
     """
     print("[INFO] Initializing connection via neo4j_utils...")
 

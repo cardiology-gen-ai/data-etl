@@ -56,7 +56,7 @@ class GraphPipelineConfig:
     entity_use_section_text: bool = True
     entity_max_sections: Optional[int] = None
     entity_max_sections_per_batch: int = 1
-    entity_max_batch_chars: int = 12000
+    entity_max_batch_chars: int = 30000
     entity_emergency_max_single_chars: int = 12000
     entity_skip_processed: bool = True
     entity_replace_section_mentions: bool = True
@@ -222,7 +222,7 @@ def make_graph_pipeline_config(
         entity_use_section_text=entity_use_section_text,
         entity_max_sections=None,
         entity_max_sections_per_batch=1,
-        entity_max_batch_chars=12000,
+        entity_max_batch_chars=30000,
         entity_emergency_max_single_chars=12000,
         entity_skip_processed=True,
         entity_replace_section_mentions=entity_replace_section_mentions,
