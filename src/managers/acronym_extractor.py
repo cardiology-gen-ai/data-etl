@@ -46,11 +46,13 @@ ACRO_TITLE_EXACT_RX = re.compile(
     r"(?i)^\s*(?:abbreviations?(?:\s+and\s+acronyms?)?|acronyms?)\s*$"
 )
 
-# Accept ASCII letters and Greek letters in acronym-like tokens (e.g. α-SMA, β-blocker)
+# Accept ASCII letters, Greek letters, digits, and common acronym symbols.
+# Examples: %HRmax, 18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt,
+# mWHO, Lp(a), α-SMA, β-blocker, and E/e′.
 SHORT_SHAPE_RX = re.compile(
     r"^(?=.*[A-Za-zΑ-Ωα-ω])"
-    r"[A-Za-z0-9Α-Ωα-ω]"
-    r"[A-Za-z0-9Α-Ωα-ω/\.\-+\(\)′']{0,31}$"
+    r"[%A-Za-z0-9Α-Ωα-ω]"
+    r"[%A-Za-z0-9Α-Ωα-ω/\.\-+\(\)′']{0,31}$"
 )
 
 LINE_NOISE_RX = re.compile(
@@ -148,6 +150,18 @@ CONTINUATION_CONNECTOR_ENDINGS = {
 MAX_FRONT_MATTER_SCAN_PAGES = 30
 DENSITY_MIN_BEST_PAGE_SCORE = 8
 DENSITY_NEIGHBOUR_SCORE = 3
+
+# The first body page is sometimes detected too early because the acronym
+# section itself can share a page with front-matter/body-like headings.
+# Therefore, we search a few pages beyond the first body candidate when looking
+# for the actual acronym heading.
+HEADING_SEARCH_EXTRA_PAGES_AFTER_BODY_CANDIDATE = 4
+
+# Once the acronym heading is found, do not use first_body_page as a hard cutoff
+# unless it is strictly after the acronym heading. Instead, scan forward with a
+# safe cap and let extract_lines_from_page_range() stop at the first real body
+# heading, e.g. "1. Preamble".
+MAX_ACRONYM_SECTION_PAGES_AFTER_START = 12
 
 
 @dataclass
@@ -341,6 +355,11 @@ def find_first_body_page(
     Find the first real body page.
 
     Returns a 1-based PDF page number.
+
+    Note:
+    This is only a candidate. Some PDFs place the acronym section close to the
+    first body heading, and page mapping can be imperfect. Do not use this as a
+    hard acronym extraction cutoff unless it is strictly after the acronym start.
     """
     if toc_metadata is not None:
         for sec in toc_metadata.flat_toc:
@@ -571,7 +590,7 @@ def contains_greek_letter(text: str) -> bool:
 def looks_like_short(short: str) -> bool:
     """
     Accept conventional acronym-like strings, including:
-    18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt, mWHO,
+    %HRmax, 18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt, mWHO,
     Lp(a), α-SMA, β-blocker, and E/e′.
 
     This is intentionally strict with simple Titlecase or one-uppercase mixed
@@ -592,7 +611,7 @@ def looks_like_short(short: str) -> bool:
     n_upper = sum(ch.isupper() for ch in s)
     n_lower = sum(ch.islower() for ch in s)
     has_digit = any(ch.isdigit() for ch in s)
-    has_symbol = any(ch in "/.-+()′'" for ch in s)
+    has_symbol = any(ch in "/.-+()′'%" for ch in s)
     has_greek = contains_greek_letter(s)
 
     if n_upper >= 2:
@@ -604,7 +623,7 @@ def looks_like_short(short: str) -> bool:
     if has_digit and (n_upper >= 1 or has_symbol or len(s) <= 8):
         return True
 
-    if has_symbol and (n_upper >= 1 or "." in s):
+    if has_symbol and (n_upper >= 1 or "." in s or "%" in s):
         return True
 
     if has_greek and has_symbol and len(s) <= 32:
@@ -623,6 +642,57 @@ def clean_short_token(token: str) -> str:
     token = normalize_spaces(token)
     token = token.strip("[],:;")
     return token
+
+
+def looks_like_short_sequence(short: str) -> bool:
+    """
+    Accept normal single-token acronyms and conservative multi-token acronyms.
+
+    Examples accepted:
+    - SAVOR-TIMI 53
+    - TIMI 50
+    - PROVE IT-TIMI 22
+
+    Multi-token forms are only accepted when at least one token after the first
+    contains a digit. This prevents false parses like:
+      ASCEND A Study ...
+    becoming:
+      short = "ASCEND A"
+    """
+    s = normalize_spaces(short)
+
+    if not s:
+        return False
+
+    if " " not in s:
+        return looks_like_short(s)
+
+    parts = s.split()
+
+    if not (2 <= len(parts) <= 4):
+        return False
+
+    if len(s) > 48:
+        return False
+
+    if not looks_like_short(parts[0]):
+        return False
+
+    has_numeric_suffix = False
+
+    for part in parts[1:]:
+        part = clean_short_token(part)
+
+        if re.fullmatch(r"\d+[A-Za-z]?", part):
+            has_numeric_suffix = True
+            continue
+
+        if looks_like_short(part):
+            continue
+
+        return False
+
+    return has_numeric_suffix
 
 
 def looks_like_standalone_short_line(line: str) -> bool:
@@ -650,6 +720,8 @@ def parse_acronym_row(line: str) -> Optional[Tuple[str, str]]:
       AF Atrial fibrillation
       BNP Brain natriuretic peptide
       CHA2DS2-VASc Congestive heart failure ...
+      SAVOR-TIMI 53 Saxagliptin Assessment ...
+      %HRmax Percentage of maximum heart rate
     """
     line = strip_footer_bleed(line)
 
@@ -659,30 +731,38 @@ def parse_acronym_row(line: str) -> Optional[Tuple[str, str]]:
     if line.lstrip().startswith("("):
         return None
 
-    parts = line.split(None, 1)
+    parts = line.split()
 
     if len(parts) < 2:
         return None
 
-    raw_short = parts[0]
-    raw_long = parts[1]
+    max_short_tokens = min(4, len(parts) - 1)
 
-    short = clean_short_token(raw_short)
-    long = clean_long_definition(raw_long)
+    # Try the longest plausible acronym key first, then fall back to a normal
+    # one-token acronym. This handles "SAVOR-TIMI 53 ..." without breaking
+    # common rows like "ABC Atrial fibrillation Better Care".
+    for n_tokens in range(max_short_tokens, 0, -1):
+        raw_short = " ".join(parts[:n_tokens])
+        raw_long = " ".join(parts[n_tokens:])
 
-    if not looks_like_short(short):
-        return None
+        short = clean_short_token(raw_short)
+        long = clean_long_definition(raw_long)
 
-    if short.isdigit():
-        return None
+        if not looks_like_short_sequence(short):
+            continue
 
-    if len(long) < 3:
-        return None
+        if short.isdigit():
+            continue
 
-    if LINE_NOISE_RX.search(long):
-        return None
+        if len(long) < 3:
+            continue
 
-    return short, normalize_spaces(long)
+        if LINE_NOISE_RX.search(long):
+            continue
+
+        return short, normalize_spaces(long)
+
+    return None
 
 
 def should_attach_continuation(
@@ -964,21 +1044,57 @@ def find_dense_acronym_span(
     return start_page, end_page
 
 
+def get_acronym_extraction_end_page(
+    doc: fitz.Document,
+    acronym_start_page: int,
+    first_body_page: Optional[int],
+) -> int:
+    """
+    Return a safe provisional end page for acronym extraction.
+
+    Important:
+    - first_body_page is only trusted if it is strictly after the acronym start.
+    - If first_body_page equals the acronym page, it may be a TOC/page-mapping
+      mistake, so we do not use it as a hard cutoff.
+    - extract_lines_from_page_range() will still stop early when it sees
+      a real body heading such as "1. Preamble".
+    """
+    hard_end = min(
+        doc.page_count,
+        acronym_start_page + MAX_ACRONYM_SECTION_PAGES_AFTER_START,
+    )
+
+    if first_body_page is not None and first_body_page > acronym_start_page:
+        hard_end = min(hard_end, first_body_page)
+
+    return hard_end
+
+
 def find_acronym_window(
     toc_metadata: Optional[TOCMetadata],
     doc: fitz.Document,
 ) -> Optional[Tuple[int, int, str]]:
     """
     Return (start_page, end_page, source), all 1-based inclusive.
+
+    Key idea:
+    - first_body_page is useful for narrowing the search for the acronym heading,
+      but it must not be used as a hard extraction boundary.
+    - Once the real acronym heading is found, we scan forward with a safe cap.
+      extract_lines_from_page_range() then stops at the first real body heading.
     """
     first_body_page = find_first_body_page(toc_metadata, doc)
 
     if first_body_page is None:
         logger.warning("Could not determine first body page")
-        search_end = min(doc.page_count, MAX_FRONT_MATTER_SCAN_PAGES)
+        heading_search_end = min(doc.page_count, MAX_FRONT_MATTER_SCAN_PAGES)
     else:
-        logger.info("First body page detected: %d", first_body_page)
-        search_end = min(doc.page_count, first_body_page)
+        logger.info("First body page candidate detected: %d", first_body_page)
+        heading_search_end = min(
+            doc.page_count,
+            MAX_FRONT_MATTER_SCAN_PAGES,
+            first_body_page + HEADING_SEARCH_EXTRA_PAGES_AFTER_BODY_CANDIDATE,
+        )
 
     last_toc_page = find_last_toc_page(doc, first_body_page)
 
@@ -989,28 +1105,46 @@ def find_acronym_window(
         logger.info("No TOC-like PDF pages detected")
         search_start = 1
 
-    if search_start > search_end:
+    if search_start > heading_search_end:
         logger.warning(
             "Search range collapsed (start=%d, end=%d). Falling back to 1-%d",
             search_start,
-            search_end,
-            search_end,
+            heading_search_end,
+            heading_search_end,
         )
         search_start = 1
 
-    logger.info("Searching acronym area in pages %d-%d", search_start, search_end)
+    logger.info(
+        "Searching acronym heading/window in pages %d-%d",
+        search_start,
+        heading_search_end,
+    )
 
-    for page_no in range(search_start, search_end + 1):
+    for page_no in range(search_start, heading_search_end + 1):
         page_lines = extract_page_lines(doc.load_page(page_no - 1), page_no)
 
         for line in page_lines:
             if is_real_acronym_heading(line.text):
+                extraction_end = get_acronym_extraction_end_page(
+                    doc=doc,
+                    acronym_start_page=page_no,
+                    first_body_page=first_body_page,
+                )
+
                 logger.info(
-                    "Found real acronym heading on page %d: %r",
+                    "Found real acronym heading on page %d: %r. "
+                    "Extraction window expanded to pages %d-%d",
                     page_no,
                     line.text,
+                    page_no,
+                    extraction_end,
                 )
-                return page_no, search_end, "pdf_real_heading_after_toc_up_to_body"
+
+                return (
+                    page_no,
+                    extraction_end,
+                    "pdf_real_heading_after_toc_scan_until_body",
+                )
 
     if toc_metadata is not None:
         acro_sec = find_acronym_section_from_toc(toc_metadata)
@@ -1021,13 +1155,21 @@ def find_acronym_window(
             doc.page_count,
         ):
             start_page = max(search_start, acro_sec.page_start)
-            end_page = min(search_end, max(acro_sec.page_start, acro_sec.page_end))
+            end_page = get_acronym_extraction_end_page(
+                doc=doc,
+                acronym_start_page=start_page,
+                first_body_page=first_body_page,
+            )
 
             if start_page <= end_page:
-                logger.info("Falling back to TOC acronym section")
-                return start_page, end_page, "toc_acronym_section_fallback"
+                logger.info(
+                    "Falling back to TOC acronym section, expanded to pages %d-%d",
+                    start_page,
+                    end_page,
+                )
+                return start_page, end_page, "toc_acronym_section_expanded_fallback"
 
-    dense_span = find_dense_acronym_span(doc, search_start, search_end)
+    dense_span = find_dense_acronym_span(doc, search_start, heading_search_end)
 
     if dense_span is not None:
         return dense_span[0], dense_span[1], "density_scan_after_toc_up_to_body"
