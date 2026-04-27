@@ -4,7 +4,8 @@ acronym_extractor.py
 Extracts acronym-definition pairs from medical PDFs using multi-stage heuristics
 to locate the acronyms section, parse definitions, and handle common extraction challenges.
 
-Output: JSON file mapping acronym tokens to definitions, with metadata about source and page range.
+Output: JSON file mapping acronym tokens to definitions, with metadata about source,
+status, page range, and suspicious candidates.
 """
 
 import argparse
@@ -21,23 +22,21 @@ import fitz
 from managers.table_of_contents_manager import TOCMetadata
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 TEST_DATA_DIR = ROOT_DIR / "test_data"
 
-PDF_DIR = TEST_DATA_DIR / "pdfdocs"
-TOC_DIR = TEST_DATA_DIR / "toc"
-OUT_DIR = TEST_DATA_DIR / "acronyms"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_PDF_DIR = TEST_DATA_DIR / "pdfdocs"
+DEFAULT_TOC_DIR = TEST_DATA_DIR / "toc"
+DEFAULT_ACRONYM_DIR = TEST_DATA_DIR / "acronyms"
 
 ACRONYM_SAMPLE_SIZE = 25
 PRINT_FULL_ACRONYMS = False
+
+ACRONYM_FILENAME_SUFFIX = "_acronyms.json"
+TOC_FILENAME_SUFFIX = "_toc.json"
 
 ACRO_TITLE_LOOSE_RX = re.compile(
     r"(?i)\b(?:abbreviations?(?:\s+and\s+acronyms?)?|acronyms?)\b"
@@ -47,8 +46,11 @@ ACRO_TITLE_EXACT_RX = re.compile(
     r"(?i)^\s*(?:abbreviations?(?:\s+and\s+acronyms?)?|acronyms?)\s*$"
 )
 
+# Accept ASCII letters and Greek letters in acronym-like tokens (e.g. α-SMA, β-blocker)
 SHORT_SHAPE_RX = re.compile(
-    r"^(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9/\.\-+]{0,31}$"
+    r"^(?=.*[A-Za-zΑ-Ωα-ω])"
+    r"[A-Za-z0-9Α-Ωα-ω]"
+    r"[A-Za-z0-9Α-Ωα-ω/\.\-+\(\)′']{0,31}$"
 )
 
 LINE_NOISE_RX = re.compile(
@@ -157,7 +159,33 @@ class PDFLine:
     text: str
 
 
-def load_optional_toc(toc_path: Path) -> Optional[TOCMetadata]:
+def configure_cli_logging(level: int = logging.INFO) -> None:
+    """
+    Configure logging only for standalone CLI execution.
+
+    The graph pipeline should configure logging itself, so this function is not
+    called at import time.
+    """
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
+
+def get_default_toc_path(toc_dir: Path, doc_id: str) -> Path:
+    return Path(toc_dir) / f"{doc_id}{TOC_FILENAME_SUFFIX}"
+
+
+def get_default_acronym_path(acronym_dir: Path, doc_id: str) -> Path:
+    return Path(acronym_dir) / f"{doc_id}{ACRONYM_FILENAME_SUFFIX}"
+
+
+def load_optional_toc(toc_path: Optional[Path]) -> Optional[TOCMetadata]:
+    if toc_path is None:
+        return None
+
+    toc_path = Path(toc_path)
+
     if not toc_path.exists():
         return None
 
@@ -168,6 +196,25 @@ def load_optional_toc(toc_path: Path) -> Optional[TOCMetadata]:
     except Exception as e:
         logger.warning("Failed to load/validate TOC %s: %s", toc_path.name, e)
         return None
+
+
+def load_cached_acronym_payload(out_path: Path) -> Optional[Dict]:
+    out_path = Path(out_path)
+
+    if not out_path.exists():
+        return None
+
+    try:
+        payload = json.loads(out_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning("Failed to read cached acronym payload %s: %s", out_path, e)
+        return None
+
+    if not isinstance(payload, dict):
+        logger.warning("Cached acronym payload is not a JSON object: %s", out_path)
+        return None
+
+    return payload
 
 
 def find_acronym_section_from_toc(toc_metadata: TOCMetadata):
@@ -517,10 +564,15 @@ def clean_long_definition(long: str) -> str:
     return long.strip(" -–:;")
 
 
+def contains_greek_letter(text: str) -> bool:
+    return any("Α" <= ch <= "Ω" or "α" <= ch <= "ω" for ch in text)
+
+
 def looks_like_short(short: str) -> bool:
     """
     Accept conventional acronym-like strings, including:
-    18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt, mWHO.
+    18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt, mWHO,
+    Lp(a), α-SMA, β-blocker, and E/e′.
 
     This is intentionally strict with simple Titlecase or one-uppercase mixed
     words, otherwise normal PDF text or styled trial fragments can become
@@ -540,7 +592,8 @@ def looks_like_short(short: str) -> bool:
     n_upper = sum(ch.isupper() for ch in s)
     n_lower = sum(ch.islower() for ch in s)
     has_digit = any(ch.isdigit() for ch in s)
-    has_symbol = any(ch in "/.-+" for ch in s)
+    has_symbol = any(ch in "/.-+()′'" for ch in s)
+    has_greek = contains_greek_letter(s)
 
     if n_upper >= 2:
         return True
@@ -554,6 +607,9 @@ def looks_like_short(short: str) -> bool:
     if has_symbol and (n_upper >= 1 or "." in s):
         return True
 
+    if has_greek and has_symbol and len(s) <= 32:
+        return True
+
     if "." in s and len(s) <= 12:
         return True
 
@@ -565,7 +621,7 @@ def clean_short_token(token: str) -> str:
     Clean the acronym token while preserving meaningful dots such as b.p.m.
     """
     token = normalize_spaces(token)
-    token = token.strip("()[],:;")
+    token = token.strip("[],:;")
     return token
 
 
@@ -695,6 +751,10 @@ def should_attach_continuation(
 def add_or_update_acronym(acronyms: Dict[str, str], short: str, long: str) -> None:
     """
     Keep the longer version if the same short form is seen more than once.
+
+    In the current guideline corpus, duplicate acronym keys within the same
+    document are expected to be rare. If duplicates become common, this should
+    be extended to preserve variants instead of keeping only one definition.
     """
     short = clean_short_token(short)
     long = clean_long_definition(long)
@@ -775,7 +835,7 @@ def definition_looks_suspicious(short: str, long: str) -> bool:
     """
     Flag extracted definitions that may need manual inspection.
 
-    This does not delete or modify acronyms. It only logs likely extraction
+    This does not delete or modify acronyms. It only marks likely extraction
     problems, such as truncated definitions or footer fragments.
     """
     long_norm = normalize_spaces(long)
@@ -816,12 +876,24 @@ def definition_looks_suspicious(short: str, long: str) -> bool:
     return False
 
 
+def collect_suspicious_acronyms(acronyms: Dict[str, str]) -> List[Dict[str, str]]:
+    suspicious: List[Dict[str, str]] = []
+
+    for short, long in sorted(acronyms.items()):
+        if definition_looks_suspicious(short, long):
+            suspicious.append(
+                {
+                    "short": short,
+                    "definition": long,
+                    "reason": "definition_may_be_truncated_or_contain_pdf_noise",
+                }
+            )
+
+    return suspicious
+
+
 def warn_on_suspicious_acronyms(doc_id: str, acronyms: Dict[str, str]) -> None:
-    suspicious = [
-        (short, long)
-        for short, long in sorted(acronyms.items())
-        if definition_looks_suspicious(short, long)
-    ]
+    suspicious = collect_suspicious_acronyms(acronyms)
 
     if not suspicious:
         return
@@ -832,8 +904,12 @@ def warn_on_suspicious_acronyms(doc_id: str, acronyms: Dict[str, str]) -> None:
         len(suspicious),
     )
 
-    for short, long in suspicious:
-        logger.warning("Suspicious acronym candidate: %s -> %s", short, long)
+    for item in suspicious:
+        logger.warning(
+            "Suspicious acronym candidate: %s -> %s",
+            item["short"],
+            item["definition"],
+        )
 
 
 def score_page_for_acronyms(doc: fitz.Document, page_no: int) -> int:
@@ -1016,22 +1092,31 @@ def extract_lines_from_page_range(
 
 def build_output_payload(
     doc_id: str,
+    status: str,
     source: str,
     page_start: Optional[int],
     page_end: Optional[int],
     acronyms: Dict[str, str],
 ) -> Dict:
+    suspicious = collect_suspicious_acronyms(acronyms)
+
     return {
         "doc_id": doc_id,
+        "status": status,
         "source": source,
         "page_start": page_start,
         "page_end": page_end,
         "n_acronyms": len(acronyms),
+        "n_suspicious": len(suspicious),
+        "suspicious": suspicious,
         "acronyms": dict(sorted(acronyms.items())),
     }
 
 
 def write_output_payload(out_path: Path, payload: Dict) -> None:
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
     out_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -1064,14 +1149,19 @@ def print_acronyms(
     print()
 
 
-def run_acronym_extraction_for_pdf(
+def extract_acronym_payload_from_pdf(
     pdf_path: Path,
-    sample_size: int = ACRONYM_SAMPLE_SIZE,
-    print_all: bool = PRINT_FULL_ACRONYMS,
-) -> None:
-    doc_id = pdf_path.stem
-    toc_path = TOC_DIR / f"{doc_id}_toc.json"
-    out_path = OUT_DIR / f"{doc_id}_acronyms.json"
+    doc_id: Optional[str] = None,
+    toc_path: Optional[Path] = None,
+) -> Dict:
+    """
+    Extract acronym payload from a single PDF without handling cache logic.
+
+    This is the core extraction function used by both the CLI and the graph
+    preprocessing pipeline wrapper.
+    """
+    pdf_path = Path(pdf_path)
+    doc_id = doc_id or pdf_path.stem
 
     logger.info("Starting acronym extraction for %s", doc_id)
 
@@ -1091,18 +1181,14 @@ def run_acronym_extraction_for_pdf(
 
         if window is None:
             logger.warning("Could not locate acronym section/window for %s", doc_id)
-
-            payload = build_output_payload(
+            return build_output_payload(
                 doc_id=doc_id,
+                status="not_found",
                 source="not_found",
                 page_start=None,
                 page_end=None,
                 acronyms={},
             )
-            write_output_payload(out_path, payload)
-
-            logger.info("Saved empty acronym output to %s", out_path)
-            return
 
         start_page, end_page, source = window
 
@@ -1122,18 +1208,14 @@ def run_acronym_extraction_for_pdf(
 
         if not candidate_lines:
             logger.warning("No candidate lines found in acronym window for %s", doc_id)
-
-            payload = build_output_payload(
+            return build_output_payload(
                 doc_id=doc_id,
+                status="empty_window",
                 source=source,
                 page_start=start_page,
                 page_end=end_page,
                 acronyms={},
             )
-            write_output_payload(out_path, payload)
-
-            logger.info("Saved empty acronym output to %s", out_path)
-            return
 
         logger.info("Collected %d candidate lines for %s", len(candidate_lines), doc_id)
 
@@ -1141,55 +1223,147 @@ def run_acronym_extraction_for_pdf(
 
         if not acronyms:
             logger.warning("No acronyms extracted for %s", doc_id)
-
-            payload = build_output_payload(
+            return build_output_payload(
                 doc_id=doc_id,
+                status="parse_empty",
                 source=source,
                 page_start=start_page,
                 page_end=end_page,
                 acronyms={},
             )
-            write_output_payload(out_path, payload)
-
-            logger.info("Saved empty acronym output to %s", out_path)
-            return
 
         payload = build_output_payload(
             doc_id=doc_id,
+            status="success",
             source=source,
             page_start=start_page,
             page_end=end_page,
             acronyms=acronyms,
         )
 
-        write_output_payload(out_path, payload)
-
-        logger.info("Saved %d acronyms to %s", len(acronyms), out_path)
-
         warn_on_suspicious_acronyms(doc_id, acronyms)
-
-        if sample_size > 0 or print_all:
-            print_acronyms(
-                doc_id=doc_id,
-                acronyms=acronyms,
-                limit=sample_size,
-                print_all=print_all,
-            )
+        return payload
 
     finally:
         doc.close()
+
+
+def load_or_extract_acronyms(
+    pdf_path: Path,
+    doc_id: Optional[str] = None,
+    toc_path: Optional[Path] = None,
+    acronym_dir: Optional[Path] = None,
+    out_path: Optional[Path] = None,
+    force: bool = False,
+    write_output: bool = True,
+    sample_size: int = 0,
+    print_all: bool = False,
+) -> Dict:
+    """
+    Pipeline-friendly cache wrapper.
+
+    Intended call site in build_graph.py preprocessing:
+
+        load_or_extract_acronyms(
+            pdf_path=pdf_path,
+            doc_id=doc_id,
+            toc_path=config.toc_dir / f"{doc_id}_toc.json",
+            acronym_dir=config.acronym_dir,
+            force=config.force_acronyms,
+        )
+
+    If the output JSON already exists and force=False, the cached payload is
+    returned. Otherwise, extraction is run and the JSON artifact is written.
+    """
+    pdf_path = Path(pdf_path)
+    doc_id = doc_id or pdf_path.stem
+
+    if out_path is None:
+        if acronym_dir is None:
+            acronym_dir = DEFAULT_ACRONYM_DIR
+        out_path = get_default_acronym_path(Path(acronym_dir), doc_id)
+    else:
+        out_path = Path(out_path)
+
+    if not force:
+        cached = load_cached_acronym_payload(out_path)
+        if cached is not None:
+            logger.info("Using cached acronym output for %s: %s", doc_id, out_path)
+            return cached
+
+    payload = extract_acronym_payload_from_pdf(
+        pdf_path=pdf_path,
+        doc_id=doc_id,
+        toc_path=toc_path,
+    )
+
+    if write_output:
+        write_output_payload(out_path, payload)
+        logger.info(
+            "Saved acronym output for %s to %s (status=%s, n_acronyms=%d)",
+            doc_id,
+            out_path,
+            payload.get("status"),
+            payload.get("n_acronyms", 0),
+        )
+
+    acronyms = payload.get("acronyms", {})
+    if isinstance(acronyms, dict) and (sample_size > 0 or print_all):
+        print_acronyms(
+            doc_id=doc_id,
+            acronyms=acronyms,
+            limit=sample_size,
+            print_all=print_all,
+        )
+
+    return payload
+
+
+def run_acronym_extraction_for_pdf(
+    pdf_path: Path,
+    toc_dir: Path = DEFAULT_TOC_DIR,
+    acronym_dir: Path = DEFAULT_ACRONYM_DIR,
+    sample_size: int = ACRONYM_SAMPLE_SIZE,
+    print_all: bool = PRINT_FULL_ACRONYMS,
+    force: bool = False,
+) -> Dict:
+    """
+    Backward-compatible single-PDF runner for manual tests / CLI use.
+    """
+    pdf_path = Path(pdf_path)
+    doc_id = pdf_path.stem
+    toc_path = get_default_toc_path(Path(toc_dir), doc_id)
+
+    return load_or_extract_acronyms(
+        pdf_path=pdf_path,
+        doc_id=doc_id,
+        toc_path=toc_path,
+        acronym_dir=Path(acronym_dir),
+        force=force,
+        write_output=True,
+        sample_size=sample_size,
+        print_all=print_all,
+    )
 
 
 def run_acronym_extraction(
     sample_size: int = ACRONYM_SAMPLE_SIZE,
     print_all: bool = PRINT_FULL_ACRONYMS,
     pdf_filter: Optional[str] = None,
+    pdf_dir: Path = DEFAULT_PDF_DIR,
+    toc_dir: Path = DEFAULT_TOC_DIR,
+    acronym_dir: Path = DEFAULT_ACRONYM_DIR,
+    force: bool = False,
 ) -> None:
-    if not PDF_DIR.exists():
-        logger.error("PDF directory not found: %s", PDF_DIR)
+    pdf_dir = Path(pdf_dir)
+    toc_dir = Path(toc_dir)
+    acronym_dir = Path(acronym_dir)
+
+    if not pdf_dir.exists():
+        logger.error("PDF directory not found: %s", pdf_dir)
         return
 
-    pdf_paths = sorted(PDF_DIR.glob("*.pdf"))
+    pdf_paths = sorted(pdf_dir.glob("*.pdf"))
 
     if pdf_filter:
         needle = pdf_filter.lower()
@@ -1203,20 +1377,23 @@ def run_acronym_extraction(
             logger.warning(
                 "No PDF files matching filter %r found in %s",
                 pdf_filter,
-                PDF_DIR,
+                pdf_dir,
             )
         else:
-            logger.warning("No PDF files found in %s", PDF_DIR)
+            logger.warning("No PDF files found in %s", pdf_dir)
         return
 
-    logger.info("Found %d PDF files in %s", len(pdf_paths), PDF_DIR)
+    logger.info("Found %d PDF files in %s", len(pdf_paths), pdf_dir)
 
     for pdf_path in pdf_paths:
         try:
             run_acronym_extraction_for_pdf(
                 pdf_path=pdf_path,
+                toc_dir=toc_dir,
+                acronym_dir=acronym_dir,
                 sample_size=sample_size,
                 print_all=print_all,
+                force=force,
             )
         except Exception as e:
             logger.exception("Failed on %s: %s", pdf_path.name, e)
@@ -1247,14 +1424,46 @@ def parse_args() -> argparse.Namespace:
         help="Optional substring filter to process only matching PDF filenames.",
     )
 
+    parser.add_argument(
+        "--pdf-dir",
+        type=Path,
+        default=DEFAULT_PDF_DIR,
+        help=f"Directory containing input PDFs. Default: {DEFAULT_PDF_DIR}",
+    )
+
+    parser.add_argument(
+        "--toc-dir",
+        type=Path,
+        default=DEFAULT_TOC_DIR,
+        help=f"Directory containing cached TOC JSON files. Default: {DEFAULT_TOC_DIR}",
+    )
+
+    parser.add_argument(
+        "--acronym-dir",
+        type=Path,
+        default=DEFAULT_ACRONYM_DIR,
+        help=f"Directory where acronym JSON files are written. Default: {DEFAULT_ACRONYM_DIR}",
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-extract acronyms even if a cached JSON output already exists.",
+    )
+
     return parser.parse_args()
 
 
 if __name__ == "__main__":
+    configure_cli_logging()
     args = parse_args()
 
     run_acronym_extraction(
         sample_size=args.sample,
         print_all=args.all,
         pdf_filter=args.pdf,
+        pdf_dir=args.pdf_dir,
+        toc_dir=args.toc_dir,
+        acronym_dir=args.acronym_dir,
+        force=args.force,
     )
