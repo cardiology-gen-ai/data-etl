@@ -1,5 +1,5 @@
 Note sull'uso:
-Commando per lanciare gli script dalla cartella data-etl. Nota che si deve spcificare la fase della pipeline tra : "preprocessing", "graph", "entities", "embedings" e "full".
+Commando per lanciare gli script dalla cartella data-etl. Nota che si deve spcificare la fase della pipeline tra : "preprocess", "graph", "entities", "embedings" e "full".
 sbatch --export=ALL,KG_PIPELINE_PHASE=embeddings scripts/main_kg.slurm
 
 Ci sono anche dei piccoli script per controllare ciò che è stato caricato sul grafo:
