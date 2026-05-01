@@ -47,8 +47,6 @@ ACRO_TITLE_EXACT_RX = re.compile(
 )
 
 # Accept ASCII letters, Greek letters, digits, and common acronym symbols.
-# Examples: %HRmax, 18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt,
-# mWHO, Lp(a), α-SMA, β-blocker, and E/e′.
 SHORT_SHAPE_RX = re.compile(
     r"^(?=.*[A-Za-zΑ-Ωα-ω])"
     r"[%A-Za-z0-9Α-Ωα-ω]"
@@ -128,39 +126,156 @@ TRAILING_FOOTER_TOKENS = {
     "2026",
 }
 
-MIXED_CASE_SHORT_WHITELIST = {
+# Generic false-positive words that may appear inside definitions but should
+# not be interpreted as short forms just because they are short words.
+# Important: this is applied case-sensitively
+SHORT_FALSE_POSITIVE_WORDS = {
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "via",
+    "vs",
+    "versus",
+    "with",
+    "without",
+    "after",
+    "before",
+    "between",
+    "during",
+    "following",
+    "care",
+    "case",
+    "class",
+    "data",
+    "drug",
+    "event",
+    "events",
+    "group",
+    "heart",
+    "left",
+    "level",
+    "main",
+    "major",
+    "method",
+    "model",
+    "patient",
+    "patients",
+    "risk",
+    "right",
+    "score",
+    "study",
+    "trial",
+    "type",
+    "valve",
+    "year",
+    "years",
+    "age",
+    "sex",
+    "male",
+    "female",
+    "may",
+    "june",
+    "july",
+}
+
+MIXED_CASE_SHORT_ALLOWLIST = {
     "Ach",
     "Tx",
     "Vmax",
-    "mHealth",
+    "Vmin",
+    "Vmean",
 }
 
+
 CONTINUATION_CONNECTOR_ENDINGS = {
-    "of", "or", "and", "for", "from", "the", "to", "with", "by", "in", "on",
-    "a", "an", "via", "vs", "as", "at",
-    "pulmonary", "stroke", "trial", "disease", "heart", "failure",
-    "left", "right", "ventricular", "atrial",
-    "reduced", "preserved", "mildly",
-    "cardiology", "society", "college", "prevention", "treatment",
-    "association", "american", "care", "approach", "fraction",
-    "infection", "outcome", "study", "group",
-    "syndrome", "classification", "volume", "ratio", "score",
+    "of",
+    "or",
+    "and",
+    "for",
+    "from",
+    "the",
+    "to",
+    "with",
+    "without",
+    "by",
+    "in",
+    "on",
+    "a",
+    "an",
+    "via",
+    "vs",
+    "versus",
+    "as",
+    "at",
+    "after",
+    "before",
+    "between",
+    "during",
+    "following",
+    "followed",
+    "who",
+    "that",
+    "which",
+    "pulmonary",
+    "stroke",
+    "trial",
+    "disease",
+    "heart",
+    "failure",
+    "left",
+    "right",
+    "ventricular",
+    "atrial",
+    "reduced",
+    "preserved",
+    "mildly",
+    "cardiology",
+    "society",
+    "college",
+    "prevention",
+    "treatment",
+    "association",
+    "american",
+    "care",
+    "approach",
+    "fraction",
+    "infection",
+    "outcome",
+    "study",
+    "group",
+    "syndrome",
+    "classification",
+    "volume",
+    "ratio",
+    "score",
+    "ischemic",
+    "ischaemic",
+    "clinical",
+    "patients",
+    "patient",
+    "eligible",
+    "type",
 }
 
 MAX_FRONT_MATTER_SCAN_PAGES = 30
 DENSITY_MIN_BEST_PAGE_SCORE = 8
 DENSITY_NEIGHBOUR_SCORE = 3
 
-# The first body page is sometimes detected too early because the acronym
-# section itself can share a page with front-matter/body-like headings.
-# Therefore, we search a few pages beyond the first body candidate when looking
-# for the actual acronym heading.
+
 HEADING_SEARCH_EXTRA_PAGES_AFTER_BODY_CANDIDATE = 4
 
-# Once the acronym heading is found, do not use first_body_page as a hard cutoff
-# unless it is strictly after the acronym heading. Instead, scan forward with a
-# safe cap and let extract_lines_from_page_range() stop at the first real body
-# heading, e.g. "1. Preamble".
 MAX_ACRONYM_SECTION_PAGES_AFTER_START = 12
 
 
@@ -587,17 +702,257 @@ def contains_greek_letter(text: str) -> bool:
     return any("Α" <= ch <= "Ω" or "α" <= ch <= "ω" for ch in text)
 
 
+def clean_short_token(token: str) -> str:
+    """
+    Clean the acronym token while preserving meaningful dots 
+
+    A trailing dash is removed because some PDFs split repeated acronym labels
+    as "iFR-" or similar at line boundaries.
+    """
+    token = normalize_spaces(token)
+    token = token.strip("[],:;")
+
+    while len(token) > 1 and token[-1] in {"-", "–"}:
+        token = token[:-1].strip()
+
+    return token
+
+
+def normalized_false_positive_key(token: str) -> str:
+    """
+    Normalize a candidate only for false-positive word matching.
+
+    """
+    token = clean_short_token(token).lower()
+    token = token.strip(".()[]{}:;,′'")
+    token = token.replace("/", "")
+    token = token.replace("-", "")
+    token = token.replace("–", "")
+    return token
+
+
+def is_plain_titlecase_word(token: str) -> bool:
+    token = clean_short_token(token)
+    return bool(re.fullmatch(r"[A-Z][a-z]+", token))
+
+
+def is_all_caps_like(token: str) -> bool:
+    token = clean_short_token(token)
+    if not token:
+        return False
+
+    letters = [ch for ch in token if ch.isalpha()]
+    if not letters:
+        return False
+
+    return any(ch.isupper() for ch in letters) and not any(ch.islower() for ch in letters)
+
+
+def is_false_positive_short_word(token: str) -> bool:
+    """
+    Return True for ordinary words that should not be treated as acronyms.
+
+    Crucial detail: all-caps forms are not blocked. This allows valid glossary
+    entries such as AS, AT, and OR, while still blocking ordinary words such as
+    as, at, or, vs., Between, Trial, etc.
+    """
+    token = clean_short_token(token)
+    if not token:
+        return True
+
+    if is_all_caps_like(token):
+        return False
+
+    return normalized_false_positive_key(token) in SHORT_FALSE_POSITIVE_WORDS
+
+
+def has_lowercase_hyphen_segment(token: str) -> bool:
+    """
+    True when a token/short sequence has a hyphenated natural-language segment.
+
+    Examples:
+      B-type, C-reactive, Wave-free, AMP-activated, NT-proBNP, co-transporter 2
+
+    This alone does not reject the token. It is used with stronger acronym
+    markers and definition-start checks.
+    """
+    token = clean_short_token(token)
+    pieces = re.split(r"\s+", token)
+
+    for piece in pieces:
+        if "-" not in piece and "–" not in piece:
+            continue
+        for segment in re.split(r"[-–]", piece):
+            if any(ch.islower() for ch in segment):
+                return True
+
+    return False
+
+
+def has_strong_acronym_marker(token: str) -> bool:
+    """
+    Generic signal that a hyphenated mixed-case item is still acronym-like.
+
+    This keeps forms such as NT-proBNP, 5-HT1A, β-blocker, SCORE2-OP, and
+    CHA2DS2-VASc while rejecting plain phrase fragments like B-type,
+    C-reactive, Wave-free, or Open-Label.
+    """
+    token = clean_short_token(token)
+
+    if any(ch.isdigit() for ch in token):
+        return True
+
+    if contains_greek_letter(token):
+        return True
+
+    if any(ch in "/.()′'%" for ch in token):
+        return True
+
+    # Any run of at least two uppercase letters is a strong acronym marker.
+    if re.search(r"[A-ZΑ-Ω]{2,}", token):
+        return True
+
+    return False
+
+
+def is_upper_prefix_lowercase_hyphen_phrase(token: str) -> bool:
+    """
+    Reject tokens such as AMP-activated when they appear inside a definition.
+
+    They contain an uppercase acronym-looking prefix, but the lowercase
+    hyphenated suffix makes them phrase fragments, not glossary keys.
+    Examples rejected: AMP-activated, ACE-inhibitor.
+    Examples still allowed elsewhere: NT-proBNP, SCORE2-OP, 5-HT1A.
+    """
+    token = clean_short_token(token)
+
+    if not token or any(ch.isdigit() for ch in token):
+        return False
+
+    if contains_greek_letter(token):
+        return False
+
+    pieces = re.split(r"\s+", token)
+    if len(pieces) != 1:
+        return False
+
+    parts = re.split(r"[-–]", pieces[0])
+    if len(parts) < 2:
+        return False
+
+    first = parts[0]
+    rest = parts[1:]
+
+    if not re.fullmatch(r"[A-Z]{2,}", first):
+        return False
+
+    return all(re.fullmatch(r"[a-z][a-z]+", part or "") for part in rest)
+
+
+def is_hyphenated_phrase_fragment(token: str) -> bool:
+    """
+    Reject generic hyphenated natural-language fragments as short forms.
+
+    """
+    token = clean_short_token(token)
+
+    if not has_lowercase_hyphen_segment(token):
+        return False
+
+    return not has_strong_acronym_marker(token)
+
+
+def definition_starts_with_lowercase_word(long: str) -> bool:
+    long = clean_long_definition(long)
+    if not long:
+        return False
+
+    first = long.split()[0].strip(".,;:()[]{}")
+    if not first:
+        return False
+
+    return first[0].islower()
+
+
+def definition_starts_like_glossary_definition(long: str) -> bool:
+    long = clean_long_definition(long)
+    if not long:
+        return False
+
+    first = long.split()[0].strip(".,;:()[]{}")
+    if not first:
+        return False
+
+    return first[0].isupper() or first[0].isdigit() or contains_greek_letter(first)
+
+
+def is_lowercase_hyphen_short(token: str) -> bool:
+    """
+    Accept lower-case hyphenated short forms such as e-cigarettes only when
+    they look acronym-list-like. This is deliberately conservative.
+    """
+    token = clean_short_token(token)
+    lower = token.lower()
+
+    if is_false_positive_short_word(token):
+        return False
+
+    if len(token) > 32:
+        return False
+
+    return bool(re.fullmatch(r"e-[a-z0-9]+(?:-[a-z0-9]+)*\.?", token))
+
+
+def is_generic_mixed_case_short(token: str) -> bool:
+    """
+    Generic replacement for the old MIXED_CASE_SHORT_WHITELIST.
+    """
+    token = clean_short_token(token)
+
+    if not token or " " in token:
+        return False
+
+    if is_false_positive_short_word(token):
+        return False
+
+    if is_hyphenated_phrase_fragment(token):
+        return False
+
+    if len(token) > 24:
+        return False
+    if token in MIXED_CASE_SHORT_ALLOWLIST:
+        return True
+
+
+    n_upper = sum(ch.isupper() for ch in token)
+    n_lower = sum(ch.islower() for ch in token)
+
+    if n_upper == 0 or n_lower == 0:
+        return False
+
+    # Very short Titlecase abbreviations, e.g. Ach, Tx.
+    if is_plain_titlecase_word(token):
+        return 2 <= len(token) <= 3
+
+    # Lowercase prefix with internal uppercase, e.g. mGy, mHealth, eGFR.
+    if token[0].islower() and any(ch.isupper() for ch in token[1:]):
+        return True
+
+    # Internal uppercase beyond the first letter, e.g. EuroHeart, LoDoCo.
+    if token[0].isupper() and any(ch.isupper() for ch in token[1:]):
+        return True
+
+    return False
+
+
 def looks_like_short(short: str) -> bool:
     """
     Accept conventional acronym-like strings, including:
-    %HRmax, 18F-FDG, 99mTc, CHA2DS2-VASc, b.p.m., P/LP, ATTRwt, mWHO,
-    Lp(a), α-SMA, β-blocker, and E/e′.
 
-    This is intentionally strict with simple Titlecase or one-uppercase mixed
-    words, otherwise normal PDF text or styled trial fragments can become
-    false acronym keys.
+    This is intentionally strict with ordinary words, otherwise normal PDF text
+    or styled trial fragments can become false acronym keys.
     """
-    s = normalize_spaces(short)
+    s = clean_short_token(short)
 
     if not SHORT_SHAPE_RX.fullmatch(s):
         return False
@@ -605,8 +960,25 @@ def looks_like_short(short: str) -> bool:
     if s.isdigit():
         return False
 
-    if s in MIXED_CASE_SHORT_WHITELIST:
-        return True
+    if is_false_positive_short_word(s):
+        return False
+
+    # Single-letter Latin or Greek tokens (K, T, Q, β) are usually variables
+    # or definition fragments in these PDFs, not stable acronym keys.
+    if re.fullmatch(r"[A-Za-zΑ-Ωα-ω]", s):
+        return False
+
+    # Avoid treating continuation fragments such as
+    # tomography/Computed as acronym keys. Valid slash acronyms in this corpus
+    # start with an uppercase letter, digit, percent sign, or Greek letter.
+    if "/" in s and s[0].islower() and not any(ch.isdigit() for ch in s):
+        return False
+
+    if is_upper_prefix_lowercase_hyphen_phrase(s):
+        return False
+
+    if is_hyphenated_phrase_fragment(s):
+        return False
 
     n_upper = sum(ch.isupper() for ch in s)
     n_lower = sum(ch.islower() for ch in s)
@@ -632,16 +1004,22 @@ def looks_like_short(short: str) -> bool:
     if "." in s and len(s) <= 12:
         return True
 
+    if is_generic_mixed_case_short(s):
+        return True
+
+    if is_lowercase_hyphen_short(s):
+        return True
+
     return False
 
 
-def clean_short_token(token: str) -> str:
+def is_plain_all_caps_word(part: str) -> bool:
     """
-    Clean the acronym token while preserving meaningful dots such as b.p.m.
+    Plain alphabetic all-caps word used in multi-token study/trial names.
+
     """
-    token = normalize_spaces(token)
-    token = token.strip("[],:;")
-    return token
+    part = clean_short_token(part)
+    return bool(re.fullmatch(r"[A-ZΑ-Ω]{3,}", part))
 
 
 def looks_like_short_sequence(short: str) -> bool:
@@ -652,12 +1030,13 @@ def looks_like_short_sequence(short: str) -> bool:
     - SAVOR-TIMI 53
     - TIMI 50
     - PROVE IT-TIMI 22
+    - GLOBAL LEADERS
 
-    Multi-token forms are only accepted when at least one token after the first
-    contains a digit. This prevents false parses like:
-      ASCEND A Study ...
-    becoming:
-      short = "ASCEND A"
+    Multi-token forms are restricted to avoid false parses like:
+      LVAD LV assist device
+      BAG3 BAG cochaperone-3
+      QRS Q, R and S waves
+      AUGUSTUS Open-Label, 2 × 2 Factorial...
     """
     s = normalize_spaces(short)
 
@@ -667,12 +1046,13 @@ def looks_like_short_sequence(short: str) -> bool:
     if " " not in s:
         return looks_like_short(s)
 
-    parts = s.split()
+    parts = [clean_short_token(p) for p in s.split()]
+    parts = [p for p in parts if p]
 
     if not (2 <= len(parts) <= 4):
         return False
 
-    if len(s) > 48:
+    if len(s) > 64:
         return False
 
     if not looks_like_short(parts[0]):
@@ -681,8 +1061,6 @@ def looks_like_short_sequence(short: str) -> bool:
     has_numeric_suffix = False
 
     for part in parts[1:]:
-        part = clean_short_token(part)
-
         if re.fullmatch(r"\d+[A-Za-z]?", part):
             has_numeric_suffix = True
             continue
@@ -692,7 +1070,15 @@ def looks_like_short_sequence(short: str) -> bool:
 
         return False
 
-    return has_numeric_suffix
+    if has_numeric_suffix:
+        return True
+
+    # Allow plain all-caps multi-word trial/study names such as GLOBAL LEADERS
+    # and DEFINE GPS. Exclude acronym-code pairs such as LVAD LV or CACS-CL CACS.
+    if 2 <= len(parts) <= 3 and all(is_plain_all_caps_word(part) for part in parts):
+        return True
+
+    return False
 
 
 def looks_like_standalone_short_line(line: str) -> bool:
@@ -714,55 +1100,436 @@ def looks_like_standalone_short_line(line: str) -> bool:
     return looks_like_short(s)
 
 
-def parse_acronym_row(line: str) -> Optional[Tuple[str, str]]:
+def find_short_sequence_at(parts: List[str], start_idx: int) -> Optional[Tuple[str, int]]:
     """
-    Parse rows like:
-      AF Atrial fibrillation
-      BNP Brain natriuretic peptide
-      CHA2DS2-VASc Congestive heart failure ...
-      SAVOR-TIMI 53 Saxagliptin Assessment ...
-      %HRmax Percentage of maximum heart rate
+    Find a short-form candidate starting exactly at start_idx.
+
+    Returns:
+      (short, number_of_tokens)
+    """
+    if start_idx >= len(parts) - 1:
+        return None
+
+    max_short_tokens = min(4, len(parts) - start_idx - 1)
+
+    for n_tokens in range(max_short_tokens, 0, -1):
+        raw_short = " ".join(parts[start_idx:start_idx + n_tokens])
+        short = clean_short_token(raw_short)
+
+        if looks_like_short_sequence(short):
+            return short, n_tokens
+
+    return None
+
+
+def row_definition_is_plausible(short: str, long: str) -> bool:
+    """
+    Extra validation after a short/long row has been parsed.
+    """
+    short = clean_short_token(short)
+    long = clean_long_definition(long)
+    long = strip_probable_trailing_page_number(short, long)
+
+    if not short or not long:
+        return False
+
+    if len(long) < 3:
+        return False
+
+    if LINE_NOISE_RX.search(long):
+        return False
+
+    if is_false_positive_short_word(short):
+        return False
+
+    
+    if " " in short and definition_starts_with_lowercase_word(long):
+        return False
+
+    if has_lowercase_hyphen_segment(short) and not definition_starts_like_glossary_definition(long):
+        return False
+
+    if is_lowercase_hyphen_short(short):
+        if not definition_starts_like_glossary_definition(long):
+            return False
+
+    return True
+
+
+def is_confident_embedded_row_boundary(
+    current_long_tokens: List[str],
+    candidate_short: str,
+    after_tokens: List[str],
+) -> bool:
+    """
+    Decide whether a candidate short form inside a physical PDF line is likely
+    a new acronym row rather than part of the current definition.
+
+    Example:
+      ACE-I Angiotensin-converting enzyme inhibitor Ach Acetylcholine
+
+    should split before Ach.
+    """
+    candidate_short = clean_short_token(candidate_short)
+
+    if not current_long_tokens or not after_tokens:
+        return False
+
+    current_long = clean_long_definition(" ".join(current_long_tokens))
+
+    if len(current_long) < 8:
+        return False
+
+    if not looks_like_short_sequence(candidate_short):
+        return False
+
+    if is_false_positive_short_word(candidate_short):
+        return False
+
+    # Embedded boundaries starting with a digit are too risky:
+    # "SCORE2-OP ... Estimation 2-Older Persons" should not split at 2-Older.
+    if candidate_short[0].isdigit():
+        return False
+
+    last_before = current_long_tokens[-1].strip(".,;:()[]").lower()
+
+    if last_before in CONTINUATION_CONNECTOR_ENDINGS:
+        return False
+
+    if has_lowercase_hyphen_segment(candidate_short):
+        first_after = after_tokens[0].strip(".,;:()[]")
+        if not first_after or not definition_starts_like_glossary_definition(first_after):
+            return False
+
+    if is_lowercase_hyphen_short(candidate_short):
+        first_after = after_tokens[0].strip(".,;:()[]")
+        if not first_after or not first_after[0].isupper():
+            return False
+
+    return True
+
+
+def find_next_row_boundary(
+    parts: List[str],
+    long_start_idx: int,
+    search_start_idx: int,
+) -> Optional[Tuple[int, int, str]]:
+    """
+    Search for the next acronym row inside the same physical line.
+
+    Returns:
+      (boundary_idx, short_token_count, short)
+    """
+    for idx in range(search_start_idx, len(parts) - 1):
+        candidate = find_short_sequence_at(parts, idx)
+
+        if candidate is None:
+            continue
+
+        short, n_tokens = candidate
+        current_long_tokens = parts[long_start_idx:idx]
+        after_tokens = parts[idx + n_tokens:]
+
+        if is_confident_embedded_row_boundary(
+            current_long_tokens=current_long_tokens,
+            candidate_short=short,
+            after_tokens=after_tokens,
+        ):
+            return idx, n_tokens, short
+
+    return None
+
+
+def parse_acronym_rows(line: str) -> List[Tuple[str, str]]:
+    """
+    Parse one physical PDF line into one or more acronym rows.
     """
     line = strip_footer_bleed(line)
 
     if not line:
-        return None
+        return []
 
     if line.lstrip().startswith("("):
-        return None
+        return []
 
     parts = line.split()
 
     if len(parts) < 2:
+        return []
+
+    rows: List[Tuple[str, str]] = []
+
+    pos = 0
+    first_short = find_short_sequence_at(parts, pos)
+
+    if first_short is None:
+        return []
+
+    while pos < len(parts) - 1:
+        found = find_short_sequence_at(parts, pos)
+
+        if found is None:
+            break
+
+        short, n_short_tokens = found
+        long_start = pos + n_short_tokens
+
+        if long_start >= len(parts):
+            break
+
+        boundary = find_next_row_boundary(
+            parts=parts,
+            long_start_idx=long_start,
+            search_start_idx=long_start + 1,
+        )
+
+        if boundary is None:
+            long_tokens = parts[long_start:]
+            next_pos = len(parts)
+        else:
+            boundary_idx, _, _ = boundary
+            long_tokens = parts[long_start:boundary_idx]
+            next_pos = boundary_idx
+
+        long = clean_long_definition(" ".join(long_tokens))
+
+        if row_definition_is_plausible(short, long):
+            rows.append((clean_short_token(short), normalize_spaces(long)))
+
+        if boundary is None:
+            break
+
+        pos = next_pos
+
+    return rows
+
+
+def parse_acronym_row(line: str) -> Optional[Tuple[str, str]]:
+    """
+    Backward-compatible helper returning only the first parsed row.
+    """
+    rows = parse_acronym_rows(line)
+    if not rows:
         return None
+    return rows[0]
 
-    max_short_tokens = min(4, len(parts) - 1)
 
-    # Try the longest plausible acronym key first, then fall back to a normal
-    # one-token acronym. This handles "SAVOR-TIMI 53 ..." without breaking
-    # common rows like "ABC Atrial fibrillation Better Care".
-    for n_tokens in range(max_short_tokens, 0, -1):
-        raw_short = " ".join(parts[:n_tokens])
-        raw_long = " ".join(parts[n_tokens:])
+def definition_contains_embedded_row_pattern(long: str) -> bool:
+    """
+    Detect definitions that probably still contain a second acronym row.
+    """
+    long = clean_long_definition(long)
+    parts = long.split()
 
-        short = clean_short_token(raw_short)
-        long = clean_long_definition(raw_long)
+    if len(parts) < 4:
+        return False
 
-        if not looks_like_short_sequence(short):
+    for idx in range(1, len(parts) - 1):
+        candidate = find_short_sequence_at(parts, idx)
+
+        if candidate is None:
             continue
 
-        if short.isdigit():
-            continue
+        short, n_tokens = candidate
+        current_long_tokens = parts[:idx]
+        after_tokens = parts[idx + n_tokens:]
 
-        if len(long) < 3:
-            continue
+        if is_confident_embedded_row_boundary(
+            current_long_tokens=current_long_tokens,
+            candidate_short=short,
+            after_tokens=after_tokens,
+        ):
+            return True
 
-        if LINE_NOISE_RX.search(long):
-            continue
+    return False
 
-        return short, normalize_spaces(long)
 
-    return None
+def definition_looks_suspicious(short: str, long: str) -> bool:
+    """
+    Flag extracted definitions that may need manual inspection.
+
+    This does not delete or modify acronyms. It only marks likely extraction
+    problems, such as truncated definitions, footer fragments, or embedded
+    acronym rows.
+    """
+    long_norm = normalize_spaces(long)
+
+    if not long_norm:
+        return True
+
+    if definition_contains_embedded_row_pattern(long_norm):
+        return True
+
+    words = long_norm.split()
+    last = words[-1].strip(".,;:()[]").lower() if words else ""
+
+    strong_dangling_endings = {
+        "of",
+        "or",
+        "and",
+        "for",
+        "from",
+        "the",
+        "to",
+        "with",
+        "without",
+        "by",
+        "in",
+        "on",
+        "via",
+        "vs",
+        "versus",
+        "as",
+        "at",
+        "after",
+        "before",
+        "between",
+        "during",
+        "following",
+        "followed",
+        "who",
+        "that",
+        "which",
+        "ischemic",
+        "ischaemic",
+        "clinical",
+        "patients",
+        "patient",
+        "eligible",
+        "halt",
+        "fractional",
+    }
+
+    if last in strong_dangling_endings:
+        return True
+
+    if re.search(r"\s(?:0?[1-9]|[12][0-9]|3[01])$", long_norm):
+        if any(ch.isdigit() for ch in short):
+            return False
+
+        combined = f"{short} {long_norm}"
+
+        if re.search(
+            r"(?i)\b(?:type|subunit|factor|kinase|transporter|convertase|"
+            r"plakophilin|receptor|channel|protein|gene|score|trial|study|"
+            r"registry|pregnancy)\s+\d+$",
+            combined,
+        ):
+            return False
+
+        return True
+
+    return False
+
+
+
+def strip_probable_trailing_page_number(short: str, long: str) -> str:
+    """
+    Remove page-number bleed at the end of definitions, without deleting
+    meaningful numeric parts
+    """
+    short = clean_short_token(short)
+    long = normalize_spaces(long)
+
+    match = re.search(r"\s+(\d{1,3})$", long)
+    if not match:
+        return long
+
+    number = match.group(1)
+    before = long[: match.start()].rstrip()
+
+    if not before:
+        return long
+
+    if any(ch.isdigit() for ch in short):
+        return long
+
+    previous_word = before.split()[-1].strip(".,;:()[]").lower()
+
+    numeric_definition_cues = {
+        "type",
+        "factor",
+        "protein",
+        "receptor",
+        "subunit",
+        "channel",
+        "transporter",
+        "kinase",
+        "gene",
+        "score",
+        "class",
+        "phase",
+        "stage",
+        "grade",
+        "trial",
+        "study",
+        "registry",
+    }
+
+    if previous_word in numeric_definition_cues:
+        return long
+
+    if number.startswith("0"):
+        return before
+
+    if len(number) <= 2:
+        return before
+
+    return long
+def add_or_update_acronym(acronyms: Dict[str, str], short: str, long: str) -> None:
+    """
+    Store one definition per acronym.
+    """
+    short = clean_short_token(short)
+    long = clean_long_definition(long)
+    long = strip_probable_trailing_page_number(short, long)
+
+    if not short or not long:
+        return
+
+    existing = acronyms.get(short)
+
+    if existing is None:
+        acronyms[short] = long
+        return
+
+    existing_norm = normalize_spaces(existing).lower()
+    new_norm = normalize_spaces(long).lower()
+
+    if existing_norm == new_norm:
+        return
+
+    existing_suspicious = definition_looks_suspicious(short, existing)
+    new_suspicious = definition_looks_suspicious(short, long)
+
+    if existing_suspicious and not new_suspicious:
+        acronyms[short] = long
+        return
+
+    if not existing_suspicious and new_suspicious:
+        return
+    
+    if (
+        not existing_suspicious
+        and definition_starts_like_glossary_definition(existing)
+        and definition_starts_with_lowercase_word(long)
+    ):
+        return
+
+    if new_norm.startswith(existing_norm) and not existing_suspicious:
+        return
+
+    if existing_norm.startswith(new_norm) and not new_suspicious:
+        acronyms[short] = long
+        return
+
+    if not existing_suspicious and not new_suspicious:
+        if len(long) < len(existing):
+            acronyms[short] = long
+        return
+
+    if len(long) < len(existing):
+        acronyms[short] = long
 
 
 def should_attach_continuation(
@@ -787,8 +1554,8 @@ def should_attach_continuation(
     if is_acronym_heading(text):
         return False
 
-    parsed = parse_acronym_row(text)
-    if parsed is not None:
+    parsed_rows = parse_acronym_rows(text)
+    if parsed_rows:
         return False
 
     if looks_like_standalone_short_line(text):
@@ -828,26 +1595,6 @@ def should_attach_continuation(
     return False
 
 
-def add_or_update_acronym(acronyms: Dict[str, str], short: str, long: str) -> None:
-    """
-    Keep the longer version if the same short form is seen more than once.
-
-    In the current guideline corpus, duplicate acronym keys within the same
-    document are expected to be rare. If duplicates become common, this should
-    be extended to preserve variants instead of keeping only one definition.
-    """
-    short = clean_short_token(short)
-    long = clean_long_definition(long)
-
-    if not short or not long:
-        return
-
-    existing = acronyms.get(short)
-
-    if existing is None or len(long) > len(existing):
-        acronyms[short] = long
-
-
 def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
     acronyms: Dict[str, str] = {}
 
@@ -862,12 +1609,13 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
             prev_line = line
             continue
 
-        parsed = parse_acronym_row(text)
+        parsed_rows = parse_acronym_rows(text)
 
-        if parsed is not None:
-            short, long = parsed
-            add_or_update_acronym(acronyms, short, long)
-            current_short = short
+        if parsed_rows:
+            for short, long in parsed_rows:
+                add_or_update_acronym(acronyms, short, long)
+
+            current_short = parsed_rows[-1][0]
             pending_short = None
             prev_line = line
             continue
@@ -911,51 +1659,6 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
     return acronyms
 
 
-def definition_looks_suspicious(short: str, long: str) -> bool:
-    """
-    Flag extracted definitions that may need manual inspection.
-
-    This does not delete or modify acronyms. It only marks likely extraction
-    problems, such as truncated definitions or footer fragments.
-    """
-    long_norm = normalize_spaces(long)
-
-    if not long_norm:
-        return True
-
-    words = long_norm.split()
-    last = words[-1].strip(".,;:()[]").lower() if words else ""
-
-    strong_dangling_endings = {
-        "of", "or", "and", "for", "from", "the", "to", "with", "without",
-        "by", "in", "on", "via", "vs", "versus", "as", "at", "after",
-        "following", "followed", "who", "that", "which", "ischemic",
-        "ischaemic", "clinical", "patients", "patient", "eligible",
-        "halt",
-    }
-
-    if last in strong_dangling_endings:
-        return True
-
-    if re.search(r"\s(?:0?[1-9]|[12][0-9]|3[01])$", long_norm):
-        if any(ch.isdigit() for ch in short):
-            return False
-
-        combined = f"{short} {long_norm}"
-
-        if re.search(
-            r"(?i)\b(?:type|subunit|factor|kinase|transporter|convertase|"
-            r"plakophilin|receptor|channel|protein|gene|score|trial|study|"
-            r"registry|pregnancy)\s+\d+$",
-            combined,
-        ):
-            return False
-
-        return True
-
-    return False
-
-
 def collect_suspicious_acronyms(acronyms: Dict[str, str]) -> List[Dict[str, str]]:
     suspicious: List[Dict[str, str]] = []
 
@@ -994,7 +1697,7 @@ def warn_on_suspicious_acronyms(doc_id: str, acronyms: Dict[str, str]) -> None:
 
 def score_page_for_acronyms(doc: fitz.Document, page_no: int) -> int:
     lines = extract_page_lines(doc.load_page(page_no - 1), page_no)
-    return sum(1 for line in lines if parse_acronym_row(line.text) is not None)
+    return sum(len(parse_acronym_rows(line.text)) for line in lines)
 
 
 def find_dense_acronym_span(
@@ -1051,13 +1754,6 @@ def get_acronym_extraction_end_page(
 ) -> int:
     """
     Return a safe provisional end page for acronym extraction.
-
-    Important:
-    - first_body_page is only trusted if it is strictly after the acronym start.
-    - If first_body_page equals the acronym page, it may be a TOC/page-mapping
-      mistake, so we do not use it as a hard cutoff.
-    - extract_lines_from_page_range() will still stop early when it sees
-      a real body heading such as "1. Preamble".
     """
     hard_end = min(
         doc.page_count,
