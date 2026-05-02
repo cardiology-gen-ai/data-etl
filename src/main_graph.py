@@ -23,6 +23,7 @@ class GraphPipelineConfig:
     Important:
     - pdf_dir must match preprocessing_config.input_folder.folder
     - markdown_dir must match preprocessing_config.output_folder.folder
+    - acronym_dir stores one cached acronym dictionary per document
     """
     pdf_dir: Path
     toc_dir: Path
@@ -30,6 +31,7 @@ class GraphPipelineConfig:
     image_dir: Path
     anchor_dir: Path
     chunk_dir: Path
+    acronym_dir: Path
     preprocessing_config: Any
 
     # Preprocessing stage toggle
@@ -40,6 +42,14 @@ class GraphPipelineConfig:
     force_markdown: bool = False
     force_anchors: bool = False
     force_chunks: bool = False
+    force_acronyms: bool = False
+
+    # Acronym extraction
+    # This is used only during preprocessing/full runs.
+    # It creates cached JSON files and does not write anything to Neo4j.
+    run_acronym_extraction: bool = True
+    acronym_sample_size: int = 0
+    acronym_print_all: bool = False
 
     # Pipeline stage toggles
     run_graph_loader: bool = True
@@ -177,6 +187,10 @@ def make_graph_pipeline_config(
     pdf_dir: Path,
     work_root: Path,
     run_preprocessing: bool = False,
+    run_acronym_extraction: bool = True,
+    force_acronyms: bool = False,
+    acronym_sample_size: int = 0,
+    acronym_print_all: bool = False,
     run_graph_loader: bool = True,
     run_entity_extraction: bool = False,
     run_embeddings: bool = False,
@@ -201,6 +215,7 @@ def make_graph_pipeline_config(
         image_dir=(work_root / "images").resolve(),
         anchor_dir=(work_root / "anchors").resolve(),
         chunk_dir=(work_root / "chunks").resolve(),
+        acronym_dir=(work_root / "acronyms").resolve(),
         preprocessing_config=preprocessing_config,
 
         run_preprocessing=run_preprocessing,
@@ -209,6 +224,11 @@ def make_graph_pipeline_config(
         force_markdown=False,
         force_anchors=False,
         force_chunks=False,
+        force_acronyms=force_acronyms,
+
+        run_acronym_extraction=run_acronym_extraction,
+        acronym_sample_size=acronym_sample_size,
+        acronym_print_all=acronym_print_all,
 
         run_graph_loader=run_graph_loader,
         run_entity_extraction=run_entity_extraction,
@@ -277,6 +297,10 @@ def main(
     work_root: Path,
     clear_neo4j_before_run: bool = False,
     run_preprocessing: bool = False,
+    run_acronym_extraction: bool = True,
+    force_acronyms: bool = False,
+    acronym_sample_size: int = 0,
+    acronym_print_all: bool = False,
     run_graph_loader: bool = True,
     run_entity_extraction: bool = False,
     run_embeddings: bool = False,
@@ -350,6 +374,10 @@ def main(
         pdf_dir=pdf_dir,
         work_root=work_root,
         run_preprocessing=run_preprocessing,
+        run_acronym_extraction=run_acronym_extraction,
+        force_acronyms=force_acronyms,
+        acronym_sample_size=acronym_sample_size,
+        acronym_print_all=acronym_print_all,
         run_graph_loader=run_graph_loader,
         run_entity_extraction=run_entity_extraction,
         run_embeddings=run_embeddings,
@@ -412,6 +440,10 @@ if __name__ == "__main__":
             work_root=work_root,
             clear_neo4j_before_run=False,
             run_preprocessing=True,
+            run_acronym_extraction=True,
+            force_acronyms=False,
+            acronym_sample_size=0,
+            acronym_print_all=False,
             run_graph_loader=False,
             run_entity_extraction=False,
             run_embeddings=False,
@@ -433,6 +465,7 @@ if __name__ == "__main__":
             work_root=work_root,
             clear_neo4j_before_run=True,
             run_preprocessing=False,
+            run_acronym_extraction=False,
             run_graph_loader=True,
             run_entity_extraction=False,
             run_embeddings=False,
@@ -455,6 +488,7 @@ if __name__ == "__main__":
             work_root=work_root,
             clear_neo4j_before_run=False,
             run_preprocessing=False,
+            run_acronym_extraction=False,
             run_graph_loader=False,
             run_entity_extraction=True,
             run_embeddings=False,
@@ -476,6 +510,7 @@ if __name__ == "__main__":
             work_root=work_root,
             clear_neo4j_before_run=False,
             run_preprocessing=False,
+            run_acronym_extraction=False,
             run_graph_loader=False,
             run_entity_extraction=False,
             run_embeddings=True,
@@ -497,6 +532,10 @@ if __name__ == "__main__":
             work_root=work_root,
             clear_neo4j_before_run=True,
             run_preprocessing=True,
+            run_acronym_extraction=True,
+            force_acronyms=False,
+            acronym_sample_size=0,
+            acronym_print_all=False,
             run_graph_loader=True,
             run_entity_extraction=True,
             run_embeddings=True,
