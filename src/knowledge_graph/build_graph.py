@@ -5,6 +5,7 @@ Flexible graph pipeline for the knowledge graph workflow.
 
 Main responsibilities:
 - optionally run preprocessing and chunk preparation from PDFs
+- optionally extract and cache per-document acronym dictionaries during preprocessing (acronyms aren't directly used for concept creation)
 - optionally load graph structure into Neo4j from cached chunk files
 - optionally run entity extraction and embeddings on existing graph data
 - optionally run global concept disambiguation
@@ -22,6 +23,7 @@ from managers.table_of_contents_manager import GuidelineTOCExtractor
 from managers.markdown_conversion_manager import MarkdownConverter
 from managers.markdown_manager import MarkdownManager
 from managers.hierarchical_chunking_manager import build_hierarchical_chunks
+from managers.acronym_extractor import load_or_extract_acronyms
 
 from knowledge_graph.neo4j_utils import get_neo4j_driver, close_driver
 from knowledge_graph.graph_loader import build_graph_from_chunks
@@ -38,6 +40,34 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def get_acronym_dir(config) -> Path:
+    """
+    Return the directory used for per-document acronym JSON caches.
+
+    If config.acronym_dir is provided, use that directly. Otherwise, default to a sibling directory of the chunk_dir named "acronyms".
+    """
+    acronym_dir = getattr(config, "acronym_dir", None)
+
+    if acronym_dir is not None:
+        return Path(acronym_dir)
+
+    return Path(config.chunk_dir).parent / "acronyms"
+
+
+def get_cached_acronym_path(config, doc_id: str) -> Path:
+    return get_acronym_dir(config) / f"{doc_id}_acronyms.json"
+
+
+def should_run_acronym_extraction(config) -> bool:
+    """
+    Acronym extraction is part of preprocessing by default.
+
+    Set config.run_acronym_extraction = False only if you explicitly want to
+    skip this cache generation step.
+    """
+    return bool(getattr(config, "run_acronym_extraction", True))
+
+
 def ensure_pipeline_dirs(config) -> None:
     """
     Create all required output/cache directories for the graph pipeline.
@@ -47,6 +77,9 @@ def ensure_pipeline_dirs(config) -> None:
     ensure_dir(Path(config.image_dir))
     ensure_dir(Path(config.anchor_dir))
     ensure_dir(Path(config.chunk_dir))
+
+    if should_run_acronym_extraction(config):
+        ensure_dir(get_acronym_dir(config))
 
 
 def requires_neo4j(config) -> bool:
@@ -140,6 +173,41 @@ def load_or_extract_toc(config, pdf_path: Path, doc_id: str) -> Dict[str, Any]:
     extractor.save(str(toc_path))
 
     return json.loads(toc_path.read_text(encoding="utf-8"))
+
+
+def load_or_extract_document_acronyms(
+    config,
+    pdf_path: Path,
+    doc_id: str,
+) -> Dict[str, Any]:
+    """
+    Load or extract the per-document acronym cache.
+
+    This function does not require the already-loaded TOC object.
+    It passes the expected TOC cache path to the acronym extractor; if that TOC
+    file exists, the extractor can use it, otherwise it safely falls back to PDF
+    heuristics only.
+    """
+    acronym_payload = load_or_extract_acronyms(
+        pdf_path=pdf_path,
+        doc_id=doc_id,
+        toc_path=Path(config.toc_dir) / f"{doc_id}_toc.json",
+        acronym_dir=get_acronym_dir(config),
+        force=getattr(config, "force_acronyms", False),
+        write_output=True,
+        sample_size=getattr(config, "acronym_sample_size", 0),
+        print_all=getattr(config, "acronym_print_all", False),
+    )
+
+    logger.info(
+        "Acronym cache for %s | status=%s | n_acronyms=%s | n_suspicious=%s",
+        doc_id,
+        acronym_payload.get("status"),
+        acronym_payload.get("n_acronyms"),
+        acronym_payload.get("n_suspicious"),
+    )
+
+    return acronym_payload
 
 
 def load_or_convert_markdown(
@@ -293,29 +361,70 @@ def preprocess_single_document(
     pdf_path: Path,
 ) -> Dict[str, Any]:
     """
-    Run only preprocessing/chunk preparation for one PDF.
+    Run preprocessing/chunk preparation for one PDF.
+
+    Acronym extraction is independent from chunk creation, but it
+    should run after the TOC cache has been created/loaded, alloeing for TOC metadata usage.
     """
     doc_id = pdf_path.stem
     logger.info("=== Preprocessing %s ===", doc_id)
 
     chunk_path = get_cached_chunk_path(config, doc_id)
 
+    toc: Optional[Dict[str, Any]] = None
+    acronym_payload: Optional[Dict[str, Any]] = None
+
+
+    # If acronym extraction is enabled, create/load the TOC first
+    if should_run_acronym_extraction(config):
+        toc = load_or_extract_toc(config, pdf_path, doc_id)
+
+        acronym_payload = load_or_extract_document_acronyms(
+            config=config,
+            pdf_path=pdf_path,
+            doc_id=doc_id,
+        )
+
     if chunk_path.exists() and not getattr(config, "force_chunks", False):
         logger.info("Chunk cache already available for %s", doc_id)
         return {
             "doc_id": doc_id,
             "chunk_path": str(chunk_path),
+            "acronym_path": (
+                str(get_cached_acronym_path(config, doc_id))
+                if should_run_acronym_extraction(config)
+                else None
+            ),
+            "acronym_status": (
+                acronym_payload.get("status")
+                if acronym_payload is not None
+                else None
+            ),
+            "n_acronyms": (
+                acronym_payload.get("n_acronyms")
+                if acronym_payload is not None
+                else None
+            ),
+            "n_suspicious_acronyms": (
+                acronym_payload.get("n_suspicious")
+                if acronym_payload is not None
+                else None
+            ),
             "source": "preprocessing_cache",
         }
 
-    toc = load_or_extract_toc(config, pdf_path, doc_id)
+    if toc is None:
+        toc = load_or_extract_toc(config, pdf_path, doc_id)
+
     markdown_text = load_or_convert_markdown(config, md_converter, pdf_path, doc_id)
+
     markdown_manager, anchors = load_or_compute_anchors(
         config=config,
         pdf_path=pdf_path,
         markdown_text=markdown_text,
         doc_id=doc_id,
     )
+
     chunk_path = load_or_build_chunks(
         config=config,
         toc=toc,
@@ -327,6 +436,26 @@ def preprocess_single_document(
     return {
         "doc_id": doc_id,
         "chunk_path": str(chunk_path),
+        "acronym_path": (
+            str(get_cached_acronym_path(config, doc_id))
+            if should_run_acronym_extraction(config)
+            else None
+        ),
+        "acronym_status": (
+            acronym_payload.get("status")
+            if acronym_payload is not None
+            else None
+        ),
+        "n_acronyms": (
+            acronym_payload.get("n_acronyms")
+            if acronym_payload is not None
+            else None
+        ),
+        "n_suspicious_acronyms": (
+            acronym_payload.get("n_suspicious")
+            if acronym_payload is not None
+            else None
+        ),
         "source": "preprocessing_built",
     }
 
