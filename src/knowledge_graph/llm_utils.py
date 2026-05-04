@@ -1,3 +1,10 @@
+"""
+llm_utils.py
+
+Local LLM/embedding utilities for the knowledge-graph pipeline.
+"""
+
+import gc
 import logging
 import os
 from functools import lru_cache
@@ -63,6 +70,28 @@ def _ensure_json_only_instruction(text: str) -> str:
     return text
 
 
+def _clear_cuda_cache() -> None:
+    """
+    Best-effort CUDA cache cleanup.
+
+    This does not magically free tensors that are still referenced somewhere,
+    but after lru_cache.clear_cache() and gc.collect(), it helps release cached
+    GPU memory back to PyTorch/CUDA.
+    """
+    if not torch.cuda.is_available():
+        return
+
+    try:
+        torch.cuda.empty_cache()
+    except Exception as e:
+        logger.warning("torch.cuda.empty_cache() failed: %s", e)
+
+    try:
+        torch.cuda.ipc_collect()
+    except Exception as e:
+        logger.debug("torch.cuda.ipc_collect() failed or unavailable: %s", e)
+
+
 def get_chat_model_ref() -> str:
     """
     Return the reference used to load the chat model.
@@ -80,7 +109,9 @@ def get_embedding_model_ref() -> str:
     If KG_EMBEDDING_MODEL_PATH is set, loading uses that local/custom path.
     Otherwise KG_EMBEDDING_MODEL is used.
     """
-    return _get_optional_env("KG_EMBEDDING_MODEL_PATH") or _get_required_env("KG_EMBEDDING_MODEL")
+    return _get_optional_env("KG_EMBEDDING_MODEL_PATH") or _get_required_env(
+        "KG_EMBEDDING_MODEL"
+    )
 
 
 def get_chat_model_name() -> str:
@@ -119,11 +150,14 @@ def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]
     if tokenizer.pad_token is None and tokenizer.eos_token is not None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # torch_dtype is the most widely compatible argument name across
+    # Transformers versions. Your previous dtype="auto" may work in newer
+    # versions, but torch_dtype="auto" is safer on many clusters.
     model = AutoModelForCausalLM.from_pretrained(
         model_ref,
         token=hf_token,
         local_files_only=local_files_only,
-        dtype="auto",
+        torch_dtype="auto",
         device_map="auto",
     )
 
@@ -136,7 +170,11 @@ def get_embedding_model() -> SentenceTransformer:
     model_ref = get_embedding_model_ref()
     hf_token = _get_optional_env("HF_TOKEN")
     local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Optional override is useful on clusters, but defaults to CUDA when present.
+    device = _get_optional_env("KG_EMBEDDING_DEVICE")
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
     logger.info(
         "Loading embedding model | model_ref=%s | model_name=%s | local_files_only=%s | device=%s",
@@ -154,6 +192,45 @@ def get_embedding_model() -> SentenceTransformer:
     )
 
     return model
+
+
+def clear_chat_model_cache() -> None:
+    """
+    Release the cached chat tokenizer/model and clear CUDA cache.
+
+    Use this after entity extraction and before embedding generation when
+    running both stages in the same Python process.
+    """
+    logger.info("Clearing cached chat model/tokenizer")
+
+    get_chat_tokenizer_and_model.cache_clear()
+    gc.collect()
+    _clear_cuda_cache()
+
+
+def clear_embedding_model_cache() -> None:
+    """
+    Release the cached embedding model and clear CUDA cache.
+
+    Useful if a later stage in the same process needs to load the chat model again.
+    """
+    logger.info("Clearing cached embedding model")
+
+    get_embedding_model.cache_clear()
+    gc.collect()
+    _clear_cuda_cache()
+
+
+def clear_all_model_caches() -> None:
+    """
+    Release all cached model objects managed by this module.
+    """
+    logger.info("Clearing all cached LLM/embedding models")
+
+    get_chat_tokenizer_and_model.cache_clear()
+    get_embedding_model.cache_clear()
+    gc.collect()
+    _clear_cuda_cache()
 
 
 def generate_chat_text(
