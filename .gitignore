@@ -90,3 +90,5 @@ index/
 src/azure.py
 old_test_data/
 original_kg/
+src/knowledge_graph/cleanup_before_retest.py
+scripts/cleanup.slurm
