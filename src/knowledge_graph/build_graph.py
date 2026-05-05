@@ -5,9 +5,10 @@ Flexible graph pipeline for the knowledge graph workflow.
 
 Main responsibilities:
 - optionally run preprocessing and chunk preparation from PDFs
-- optionally extract and cache per-document acronym dictionaries during preprocessing (acronyms aren't directly used for concept creation)
+- optionally extract and cache per-document acronym dictionaries during preprocessing
 - optionally load graph structure into Neo4j from cached chunk files
 - optionally run entity extraction and embeddings on existing graph data
+- optionally use cached document-level acronyms during entity validation
 - optionally run global concept disambiguation
 - optionally run sanity checks, using the phase-aware sanity_mode provided
   by the pipeline config (for example: structure, entities, embeddings, full)
@@ -17,7 +18,7 @@ Main responsibilities:
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from managers.table_of_contents_manager import GuidelineTOCExtractor
 from managers.markdown_conversion_manager import MarkdownConverter
@@ -31,6 +32,7 @@ from knowledge_graph.add_entities import add_entities_from_sections
 from knowledge_graph.entity_disambiguation import disambiguate_concepts
 from knowledge_graph.add_embeddings import add_embeddings_to_sections
 from knowledge_graph.sanity_checks import run_sanity_checks
+from knowledge_graph.llm_utils import clear_chat_model_cache
 
 
 logger = logging.getLogger(__name__)
@@ -40,11 +42,26 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def optional_path(value: Any) -> Optional[Path]:
+    """
+    Convert optional config path values to Path objects.
+
+    Accepts:
+    - None -> None
+    - str -> Path(str)
+    - Path -> Path
+    """
+    if value is None:
+        return None
+    return Path(value)
+
+
 def get_acronym_dir(config) -> Path:
     """
     Return the directory used for per-document acronym JSON caches.
 
-    If config.acronym_dir is provided, use that directly. Otherwise, default to a sibling directory of the chunk_dir named "acronyms".
+    If config.acronym_dir is provided, use that directly.
+    Otherwise, default to a sibling directory of chunk_dir named "acronyms".
     """
     acronym_dir = getattr(config, "acronym_dir", None)
 
@@ -52,6 +69,26 @@ def get_acronym_dir(config) -> Path:
         return Path(acronym_dir)
 
     return Path(config.chunk_dir).parent / "acronyms"
+
+
+def get_entity_acronym_dir(config) -> Path:
+    """
+    Return the acronym directory used during entity validation.
+
+    Priority:
+    1. config.entity_acronym_dir, if provided
+    2. config.acronym_dir, if provided
+    3. sibling directory of chunk_dir named "acronyms"
+
+    This allows acronym extraction and entity validation to share the same cache
+    by default, while still allowing an override for entity-only runs.
+    """
+    entity_acronym_dir = getattr(config, "entity_acronym_dir", None)
+
+    if entity_acronym_dir is not None:
+        return Path(entity_acronym_dir)
+
+    return get_acronym_dir(config)
 
 
 def get_cached_acronym_path(config, doc_id: str) -> Path:
@@ -68,6 +105,31 @@ def should_run_acronym_extraction(config) -> bool:
     return bool(getattr(config, "run_acronym_extraction", True))
 
 
+def should_use_acronym_validation(config) -> bool:
+    """
+    Whether entity validation should load cached acronym dictionaries.
+
+    Default: True.
+
+    This does not extract acronyms by itself. It only tells add_entities.py to
+    look for already-cached acronym JSON files and use them as validation support.
+    """
+    return bool(getattr(config, "entity_use_acronym_validation", True))
+
+
+def should_clear_chat_cache_before_embeddings(config) -> bool:
+    """
+    Whether to clear the cached chat model before the embeddings phase.
+
+    Default: True.
+
+    This matters when entity extraction and embeddings run in the same Python
+    process. Entity extraction loads the chat model; embeddings load the embedding
+    model. On GPU-constrained nodes, keeping both cached can cause CUDA OOM.
+    """
+    return bool(getattr(config, "clear_chat_cache_before_embeddings", True))
+
+
 def ensure_pipeline_dirs(config) -> None:
     """
     Create all required output/cache directories for the graph pipeline.
@@ -80,6 +142,12 @@ def ensure_pipeline_dirs(config) -> None:
 
     if should_run_acronym_extraction(config):
         ensure_dir(get_acronym_dir(config))
+
+    if (
+        getattr(config, "run_entity_extraction", False)
+        and should_use_acronym_validation(config)
+    ):
+        ensure_dir(get_entity_acronym_dir(config))
 
 
 def requires_neo4j(config) -> bool:
@@ -116,7 +184,8 @@ def needs_document_level_processing(config) -> bool:
 
 def validate_preprocessing_paths(config) -> None:
     """
-    Ensure that the graph pipeline paths are correct and consistent with the MarkdownConverter configuration.
+    Ensure that the graph pipeline paths are correct and consistent with the
+    MarkdownConverter configuration.
     """
     preprocessing_config = getattr(config, "preprocessing_config", None)
     if preprocessing_config is None:
@@ -198,6 +267,21 @@ def load_or_extract_document_acronyms(
         sample_size=getattr(config, "acronym_sample_size", 0),
         print_all=getattr(config, "acronym_print_all", False),
     )
+
+    if acronym_payload is None:
+        logger.warning(
+            "Acronym extractor returned None for %s; using empty failed payload",
+            doc_id,
+        )
+        acronym_payload = {
+            "doc_id": doc_id,
+            "status": "failed",
+            "source": "extractor_returned_none",
+            "n_acronyms": 0,
+            "n_suspicious": 0,
+            "suspicious": [],
+            "acronyms": {},
+        }
 
     logger.info(
         "Acronym cache for %s | status=%s | n_acronyms=%s | n_suspicious=%s",
@@ -363,8 +447,8 @@ def preprocess_single_document(
     """
     Run preprocessing/chunk preparation for one PDF.
 
-    Acronym extraction is independent from chunk creation, but it
-    should run after the TOC cache has been created/loaded, alloeing for TOC metadata usage.
+    Acronym extraction is independent from chunk creation, but it should run
+    after the TOC cache has been created/loaded, allowing TOC metadata usage.
     """
     doc_id = pdf_path.stem
     logger.info("=== Preprocessing %s ===", doc_id)
@@ -374,8 +458,6 @@ def preprocess_single_document(
     toc: Optional[Dict[str, Any]] = None
     acronym_payload: Optional[Dict[str, Any]] = None
 
-
-    # If acronym extraction is enabled, create/load the TOC first
     if should_run_acronym_extraction(config):
         toc = load_or_extract_toc(config, pdf_path, doc_id)
 
@@ -460,6 +542,120 @@ def preprocess_single_document(
     }
 
 
+def process_document_graph_loading(
+    driver,
+    config,
+    doc_id: str,
+    chunk_path: Optional[Path],
+) -> Optional[str]:
+    """
+    Load graph structure for one document.
+    """
+    if chunk_path is None:
+        raise ValueError(
+            f"Graph loading requested for document {doc_id}, but chunk_path is missing."
+        )
+
+    logger.info("Loading graph structure into Neo4j for document %s", doc_id)
+
+    return build_graph_from_chunks(
+        driver=driver,
+        chunk_file=chunk_path,
+        batch_size=getattr(config, "graph_loader_batch_size", 200),
+        replace_existing_document=getattr(
+            config,
+            "graph_loader_replace_existing_document",
+            True,
+        ),
+    )
+
+
+def process_document_entity_extraction(
+    driver,
+    config,
+    doc_id: str,
+) -> Dict[str, int]:
+    """
+    Run entity extraction for one document.
+    """
+    use_acronym_validation = should_use_acronym_validation(config)
+    entity_acronym_dir = (
+        get_entity_acronym_dir(config)
+        if use_acronym_validation
+        else None
+    )
+
+    logger.info(
+        "Extracting entities for document %s | acronym_validation=%s | acronym_dir=%s",
+        doc_id,
+        use_acronym_validation,
+        entity_acronym_dir,
+    )
+
+    return add_entities_from_sections(
+        driver=driver,
+        doc_id=doc_id,
+        use_section_text=getattr(config, "entity_use_section_text", False),
+        max_sections=getattr(config, "entity_max_sections", None),
+        max_sections_per_batch=getattr(config, "entity_max_sections_per_batch", 2),
+        max_batch_chars=getattr(config, "entity_max_batch_chars", 12000),
+        emergency_max_single_chars=getattr(
+            config,
+            "entity_emergency_max_single_chars",
+            12000,
+        ),
+        skip_processed=getattr(config, "entity_skip_processed", True),
+        replace_section_mentions=getattr(
+            config,
+            "entity_replace_section_mentions",
+            True,
+        ),
+        export_entity_review=getattr(config, "entity_export_review", True),
+        entity_review_output_dir=optional_path(
+            getattr(config, "entity_review_output_dir", None)
+        ),
+        clear_previous_entity_review=getattr(
+            config,
+            "entity_clear_previous_review",
+            True,
+        ),
+        include_source_preview_in_review=getattr(
+            config,
+            "entity_include_source_preview_in_review",
+            False,
+        ),
+        acronym_dir=entity_acronym_dir,
+        use_acronym_validation=use_acronym_validation,
+    )
+
+
+def process_document_embeddings(
+    driver,
+    config,
+    doc_id: str,
+) -> Dict[str, int]:
+    """
+    Compute embeddings for one document.
+    """
+    logger.info("Computing embeddings for document %s", doc_id)
+
+    return add_embeddings_to_sections(
+        driver=driver,
+        doc_id=doc_id,
+        max_sections=getattr(config, "embedding_max_sections", None),
+        batch_size=getattr(config, "embedding_batch_size", 8),
+        force_reembed=getattr(config, "embedding_force_reembed", False),
+        include_title=getattr(config, "embedding_include_title", True),
+        include_body=getattr(config, "embedding_include_body", True),
+        max_chars_per_section=getattr(
+            config,
+            "embedding_max_chars_per_section",
+            8000,
+        ),
+        allow_title_only=getattr(config, "embedding_allow_title_only", False),
+    )
+
+
 def process_document_graph_and_enrichment(
     driver,
     config,
@@ -467,67 +663,47 @@ def process_document_graph_and_enrichment(
     chunk_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
-    Run graph loading and/or enrichment for one document.
+    Backward-compatible single-document helper.
+
+    The main pipeline below no longer uses this for full runs. It now runs phases
+    globally across all documents. This helper is kept in case another script
+    imports it directly.
     """
     graph_result = None
     entity_stats = None
     embedding_stats = None
 
     if getattr(config, "run_graph_loader", False):
-        if chunk_path is None:
-            raise ValueError(
-                f"Graph loading requested for document {doc_id}, but chunk_path is missing."
-            )
-
-        logger.info("Loading graph structure into Neo4j for document %s", doc_id)
-        graph_result = build_graph_from_chunks(
+        graph_result = process_document_graph_loading(
             driver=driver,
-            chunk_file=chunk_path,
-            batch_size=getattr(config, "graph_loader_batch_size", 200),
-            replace_existing_document=getattr(
-                config,
-                "graph_loader_replace_existing_document",
-                True,
-            ),
+            config=config,
+            doc_id=doc_id,
+            chunk_path=chunk_path,
         )
 
     if getattr(config, "run_entity_extraction", False):
-        logger.info("Extracting entities for document %s", doc_id)
-        entity_stats = add_entities_from_sections(
+        entity_stats = process_document_entity_extraction(
             driver=driver,
+            config=config,
             doc_id=doc_id,
-            use_section_text=getattr(config, "entity_use_section_text", False),
-            max_sections=getattr(config, "entity_max_sections", None),
-            max_sections_per_batch=getattr(config, "entity_max_sections_per_batch", 2),
-            max_batch_chars=getattr(config, "entity_max_batch_chars", 12000),
-            emergency_max_single_chars=getattr(
-                config,
-                "entity_emergency_max_single_chars",
-                12000,
-            ),
-            skip_processed=getattr(config, "entity_skip_processed", True),
-            replace_section_mentions=getattr(
-                config,
-                "entity_replace_section_mentions",
-                True,
-            ),
         )
 
+    if (
+        getattr(config, "run_entity_extraction", False)
+        and getattr(config, "run_embeddings", False)
+        and should_clear_chat_cache_before_embeddings(config)
+    ):
+        logger.info(
+            "Clearing chat model cache before embeddings for document %s",
+            doc_id,
+        )
+        clear_chat_model_cache()
+
     if getattr(config, "run_embeddings", False):
-        logger.info("Computing embeddings for document %s", doc_id)
-        embedding_stats = add_embeddings_to_sections(
+        embedding_stats = process_document_embeddings(
             driver=driver,
+            config=config,
             doc_id=doc_id,
-            max_sections=getattr(config, "embedding_max_sections", None),
-            batch_size=getattr(config, "embedding_batch_size", 8),
-            force_reembed=getattr(config, "embedding_force_reembed", False),
-            include_title=getattr(config, "embedding_include_title", True),
-            include_body=getattr(config, "embedding_include_body", True),
-            max_chars_per_section=getattr(
-                config,
-                "embedding_max_chars_per_section",
-                8000,
-            ),
         )
 
     return {
@@ -596,16 +772,78 @@ def build_document_work_items(
     ]
 
 
+def initialize_document_result(item: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Initialize a per-document result object that can be updated phase by phase.
+    """
+    chunk_path = item.get("chunk_path")
+
+    return {
+        "doc_id": item["doc_id"],
+        "chunk_path": str(chunk_path) if chunk_path is not None else None,
+        "source": item.get("source"),
+        "graph_result": None,
+        "entity_stats": None,
+        "embedding_stats": None,
+    }
+
+
+def record_stage_error(
+    result: Dict[str, Any],
+    stage: str,
+    error: Exception,
+) -> None:
+    """
+    Attach structured error information to a document result.
+    """
+    result.setdefault("failed_stages", []).append(stage)
+    result.setdefault("errors", []).append(
+        {
+            "stage": stage,
+            "error": str(error),
+        }
+    )
+
+    # Backward-friendly top-level fields for quick inspection.
+    result["stage"] = stage
+    result["error"] = str(error)
+
+
+def record_stage_skip(
+    result: Dict[str, Any],
+    stage: str,
+    reason: str,
+) -> None:
+    """
+    Attach structured skip information to a document result.
+    """
+    result.setdefault("skipped_stages", []).append(
+        {
+            "stage": stage,
+            "reason": reason,
+        }
+    )
+
+
 def run_graph_pipeline(config) -> Dict[str, Any]:
     """
     Flexible graph pipeline.
 
     Supported usage patterns:
     - preprocessing only
-    - graph loading only (from cached chunks)
-    - entities only (from existing Neo4j graph)
-    - embeddings only (from existing Neo4j graph)
+    - graph loading only from cached chunks
+    - entities only from existing Neo4j graph
+    - embeddings only from existing Neo4j graph
     - full pipeline
+
+    Execution order for combined/full runs:
+    1. preprocess all documents
+    2. graph-load all documents
+    3. extract entities for all documents
+    4. clear chat model cache before embeddings, if needed
+    5. compute embeddings for all documents
+    6. run global concept disambiguation
+    7. run sanity checks
     """
     ensure_pipeline_dirs(config)
 
@@ -676,36 +914,125 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                     "No document work items found for graph/enrichment processing"
                 )
 
-            for item in work_items:
-                try:
-                    result = process_document_graph_and_enrichment(
-                        driver=driver,
-                        config=config,
-                        doc_id=item["doc_id"],
-                        chunk_path=item["chunk_path"],
-                    )
-                    result["source"] = item["source"]
-                    document_results.append(result)
+            document_results_by_doc: Dict[str, Dict[str, Any]] = {
+                item["doc_id"]: initialize_document_result(item)
+                for item in work_items
+            }
 
-                except Exception as e:
-                    logger.exception(
-                        "Failed processing document %s: %s",
-                        item["doc_id"],
-                        e,
-                    )
-                    document_results.append(
-                        {
-                            "doc_id": item["doc_id"],
-                            "chunk_path": (
-                                str(item["chunk_path"])
-                                if item["chunk_path"] is not None
-                                else None
-                            ),
-                            "source": item["source"],
-                            "error": str(e),
-                            "stage": "graph_or_enrichment",
-                        }
-                    )
+            graph_failed_doc_ids: Set[str] = set()
+
+            if getattr(config, "run_graph_loader", False):
+                logger.info("=== Graph loading phase: all documents ===")
+
+                for item in work_items:
+                    doc_id = item["doc_id"]
+                    result = document_results_by_doc[doc_id]
+
+                    try:
+                        graph_result = process_document_graph_loading(
+                            driver=driver,
+                            config=config,
+                            doc_id=doc_id,
+                            chunk_path=item["chunk_path"],
+                        )
+
+                        result["graph_result"] = graph_result
+
+                        if graph_result is None:
+                            raise RuntimeError(
+                                "Graph loader returned None; downstream stages "
+                                "will be skipped for this document."
+                            )
+
+                    except Exception as e:
+                        logger.exception(
+                            "Failed graph loading document %s: %s",
+                            doc_id,
+                            e,
+                        )
+                        record_stage_error(result, "graph_loader", e)
+                        graph_failed_doc_ids.add(doc_id)
+
+            if getattr(config, "run_entity_extraction", False):
+                logger.info("=== Entity extraction phase: all documents ===")
+
+                for item in work_items:
+                    doc_id = item["doc_id"]
+                    result = document_results_by_doc[doc_id]
+
+                    if doc_id in graph_failed_doc_ids:
+                        record_stage_skip(
+                            result,
+                            "entity_extraction",
+                            "skipped_because_graph_loader_failed",
+                        )
+                        logger.warning(
+                            "Skipping entity extraction for %s because graph loading failed",
+                            doc_id,
+                        )
+                        continue
+
+                    try:
+                        result["entity_stats"] = process_document_entity_extraction(
+                            driver=driver,
+                            config=config,
+                            doc_id=doc_id,
+                        )
+
+                    except Exception as e:
+                        logger.exception(
+                            "Failed entity extraction for document %s: %s",
+                            doc_id,
+                            e,
+                        )
+                        record_stage_error(result, "entity_extraction", e)
+
+            if (
+                getattr(config, "run_entity_extraction", False)
+                and getattr(config, "run_embeddings", False)
+                and should_clear_chat_cache_before_embeddings(config)
+            ):
+                logger.info(
+                    "Clearing chat model cache before embeddings phase "
+                    "because entity extraction and embeddings are both enabled"
+                )
+                clear_chat_model_cache()
+
+            if getattr(config, "run_embeddings", False):
+                logger.info("=== Embedding phase: all documents ===")
+
+                for item in work_items:
+                    doc_id = item["doc_id"]
+                    result = document_results_by_doc[doc_id]
+
+                    if doc_id in graph_failed_doc_ids:
+                        record_stage_skip(
+                            result,
+                            "embeddings",
+                            "skipped_because_graph_loader_failed",
+                        )
+                        logger.warning(
+                            "Skipping embeddings for %s because graph loading failed",
+                            doc_id,
+                        )
+                        continue
+
+                    try:
+                        result["embedding_stats"] = process_document_embeddings(
+                            driver=driver,
+                            config=config,
+                            doc_id=doc_id,
+                        )
+
+                    except Exception as e:
+                        logger.exception(
+                            "Failed embeddings for document %s: %s",
+                            doc_id,
+                            e,
+                        )
+                        record_stage_error(result, "embeddings", e)
+
+            document_results.extend(document_results_by_doc.values())
 
         if need_neo4j and getattr(config, "run_entity_disambiguation", False):
             logger.info("Running global concept disambiguation")
@@ -732,7 +1059,8 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
             )
 
     finally:
-        close_driver(driver)
+        if driver is not None:
+            close_driver(driver)
 
     summary = {
         "documents_processed": len(document_results),

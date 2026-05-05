@@ -8,19 +8,48 @@ Main notes:
 - We keep ONE Concept node per normalized concept name.
 - Type ambiguity is preserved at relationship level through MENTIONS.observed_types.
 - Concept-level type state is later finalized by entity_disambiguation.py.
-- TYPE_ALIASES are normalized once at load time so alias lookup is consistent
+- Type aliases are normalized once at load time so alias lookup is consistent
   with normalize_type().
+- Raw LLM name/type fields are preserved as raw_name/raw_type on MENTIONS
+  relationships when available, so later validation/debugging can distinguish
+  cases such as "AS" from normalized "as".
 - When replace_section_mentions=True, stale MENTIONS are also cleared on failed
   or skipped-empty sections so section state stays consistent across reruns.
+- Before writing, extracted concepts are deterministically validated against the
+  section source text through validate_entities.py so unsupported outputs are not
+  inserted into the KG.
+- Entity validation can optionally use cached per-document acronym dictionaries:
+  if a section contains an acronym short form and the cached acronym definition
+  matches the extracted concept long form, the concept can be accepted even when
+  the long form itself is absent from the section.
+- If the LLM extracts an acronym short form itself, validation can expand it to
+  the cached long form before writing, so Concept nodes store the meaningful
+  normalized long-form concept while raw_name preserves the original acronym.
+- Entity validation decisions are optionally exported to JSONL review files so
+  accepted/rejected candidates can be inspected outside Neo4j.
 """
 
 import json
 import logging
 import re
-from typing import Any, Dict, Iterable, List, Optional
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from neo4j import Driver
 
+from knowledge_graph.acronym_utils import load_acronyms_by_doc_id
+from knowledge_graph.entity_review_exports import (
+    clear_entity_review_exports,
+    utc_now_iso,
+    write_entity_review_summary,
+    write_section_entity_review_records,
+)
+from knowledge_graph.entity_schema import (
+    ALLOWED_TYPES,
+    BLOCKLIST_NAMES,
+    deduplicate_concepts,
+    normalize_concept,
+)
 from knowledge_graph.llm_utils import (
     generate_chat_text,
     get_chat_model_name,
@@ -31,131 +60,16 @@ from knowledge_graph.prompts import (
     build_entity_extraction_single_user_prompt,
     build_entity_extraction_batch_user_prompt,
 )
+from knowledge_graph.validate_entities import (
+    validate_concepts_against_source,
+    summarize_rejections,
+)
+
 
 logger = logging.getLogger(__name__)
 
 
-ALLOWED_TYPES = {
-    "disease",
-    "clinical_finding",
-    "risk_factor",
-    "genetic_factor",
-    "biomarker",
-    "diagnostic_test",
-    "imaging_modality",
-    "score_or_risk_model",
-    "drug_or_drug_class",
-    "procedure_or_intervention",
-    "device",
-    "complication_or_comorbidity",
-    "care_strategy",
-    "anatomical_structure",
-}
-
-
-_RAW_TYPE_ALIASES = {
-    "phenotype": "clinical_finding",
-    "finding": "clinical_finding",
-    "clinical finding": "clinical_finding",
-    "sign": "clinical_finding",
-    "symptom": "clinical_finding",
-    "sign_or_symptom": "clinical_finding",
-
-    "management": "care_strategy",
-    "therapy": "care_strategy",
-    "treatment_strategy": "care_strategy",
-    "care plan": "care_strategy",
-    "follow_up": "care_strategy",
-    "follow-up": "care_strategy",
-
-    "drug": "drug_or_drug_class",
-    "drug class": "drug_or_drug_class",
-    "drug_class": "drug_or_drug_class",
-    "medication": "drug_or_drug_class",
-    "medication class": "drug_or_drug_class",
-    "pharmacotherapy": "drug_or_drug_class",
-
-    "procedure": "procedure_or_intervention",
-    "intervention": "procedure_or_intervention",
-    "surgery": "procedure_or_intervention",
-    "surgical procedure": "procedure_or_intervention",
-
-    "test": "diagnostic_test",
-    "lab test": "diagnostic_test",
-    "laboratory test": "diagnostic_test",
-
-    "imaging": "imaging_modality",
-    "imaging test": "imaging_modality",
-    "imaging modality": "imaging_modality",
-
-    "biological_marker": "biomarker",
-    "laboratory_marker": "biomarker",
-    "lab_marker": "biomarker",
-    "marker": "biomarker",
-    "lab value": "biomarker",
-
-    "score": "score_or_risk_model",
-    "risk score": "score_or_risk_model",
-    "risk model": "score_or_risk_model",
-    "prediction rule": "score_or_risk_model",
-    "clinical prediction rule": "score_or_risk_model",
-    "clinical score": "score_or_risk_model",
-    "calculator": "score_or_risk_model",
-
-    "complication": "complication_or_comorbidity",
-    "comorbidity": "complication_or_comorbidity",
-
-    "gene": "genetic_factor",
-    "genetic": "genetic_factor",
-    "genetic marker": "genetic_factor",
-    "genetic variant": "genetic_factor",
-    "gene variant": "genetic_factor",
-    "variant": "genetic_factor",
-    "mutation": "genetic_factor",
-
-    "anatomy": "anatomical_structure",
-    "structure": "anatomical_structure",
-    "anatomical structure": "anatomical_structure",
-}
-
-
-BLOCKLIST_NAMES = {
-    "diagnosis",
-    "treatment",
-    "management",
-    "therapy",
-    "follow-up",
-    "follow up",
-    "recommendation",
-    "recommendations",
-    "patient",
-    "patients",
-    "disease",
-    "risk",
-    "test",
-    "tests",
-    "procedure",
-    "procedures",
-    "drug",
-    "drugs",
-    "care",
-    "clinical finding",
-    "clinical findings",
-    "symptom",
-    "symptoms",
-    "sign",
-    "signs",
-    "biomarker",
-    "biomarkers",
-    "diagnostic test",
-    "diagnostic tests",
-    "imaging modality",
-    "imaging modalities",
-    "score",
-    "scores",
-    "model",
-    "models",
-}
+REJECTED_CONCEPT_LOG_LIMIT = 30
 
 
 def truncate_for_log(text: str, max_chars: int = 2000) -> str:
@@ -200,105 +114,46 @@ def parse_llm_json(text: str) -> Any:
     raise ValueError("Could not parse JSON from LLM output")
 
 
-def normalize_whitespace(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def normalize_type_token(raw_type: Any) -> str:
+def stringify_raw_llm_value(value: Any) -> Optional[str]:
     """
-    Normalize type strings into the same canonical lookup format used for:
-    - incoming LLM types
-    - TYPE_ALIASES keys
+    Convert a raw LLM field into a safe string value for validation metadata
+    and Neo4j relationship properties.
+
+    Neo4j properties cannot safely store arbitrary nested objects, so raw values
+    are kept as strings.
     """
-    concept_type = str(raw_type).strip().lower()
-    concept_type = re.sub(r"^[\s,;:.()\[\]{}'\"`]+", "", concept_type)
-    concept_type = re.sub(r"[\s,;:.()\[\]{}'\"`]+$", "", concept_type)
-    concept_type = normalize_whitespace(concept_type)
-    concept_type = concept_type.replace("-", "_")
-    concept_type = concept_type.replace(" ", "_")
-    return concept_type
-
-
-TYPE_ALIASES = {
-    normalize_type_token(alias): normalize_type_token(target)
-    for alias, target in _RAW_TYPE_ALIASES.items()
-}
-
-
-def normalize_type(raw_type: Any) -> str:
-    concept_type = normalize_type_token(raw_type)
-
-    if concept_type in TYPE_ALIASES:
-        concept_type = TYPE_ALIASES[concept_type]
-
-    return concept_type
-
-
-def normalize_name(raw_name: Any) -> str:
-    name = str(raw_name).strip().lower()
-    name = normalize_whitespace(name)
-
-    # Remove only enclosing punctuation while preserving medically relevant
-    # internal characters such as hyphens, slashes, and parentheses.
-    name = re.sub(r"^[\s,;:.()\[\]{}'\"`]+", "", name)
-    name = re.sub(r"[\s,;:.()\[\]{}'\"`]+$", "", name)
-    name = normalize_whitespace(name)
-
-    return name
-
-
-def normalize_concept(raw: Dict[str, Any]) -> Optional[Dict[str, str]]:
-    if not isinstance(raw, dict):
-        logger.debug("Discarding non-dict concept payload: %r", raw)
+    if value is None:
         return None
 
-    if "name" not in raw or "type" not in raw:
-        logger.debug("Discarding concept without required keys: %r", raw)
-        return None
-
-    name = normalize_name(raw["name"])
-    concept_type = normalize_type(raw["type"])
-
-    if not name or not concept_type:
-        logger.debug("Discarding concept with empty normalized fields: %r", raw)
-        return None
-
-    if name in BLOCKLIST_NAMES:
-        logger.debug("Discarding blocklisted concept name: %s", name)
-        return None
-
-    if concept_type not in ALLOWED_TYPES:
-        logger.debug(
-            "Discarding concept with non-allowed type | name=%s | type=%s",
-            name,
-            concept_type,
-        )
-        return None
-
-    return {
-        "name": name,
-        "type": concept_type,
-    }
+    return str(value)
 
 
-def deduplicate_concepts(concepts: List[Dict[str, str]]) -> List[Dict[str, str]]:
+def normalize_llm_concept_preserving_raw(raw_concept: Any) -> Optional[Dict[str, Any]]:
     """
-    Exact deduplication by (name, type).
+    Normalize one raw LLM concept while preserving the original name/type fields.
 
-    This intentionally preserves the case where the same normalized name is
-    returned with different types, so type ambiguity can be preserved and
-    later resolved in the disambiguation step.
+    The normalized fields remain:
+        name
+        type
+
+    The original LLM surface fields are kept as:
+        raw_name
+        raw_type
+
+    This lets downstream validation/debugging distinguish cases such as:
+        raw_name = "AS"
+        name = "as"
     """
-    seen = set()
-    deduped = []
+    normalized = normalize_concept(raw_concept)
 
-    for concept in concepts:
-        key = (concept["name"], concept["type"])
-        if key not in seen:
-            seen.add(key)
-            deduped.append(concept)
+    if normalized is None:
+        return None
 
-    return deduped
+    if isinstance(raw_concept, dict):
+        normalized["raw_name"] = stringify_raw_llm_value(raw_concept.get("name"))
+        normalized["raw_type"] = stringify_raw_llm_value(raw_concept.get("type"))
+
+    return normalized
 
 
 def build_source_text(row: Dict[str, Any], use_section_text: bool) -> str:
@@ -396,7 +251,7 @@ def pack_rows_for_llm(
         yield batch
 
 
-def extract_concepts_single(text: str) -> Optional[List[Dict[str, str]]]:
+def extract_concepts_single(text: str) -> Optional[List[Dict[str, Any]]]:
     messages = [
         {"role": "system", "content": ENTITY_EXTRACTION_SINGLE_SYSTEM_PROMPT},
         {
@@ -422,9 +277,10 @@ def extract_concepts_single(text: str) -> Optional[List[Dict[str, str]]]:
         if not isinstance(data, list):
             raise ValueError("Single-section LLM output is not a list")
 
-        concepts = []
+        concepts: List[Dict[str, Any]] = []
+
         for item in data:
-            normalized = normalize_concept(item)
+            normalized = normalize_llm_concept_preserving_raw(item)
             if normalized is not None:
                 concepts.append(normalized)
 
@@ -440,7 +296,7 @@ def extract_concepts_single(text: str) -> Optional[List[Dict[str, str]]]:
 
 def extract_concepts_batch(
     batch_rows: List[Dict[str, Any]],
-) -> Optional[Dict[str, List[Dict[str, str]]]]:
+) -> Optional[Dict[str, List[Dict[str, Any]]]]:
     if not batch_rows:
         return {}
 
@@ -478,7 +334,7 @@ def extract_concepts_batch(
             raise ValueError("Batch LLM output is not a list")
 
         expected_uids = {row["uid"] for row in batch_rows}
-        out = {}
+        out: Dict[str, List[Dict[str, Any]]] = {}
 
         for item in data:
             if not isinstance(item, dict):
@@ -494,9 +350,10 @@ def extract_concepts_batch(
             if not isinstance(concepts_raw, list):
                 raise ValueError(f"Invalid concepts field for uid={uid}")
 
-            concepts = []
+            concepts: List[Dict[str, Any]] = []
+
             for concept_raw in concepts_raw:
-                normalized = normalize_concept(concept_raw)
+                normalized = normalize_llm_concept_preserving_raw(concept_raw)
                 if normalized is not None:
                     concepts.append(normalized)
 
@@ -596,7 +453,7 @@ def mark_section_extraction_skipped_empty(
 def write_section_concepts(
     tx,
     section_uid: str,
-    concepts: List[Dict[str, str]],
+    concepts: List[Dict[str, Any]],
     replace_section_mentions: bool = True,
 ) -> None:
     tx.run(
@@ -641,7 +498,17 @@ def write_section_concepts(
         MERGE (s)-[r:MENTIONS]->(c)
         ON CREATE SET
             r.observed_types = [concept.type],
-            r.created_at = datetime()
+            r.created_at = datetime(),
+            r.validation_reason = concept.validation_reason,
+            r.support_method = concept.support_method,
+            r.matched_text = concept.matched_text,
+            r.matched_pattern = concept.matched_pattern,
+            r.acronym_short = concept.acronym_short,
+            r.acronym_definition = concept.acronym_definition,
+            r.acronym_match_method = concept.acronym_match_method,
+            r.expanded_from_acronym = concept.expanded_from_acronym,
+            r.raw_name = concept.raw_name,
+            r.raw_type = concept.raw_type
         ON MATCH SET
             r.observed_types =
                 CASE
@@ -649,11 +516,334 @@ def write_section_concepts(
                     WHEN concept.type IN r.observed_types THEN r.observed_types
                     ELSE r.observed_types + concept.type
                 END,
-            r.updated_at = datetime()
+            r.updated_at = datetime(),
+            r.validation_reason = concept.validation_reason,
+            r.support_method = concept.support_method,
+            r.matched_text = concept.matched_text,
+            r.matched_pattern = concept.matched_pattern,
+            r.acronym_short = concept.acronym_short,
+            r.acronym_definition = concept.acronym_definition,
+            r.acronym_match_method = concept.acronym_match_method,
+            r.expanded_from_acronym = concept.expanded_from_acronym,
+            r.raw_name = concept.raw_name,
+            r.raw_type = concept.raw_type
         """,
         uid=section_uid,
         concepts=concepts,
     )
+
+
+def build_raw_field_lookup(
+    concepts: List[Dict[str, Any]],
+) -> Dict[Tuple[str, str], Dict[str, str]]:
+    """
+    Build a lookup from normalized (name, type) to raw LLM metadata.
+
+    This lets us reattach raw_name/raw_type after validate_entities.py returns
+    accepted/rejected records.
+
+    Note:
+    For acronym-expanded concepts, validate_entities.py should already preserve
+    raw_name/raw_type directly, because the normalized name may change from the
+    acronym short form to the long form.
+    """
+    lookup: Dict[Tuple[str, str], Dict[str, str]] = {}
+
+    for concept in concepts or []:
+        name = concept.get("name")
+        concept_type = concept.get("type")
+
+        if not name or not concept_type:
+            continue
+
+        key = (str(name), str(concept_type))
+
+        if key in lookup:
+            continue
+
+        raw_fields: Dict[str, str] = {}
+
+        raw_name = concept.get("raw_name")
+        raw_type = concept.get("raw_type")
+
+        if raw_name not in (None, ""):
+            raw_fields["raw_name"] = str(raw_name)
+        if raw_type not in (None, ""):
+            raw_fields["raw_type"] = str(raw_type)
+
+        if raw_fields:
+            lookup[key] = raw_fields
+
+    return lookup
+
+
+def attach_raw_fields_to_validation_records(
+    records: List[Dict[str, Any]],
+    raw_lookup: Dict[Tuple[str, str], Dict[str, str]],
+) -> None:
+    """
+    Add raw_name/raw_type to accepted or rejected validation records in-place
+    when the original LLM surface form is available.
+    """
+    for record in records or []:
+        name = record.get("name")
+        concept_type = record.get("type")
+
+        if not name or not concept_type:
+            continue
+
+        raw_fields = raw_lookup.get((str(name), str(concept_type)), {})
+
+        for field, value in raw_fields.items():
+            if record.get(field) in (None, ""):
+                record[field] = value
+
+
+def validate_and_log_concepts(
+    row: Dict[str, Any],
+    concepts: List[Dict[str, Any]],
+    acronyms: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
+    """
+    Run deterministic pre-write validation against the section source text.
+
+    Returns a dictionary with:
+    - accepted: concepts safe to write
+    - rejected: concepts discarded before write
+    - stats: validation counters
+    """
+    validation = validate_concepts_against_source(
+        concepts=concepts,
+        source_text=row["source_text"],
+        allowed_types=ALLOWED_TYPES,
+        blocklist_names=BLOCKLIST_NAMES,
+        acronyms=acronyms,
+    )
+
+    accepted = validation["accepted"]
+    rejected = validation["rejected"]
+
+    raw_lookup = build_raw_field_lookup(concepts)
+    attach_raw_fields_to_validation_records(accepted, raw_lookup)
+    attach_raw_fields_to_validation_records(rejected, raw_lookup)
+
+    accepted_by_acronym = [
+        c for c in accepted
+        if c.get("support_method") == "acronym"
+    ]
+
+    logger.info(
+        "Section doc=%s section=%s -> raw=%d validated=%d rejected=%d acronym_supported=%d",
+        row["doc_id"],
+        row["section_id"],
+        len(concepts),
+        len(accepted),
+        len(rejected),
+        len(accepted_by_acronym),
+    )
+
+    if accepted:
+        logger.info(
+            " -> accepted: %s",
+            ", ".join(
+                (
+                    f"{c['name']} [{c['type']}]"
+                    + (
+                        f" via {c.get('acronym_short')}"
+                        if c.get("support_method") == "acronym" and c.get("acronym_short")
+                        else ""
+                    )
+                    + (
+                        f" from raw {c.get('raw_name')!r}"
+                        if c.get("expanded_from_acronym") and c.get("raw_name")
+                        else ""
+                    )
+                )
+                for c in accepted
+            ),
+        )
+
+    if rejected:
+        rejection_summary = summarize_rejections(rejected)
+        logger.info(
+            " -> rejected summary: %s",
+            ", ".join(
+                f"{reason}={count}"
+                for reason, count in sorted(rejection_summary.items())
+            ),
+        )
+
+        rejected_sample = rejected[:REJECTED_CONCEPT_LOG_LIMIT]
+        logger.info(
+            " -> rejected concepts sample (%d/%d): %s",
+            len(rejected_sample),
+            len(rejected),
+            ", ".join(
+                f"{c['name']} [{c['type']}] ({c['reason']})"
+                for c in rejected_sample
+            ),
+        )
+
+        omitted_count = len(rejected) - len(rejected_sample)
+        if omitted_count > 0:
+            logger.info(
+                " -> rejected concepts omitted from log: %d",
+                omitted_count,
+            )
+
+    return validation
+
+
+def export_entity_review_records_safely(
+    row: Dict[str, Any],
+    accepted: List[Dict[str, Any]],
+    rejected: List[Dict[str, Any]],
+    stats: Dict[str, int],
+    output_dir: Optional[Path],
+    run_id: Optional[str],
+    include_source_preview: bool,
+) -> None:
+    """
+    Export accepted/rejected validation decisions for inspection.
+
+    Export failures are logged but do not stop graph writing.
+    """
+    try:
+        export_stats = write_section_entity_review_records(
+            row=row,
+            accepted=accepted,
+            rejected=rejected,
+            output_dir=output_dir,
+            run_id=run_id,
+            include_source_preview=include_source_preview,
+        )
+
+        stats["entity_review_accepted_records"] += export_stats["accepted_exported"]
+        stats["entity_review_rejected_records"] += export_stats["rejected_exported"]
+
+    except Exception as e:
+        stats["entity_review_export_failures"] += 1
+        logger.exception(
+            "Failed to export entity review records | doc=%s section=%s | error=%s",
+            row.get("doc_id"),
+            row.get("section_id"),
+            e,
+        )
+
+
+def process_extracted_concepts(
+    session,
+    row: Dict[str, Any],
+    concepts: List[Dict[str, Any]],
+    stats: Dict[str, int],
+    replace_section_mentions: bool,
+    export_entity_review: bool,
+    entity_review_output_dir: Optional[Path],
+    entity_review_run_id: Optional[str],
+    include_source_preview_in_review: bool,
+    acronyms: Optional[Dict[str, str]] = None,
+) -> None:
+    """
+    Validate extracted concepts, update stats, optionally export validation
+    decisions, and write only accepted concepts.
+    """
+    validation = validate_and_log_concepts(
+        row=row,
+        concepts=concepts,
+        acronyms=acronyms,
+    )
+
+    accepted = validation["accepted"]
+    rejected = validation["rejected"]
+
+    accepted_by_acronym = [
+        c for c in accepted
+        if c.get("support_method") == "acronym"
+    ]
+
+    stats["successful_sections"] += 1
+    stats["concepts_rejected_by_validation"] += len(rejected)
+    stats["concepts_accepted_by_acronym"] += len(accepted_by_acronym)
+
+    if accepted_by_acronym:
+        stats["sections_with_acronym_supported_concepts"] += 1
+
+    if accepted:
+        stats["sections_with_concepts"] += 1
+        stats["concepts_written"] += len(accepted)
+
+    if export_entity_review:
+        export_entity_review_records_safely(
+            row=row,
+            accepted=accepted,
+            rejected=rejected,
+            stats=stats,
+            output_dir=entity_review_output_dir,
+            run_id=entity_review_run_id,
+            include_source_preview=include_source_preview_in_review,
+        )
+
+    session.execute_write(
+        write_section_concepts,
+        row["uid"],
+        accepted,
+        replace_section_mentions,
+    )
+
+
+def write_entity_review_summaries_safely(
+    doc_ids: List[str],
+    output_dir: Optional[Path],
+) -> None:
+    """
+    Write one entity review summary per processed document.
+
+    Summary failures are logged but do not affect the already-written graph.
+    """
+    for review_doc_id in doc_ids:
+        try:
+            summary = write_entity_review_summary(
+                doc_id=review_doc_id,
+                output_dir=output_dir,
+            )
+
+            logger.info(
+                "Entity review summary written | doc=%s | accepted=%d | rejected=%d | file=%s",
+                review_doc_id,
+                summary.get("accepted_entities", 0),
+                summary.get("rejected_entities", 0),
+                summary.get("accepted_file"),
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Failed to write entity review summary | doc=%s | error=%s",
+                review_doc_id,
+                e,
+            )
+
+
+def clear_entity_review_exports_safely(
+    doc_ids: List[str],
+    output_dir: Optional[Path],
+) -> None:
+    """
+    Clear previous entity review exports for processed documents.
+
+    Clearing failures are logged but do not stop entity extraction.
+    """
+    for review_doc_id in doc_ids:
+        try:
+            clear_entity_review_exports(
+                doc_id=review_doc_id,
+                output_dir=output_dir,
+            )
+        except Exception as e:
+            logger.exception(
+                "Failed to clear previous entity review exports | doc=%s | error=%s",
+                review_doc_id,
+                e,
+            )
 
 
 def add_entities_from_sections(
@@ -666,15 +856,49 @@ def add_entities_from_sections(
     emergency_max_single_chars: Optional[int] = 12000,
     skip_processed: bool = True,
     replace_section_mentions: bool = True,
+    export_entity_review: bool = True,
+    entity_review_output_dir: Optional[Path] = None,
+    clear_previous_entity_review: bool = True,
+    include_source_preview_in_review: bool = False,
+    acronym_dir: Optional[Path] = None,
+    use_acronym_validation: bool = True,
 ) -> Dict[str, int]:
     """
     Extract concepts from section titles and optionally section text,
-    then attach them to the Neo4j graph.
+    validate them against the section source text,
+    optionally export accepted/rejected validation decisions for review,
+    then attach the accepted concepts to the Neo4j graph.
+
+    Acronym validation:
+    - if acronym_dir is provided and use_acronym_validation=True, this loads
+      cached per-document acronym JSON files;
+    - validate_entities.py can then accept a concept when its long form is
+      supported by an acronym short form present in the section text;
+    - validate_entities.py can also expand a raw acronym short form extracted by
+      the LLM into its cached long form before graph writing.
     """
     if max_sections_per_batch < 1:
         raise ValueError("max_sections_per_batch must be >= 1")
 
     model_name = get_chat_model_name()
+    entity_review_run_id = f"entity_extraction::{utc_now_iso()}"
+
+    stats = {
+        "processed_sections": 0,
+        "successful_sections": 0,
+        "failed_sections": 0,
+        "skipped_sections": 0,
+        "sections_with_concepts": 0,
+        "concepts_written": 0,
+        "concepts_rejected_by_validation": 0,
+        "concepts_accepted_by_acronym": 0,
+        "sections_with_acronym_supported_concepts": 0,
+        "documents_with_acronym_cache": 0,
+        "acronyms_loaded": 0,
+        "entity_review_accepted_records": 0,
+        "entity_review_rejected_records": 0,
+        "entity_review_export_failures": 0,
+    }
 
     with driver.session() as session:
         session.execute_write(setup_entity_schema)
@@ -725,6 +949,7 @@ def add_entities_from_sections(
             )
 
             if not source_text.strip():
+                stats["skipped_sections"] += 1
                 session.execute_write(
                     mark_section_extraction_skipped_empty,
                     row["uid"],
@@ -740,6 +965,51 @@ def add_entities_from_sections(
             row["source_text"] = source_text
             prepared_rows.append(row)
 
+        review_doc_ids = sorted(
+            {
+                row["doc_id"]
+                for row in prepared_rows
+                if row.get("doc_id")
+            }
+        )
+
+        acronyms_by_doc_id: Dict[str, Dict[str, str]] = {}
+
+        if use_acronym_validation and acronym_dir is not None and review_doc_ids:
+            acronyms_by_doc_id = load_acronyms_by_doc_id(
+                acronym_dir=Path(acronym_dir),
+                doc_ids=review_doc_ids,
+            )
+
+            stats["documents_with_acronym_cache"] = sum(
+                1 for acronyms in acronyms_by_doc_id.values() if acronyms
+            )
+            stats["acronyms_loaded"] = sum(
+                len(acronyms) for acronyms in acronyms_by_doc_id.values()
+            )
+
+            logger.info(
+                "Acronym validation enabled | docs_with_acronyms=%d/%d | acronyms_loaded=%d | acronym_dir=%s",
+                stats["documents_with_acronym_cache"],
+                len(review_doc_ids),
+                stats["acronyms_loaded"],
+                acronym_dir,
+            )
+
+        elif use_acronym_validation and acronym_dir is None:
+            logger.info(
+                "Acronym validation requested but acronym_dir is None; using direct source validation only"
+            )
+
+        else:
+            logger.info("Acronym validation disabled")
+
+        if export_entity_review and clear_previous_entity_review and review_doc_ids:
+            clear_entity_review_exports_safely(
+                doc_ids=review_doc_ids,
+                output_dir=entity_review_output_dir,
+            )
+
         logger.info(
             "Preparing entity extraction for %d sections%s | model=%s | max_sections_per_batch=%d",
             len(prepared_rows),
@@ -748,14 +1018,13 @@ def add_entities_from_sections(
             max_sections_per_batch,
         )
 
-        stats = {
-            "processed_sections": 0,
-            "successful_sections": 0,
-            "failed_sections": 0,
-            "skipped_sections": 0,
-            "sections_with_concepts": 0,
-            "concepts_written": 0,
-        }
+        if export_entity_review:
+            logger.info(
+                "Entity review exports enabled | docs=%d | output_dir=%s | include_source_preview=%s",
+                len(review_doc_ids),
+                entity_review_output_dir or "default",
+                include_source_preview_in_review,
+            )
 
         batch_count = 0
 
@@ -793,66 +1062,39 @@ def add_entities_from_sections(
                     )
                     continue
 
-                stats["successful_sections"] += 1
-
-                if concepts:
-                    stats["sections_with_concepts"] += 1
-                    stats["concepts_written"] += len(concepts)
-
-                logger.info(
-                    "Section doc=%s section=%s -> %d concepts",
-                    row["doc_id"],
-                    row["section_id"],
-                    len(concepts),
-                )
-
-                if concepts:
-                    logger.info(
-                        " -> %s",
-                        ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
-                    )
-
-                session.execute_write(
-                    write_section_concepts,
-                    row["uid"],
-                    concepts,
-                    replace_section_mentions,
+                process_extracted_concepts(
+                    session=session,
+                    row=row,
+                    concepts=concepts,
+                    stats=stats,
+                    replace_section_mentions=replace_section_mentions,
+                    export_entity_review=export_entity_review,
+                    entity_review_output_dir=entity_review_output_dir,
+                    entity_review_run_id=entity_review_run_id,
+                    include_source_preview_in_review=include_source_preview_in_review,
+                    acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
                 )
                 continue
 
-            # True multi-section batch path
+            # True multi-section batch path.
             batch_result = extract_concepts_batch(batch)
 
             if batch_result is not None:
                 for row in batch:
-                    section_uid = row["uid"]
-                    concepts = batch_result.get(section_uid, [])
-
                     stats["processed_sections"] += 1
-                    stats["successful_sections"] += 1
+                    concepts = batch_result.get(row["uid"], [])
 
-                    if concepts:
-                        stats["sections_with_concepts"] += 1
-                        stats["concepts_written"] += len(concepts)
-
-                    logger.info(
-                        "Section doc=%s section=%s -> %d concepts",
-                        row["doc_id"],
-                        row["section_id"],
-                        len(concepts),
-                    )
-
-                    if concepts:
-                        logger.info(
-                            " -> %s",
-                            ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
-                        )
-
-                    session.execute_write(
-                        write_section_concepts,
-                        section_uid,
-                        concepts,
-                        replace_section_mentions,
+                    process_extracted_concepts(
+                        session=session,
+                        row=row,
+                        concepts=concepts,
+                        stats=stats,
+                        replace_section_mentions=replace_section_mentions,
+                        export_entity_review=export_entity_review,
+                        entity_review_output_dir=entity_review_output_dir,
+                        entity_review_run_id=entity_review_run_id,
+                        include_source_preview_in_review=include_source_preview_in_review,
+                        acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
                     )
 
             else:
@@ -880,49 +1122,43 @@ def add_entities_from_sections(
                         )
                         continue
 
-                    stats["successful_sections"] += 1
-
-                    if concepts:
-                        stats["sections_with_concepts"] += 1
-                        stats["concepts_written"] += len(concepts)
-
-                    logger.info(
-                        "Section doc=%s section=%s -> %d concepts",
-                        row["doc_id"],
-                        row["section_id"],
-                        len(concepts),
+                    process_extracted_concepts(
+                        session=session,
+                        row=row,
+                        concepts=concepts,
+                        stats=stats,
+                        replace_section_mentions=replace_section_mentions,
+                        export_entity_review=export_entity_review,
+                        entity_review_output_dir=entity_review_output_dir,
+                        entity_review_run_id=entity_review_run_id,
+                        include_source_preview_in_review=include_source_preview_in_review,
+                        acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
                     )
-
-                    if concepts:
-                        logger.info(
-                            " -> %s",
-                            ", ".join(f"{c['name']} [{c['type']}]" for c in concepts),
-                        )
-
-                    session.execute_write(
-                        write_section_concepts,
-                        row["uid"],
-                        concepts,
-                        replace_section_mentions,
-                    )
-
-        # Count skipped sections from current run only if you want visibility in stats.
-        # These were skipped earlier while building prepared_rows.
-        total_seen = len(prepared_rows)
-        stats["skipped_sections"] = (
-            0 if max_sections is not None and total_seen == max_sections else stats["skipped_sections"]
-        )
 
         logger.info("Processed %d LLM batches", batch_count)
 
+        if export_entity_review and review_doc_ids:
+            write_entity_review_summaries_safely(
+                doc_ids=review_doc_ids,
+                output_dir=entity_review_output_dir,
+            )
+
         logger.info(
-            "Entity extraction completed | processed=%d | successful=%d | failed=%d | skipped=%d | sections_with_concepts=%d | concepts_written=%d",
+            "Entity extraction completed | processed=%d | successful=%d | failed=%d | skipped=%d | sections_with_concepts=%d | concepts_written=%d | concepts_rejected_by_validation=%d | acronym_supported_concepts=%d | sections_with_acronym_supported_concepts=%d | docs_with_acronym_cache=%d | acronyms_loaded=%d | review_accepted=%d | review_rejected=%d | review_export_failures=%d",
             stats["processed_sections"],
             stats["successful_sections"],
             stats["failed_sections"],
             stats["skipped_sections"],
             stats["sections_with_concepts"],
             stats["concepts_written"],
+            stats["concepts_rejected_by_validation"],
+            stats["concepts_accepted_by_acronym"],
+            stats["sections_with_acronym_supported_concepts"],
+            stats["documents_with_acronym_cache"],
+            stats["acronyms_loaded"],
+            stats["entity_review_accepted_records"],
+            stats["entity_review_rejected_records"],
+            stats["entity_review_export_failures"],
         )
 
         return stats

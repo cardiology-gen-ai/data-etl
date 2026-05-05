@@ -25,6 +25,7 @@ class GraphPipelineConfig:
     - markdown_dir must match preprocessing_config.output_folder.folder
     - acronym_dir stores one cached acronym dictionary per document
     """
+
     pdf_dir: Path
     toc_dir: Path
     markdown_dir: Path
@@ -71,6 +72,17 @@ class GraphPipelineConfig:
     entity_skip_processed: bool = True
     entity_replace_section_mentions: bool = True
 
+    # Entity acronym validation
+    # This is used during entity extraction. It consumes cached acronym JSON files.
+    entity_use_acronym_validation: bool = True
+    entity_acronym_dir: Optional[Path] = None
+
+    # Entity review exports
+    entity_export_review: bool = True
+    entity_review_output_dir: Optional[Path] = None
+    entity_clear_previous_review: bool = True
+    entity_include_source_preview_in_review: bool = False
+
     # Embeddings
     embedding_max_sections: Optional[int] = None
     embedding_batch_size: int = 8
@@ -78,6 +90,10 @@ class GraphPipelineConfig:
     embedding_include_title: bool = True
     embedding_include_body: bool = True
     embedding_max_chars_per_section: int = 8000
+    embedding_allow_title_only: bool = False
+
+    # Runtime / memory behavior
+    clear_chat_cache_before_embeddings: bool = True
 
     # Entity disambiguation
     disambiguation_delete_orphans: bool = True
@@ -199,6 +215,14 @@ def make_graph_pipeline_config(
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
     entity_replace_section_mentions: bool = True,
+    entity_use_acronym_validation: bool = True,
+    entity_acronym_dir: Optional[Path] = None,
+    entity_export_review: bool = True,
+    entity_review_output_dir: Optional[Path] = None,
+    entity_clear_previous_review: bool = True,
+    entity_include_source_preview_in_review: bool = False,
+    embedding_allow_title_only: bool = False,
+    clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     sanity_mode: Optional[str] = "full",
 ) -> GraphPipelineConfig:
@@ -207,6 +231,18 @@ def make_graph_pipeline_config(
     """
     pdf_dir = pdf_dir.resolve()
     work_root = work_root.resolve()
+
+    resolved_entity_acronym_dir = (
+        entity_acronym_dir.resolve()
+        if entity_acronym_dir is not None
+        else None
+    )
+
+    resolved_entity_review_output_dir = (
+        entity_review_output_dir.resolve()
+        if entity_review_output_dir is not None
+        else None
+    )
 
     return GraphPipelineConfig(
         pdf_dir=pdf_dir,
@@ -247,12 +283,23 @@ def make_graph_pipeline_config(
         entity_skip_processed=True,
         entity_replace_section_mentions=entity_replace_section_mentions,
 
+        entity_use_acronym_validation=entity_use_acronym_validation,
+        entity_acronym_dir=resolved_entity_acronym_dir,
+
+        entity_export_review=entity_export_review,
+        entity_review_output_dir=resolved_entity_review_output_dir,
+        entity_clear_previous_review=entity_clear_previous_review,
+        entity_include_source_preview_in_review=entity_include_source_preview_in_review,
+
         embedding_max_sections=None,
         embedding_batch_size=8,
         embedding_force_reembed=False,
         embedding_include_title=True,
         embedding_include_body=True,
         embedding_max_chars_per_section=8000,
+        embedding_allow_title_only=embedding_allow_title_only,
+
+        clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
 
         disambiguation_delete_orphans=disambiguation_delete_orphans,
 
@@ -309,6 +356,14 @@ def main(
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
     entity_replace_section_mentions: bool = True,
+    entity_use_acronym_validation: bool = True,
+    entity_acronym_dir: Optional[Path] = None,
+    entity_export_review: bool = True,
+    entity_review_output_dir: Optional[Path] = None,
+    entity_clear_previous_review: bool = True,
+    entity_include_source_preview_in_review: bool = False,
+    embedding_allow_title_only: bool = False,
+    clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     sanity_mode: Optional[str] = "full",
     kg_chat_model: Optional[str] = None,
@@ -386,6 +441,14 @@ def main(
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
         entity_use_section_text=entity_use_section_text,
         entity_replace_section_mentions=entity_replace_section_mentions,
+        entity_use_acronym_validation=entity_use_acronym_validation,
+        entity_acronym_dir=entity_acronym_dir,
+        entity_export_review=entity_export_review,
+        entity_review_output_dir=entity_review_output_dir,
+        entity_clear_previous_review=entity_clear_previous_review,
+        entity_include_source_preview_in_review=entity_include_source_preview_in_review,
+        embedding_allow_title_only=embedding_allow_title_only,
+        clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
         disambiguation_delete_orphans=disambiguation_delete_orphans,
         sanity_mode=sanity_mode,
     )
@@ -451,6 +514,14 @@ if __name__ == "__main__":
             run_sanity_checks=False,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
+            entity_use_acronym_validation=True,
+            entity_acronym_dir=None,
+            entity_export_review=True,
+            entity_review_output_dir=None,
+            entity_clear_previous_review=True,
+            entity_include_source_preview_in_review=False,
+            embedding_allow_title_only=False,
+            clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
@@ -474,6 +545,14 @@ if __name__ == "__main__":
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
+            entity_use_acronym_validation=True,
+            entity_acronym_dir=None,
+            entity_export_review=True,
+            entity_review_output_dir=None,
+            entity_clear_previous_review=True,
+            entity_include_source_preview_in_review=False,
+            embedding_allow_title_only=False,
+            clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
@@ -496,6 +575,14 @@ if __name__ == "__main__":
             run_sanity_checks=True,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
+            entity_use_acronym_validation=True,
+            entity_acronym_dir=None,
+            entity_export_review=True,
+            entity_review_output_dir=None,
+            entity_clear_previous_review=True,
+            entity_include_source_preview_in_review=False,
+            embedding_allow_title_only=False,
+            clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
@@ -518,6 +605,14 @@ if __name__ == "__main__":
             run_sanity_checks=True,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
+            entity_use_acronym_validation=True,
+            entity_acronym_dir=None,
+            entity_export_review=True,
+            entity_review_output_dir=None,
+            entity_clear_previous_review=True,
+            entity_include_source_preview_in_review=False,
+            embedding_allow_title_only=False,
+            clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,
@@ -544,6 +639,14 @@ if __name__ == "__main__":
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
+            entity_use_acronym_validation=True,
+            entity_acronym_dir=None,
+            entity_export_review=True,
+            entity_review_output_dir=None,
+            entity_clear_previous_review=True,
+            entity_include_source_preview_in_review=False,
+            embedding_allow_title_only=False,
+            clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
             kg_chat_model=KG_CHAT_MODEL,

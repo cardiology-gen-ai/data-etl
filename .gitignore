@@ -91,4 +91,7 @@ src/azure.py
 old_test_data/
 original_kg/
 src/knowledge_graph/cleanup_before_retest.py
+src/knowledge_graph/test.py
+src/knowledge_graph/tests2.py
+src/knowledge_graph/check_val.py
 scripts/cleanup.slurm

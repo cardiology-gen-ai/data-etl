@@ -66,6 +66,15 @@ def emergency_truncate(text: str, max_chars: Optional[int]) -> str:
 
 
 def mark_sections_embedding_failed(tx, section_uids: List[str]) -> None:
+    """
+    Mark sections as failed for embedding generation.
+
+    Important:
+    If a section previously had an embedding, clear the stale vector and metadata.
+    Otherwise Neo4j can end up with inconsistent state, for example:
+        has_embedding = false
+        embedding IS NOT NULL
+    """
     tx.run(
         """
         UNWIND $uids AS uid
@@ -73,12 +82,22 @@ def mark_sections_embedding_failed(tx, section_uids: List[str]) -> None:
         SET s.has_embedding = false,
             s.embedding_status = 'failed',
             s.embedding_failed_at = datetime()
+        REMOVE s.embedding,
+               s.embedding_model,
+               s.embedding_dim,
+               s.embedding_updated_at
         """,
         uids=section_uids,
     )
 
 
 def mark_sections_embedding_skipped_empty(tx, section_uids: List[str]) -> None:
+    """
+    Mark sections as skipped because their embedding input text is empty.
+
+    Important:
+    If a section previously had an embedding, clear the stale vector and metadata.
+    """
     tx.run(
         """
         UNWIND $uids AS uid
@@ -86,6 +105,10 @@ def mark_sections_embedding_skipped_empty(tx, section_uids: List[str]) -> None:
         SET s.has_embedding = false,
             s.embedding_status = 'skipped_empty',
             s.embedding_failed_at = null
+        REMOVE s.embedding,
+               s.embedding_model,
+               s.embedding_dim,
+               s.embedding_updated_at
         """,
         uids=section_uids,
     )
