@@ -62,7 +62,92 @@ ENTITY_EXTRACTION_GENERAL_RULES = """General rules:
 """
 
 
-ENTITY_EXTRACTION_EXAMPLE = """Example:
+ENTITY_EXTRACTION_EXAMPLES = """Examples:
+
+Example 1:
+Input text:
+\"\"\"
+Title: Diagnosis
+\"\"\"
+
+Correct output:
+[]
+
+Do NOT output:
+[
+  {"name": "diagnosis", "type": "diagnostic_test"},
+  {"name": "diagnosis", "type": "care_strategy"}
+]
+
+Reason:
+- diagnosis is only a broad section heading.
+- a title alone should not create generic concepts unless the title itself is a specific clinical concept.
+
+
+Example 2:
+Input text:
+\"\"\"
+Title: Definitions
+
+Body:
+Acute coronary syndrome (ACS) may present with chest pain, changes on a 12-lead electrocardiogram, and elevated cardiac troponin. A final diagnosis may be acute myocardial infarction or unstable angina.
+\"\"\"
+
+Correct output:
+[
+  {"name": "acute coronary syndrome", "type": "disease"},
+  {"name": "chest pain", "type": "clinical_finding"},
+  {"name": "12-lead electrocardiogram", "type": "diagnostic_test"},
+  {"name": "cardiac troponin", "type": "biomarker"},
+  {"name": "acute myocardial infarction", "type": "disease"},
+  {"name": "unstable angina", "type": "disease"}
+]
+
+Do NOT output:
+[
+  {"name": "acs", "type": "disease"},
+  {"name": "changes", "type": "clinical_finding"},
+  {"name": "elevated", "type": "clinical_finding"},
+  {"name": "diagnosis", "type": "care_strategy"},
+  {"name": "patient", "type": "clinical_finding"}
+]
+
+Reason:
+- acute coronary syndrome is preferred over ACS because the full form is explicit in the text.
+- changes and elevated are too generic by themselves.
+- diagnosis and patient are generic.
+
+
+Example 3:
+Input text:
+\"\"\"
+Title: Imaging
+
+Body:
+CMR showed LGE in the left ventricle. No full acronym definitions are provided in this section.
+\"\"\"
+
+Correct output:
+[
+  {"name": "cmr", "type": "diagnostic_test"},
+  {"name": "lge", "type": "clinical_finding"},
+  {"name": "left ventricle", "type": "anatomical_structure"}
+]
+
+Do NOT output:
+[
+  {"name": "cardiac magnetic resonance", "type": "imaging_modality"},
+  {"name": "late gadolinium enhancement", "type": "clinical_finding"},
+  {"name": "imaging", "type": "imaging_modality"}
+]
+
+Reason:
+- CMR and LGE should not be expanded because their full forms are not explicit in this section.
+- acronym expansion is handled later by deterministic validation using the document acronym cache.
+- imaging is only a broad section heading.
+
+
+Example 4:
 Input text:
 \"\"\"
 Title: Treatment
@@ -84,6 +169,7 @@ Do NOT output:
 [
   {"name": "treatment", "type": "care_strategy"},
   {"name": "severe", "type": "clinical_finding"},
+  {"name": "left ventricular outflow tract", "type": "anatomical_structure"},
   {"name": "obstruction", "type": "clinical_finding"},
   {"name": "patient", "type": "clinical_finding"},
   {"name": "transcatheter aortic valve implantation", "type": "procedure_or_intervention"}
@@ -92,7 +178,7 @@ Do NOT output:
 Reason:
 - treatment is only a broad section heading.
 - severe is only a standalone modifier.
-- obstruction is too generic compared with left ventricular outflow tract obstruction.
+- left ventricular outflow tract obstruction is the full clinical finding; do not split it into anatomical fragments.
 - patient is generic.
 - TAVI should not be expanded unless the full form is explicit in the text.
 """
@@ -109,7 +195,7 @@ Extract normalized, reusable cardiology-related concepts from the provided text.
 
 {ENTITY_DISAMBIGUATION_GUIDANCE}
 
-{ENTITY_EXTRACTION_EXAMPLE}
+{ENTITY_EXTRACTION_EXAMPLES}
 """
 
 
@@ -131,7 +217,7 @@ Batch-specific rules:
 
 {ENTITY_DISAMBIGUATION_GUIDANCE}
 
-{ENTITY_EXTRACTION_EXAMPLE}
+{ENTITY_EXTRACTION_EXAMPLES}
 
 Expected batch format:
 [
