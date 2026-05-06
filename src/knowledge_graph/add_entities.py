@@ -8,6 +8,7 @@ Main notes:
 - We keep ONE Concept node per normalized concept name.
 - Type ambiguity is preserved at relationship level through MENTIONS.observed_types.
 - Concept-level type state is later finalized by entity_disambiguation.py.
+- During extraction, Concept.canonical_type is intentionally left unset/pending.
 - Type aliases are normalized once at load time so alias lookup is consistent
   with normalize_type().
 - Raw LLM name/type fields are preserved as raw_name/raw_type on MENTIONS
@@ -27,6 +28,10 @@ Main notes:
   normalized long-form concept while raw_name preserves the original acronym.
 - Entity validation decisions are optionally exported to JSONL review files so
   accepted/rejected candidates can be inspected outside Neo4j.
+- When use_section_text=True, title-only sections with empty body text are skipped:
+  they remain useful as hierarchy/navigation nodes, but they should not create
+  normal body-grounded entity mentions.
+- Orphan Concept nodes with no incoming MENTIONS edges are removed after the run.
 """
 
 import json
@@ -69,7 +74,7 @@ from knowledge_graph.validate_entities import (
 logger = logging.getLogger(__name__)
 
 
-REJECTED_CONCEPT_LOG_LIMIT = 30
+CONCEPT_DEBUG_LOG_LIMIT = 30
 
 
 def truncate_for_log(text: str, max_chars: int = 2000) -> str:
@@ -154,6 +159,17 @@ def normalize_llm_concept_preserving_raw(raw_concept: Any) -> Optional[Dict[str,
         normalized["raw_type"] = stringify_raw_llm_value(raw_concept.get("type"))
 
     return normalized
+
+
+def has_section_body(row: Dict[str, Any]) -> bool:
+    """
+    Return True when the Section has non-empty body text.
+
+    When entity extraction is configured with use_section_text=True, title-only
+    sections should be skipped. They remain useful as graph hierarchy nodes, but
+    they should not create normal body-grounded entity mentions.
+    """
+    return bool((row.get("text") or "").strip())
 
 
 def build_source_text(row: Dict[str, Any], use_section_text: bool) -> str:
@@ -398,6 +414,22 @@ def setup_entity_schema(tx) -> None:
         """
     )
 
+    tx.run(
+        """
+        CREATE INDEX concept_type_resolution_status IF NOT EXISTS
+        FOR (c:Concept)
+        ON (c.type_resolution_status)
+        """
+    )
+
+    tx.run(
+        """
+        CREATE INDEX concept_needs_type_review IF NOT EXISTS
+        FOR (c:Concept)
+        ON (c.needs_type_review)
+        """
+    )
+
 
 def clear_section_mentions(tx, section_uid: str) -> None:
     tx.run(
@@ -408,6 +440,41 @@ def clear_section_mentions(tx, section_uid: str) -> None:
         """,
         uid=section_uid,
     )
+
+
+def delete_orphan_concepts(tx) -> int:
+    """
+    Delete Concept nodes that are no longer mentioned by any Section.
+
+    This is useful after reruns where old MENTIONS relationships are replaced,
+    or when failed/skipped sections clear stale mentions.
+    """
+    record = tx.run(
+        """
+        MATCH (c:Concept)
+        WHERE NOT EXISTS {
+            MATCH (:Section)-[:MENTIONS]->(c)
+        }
+        RETURN count(c) AS deleted
+        """
+    ).single()
+
+    deleted = int(record["deleted"] or 0) if record is not None else 0
+
+    if deleted == 0:
+        return 0
+
+    tx.run(
+        """
+        MATCH (c:Concept)
+        WHERE NOT EXISTS {
+            MATCH (:Section)-[:MENTIONS]->(c)
+        }
+        DETACH DELETE c
+        """
+    )
+
+    return deleted
 
 
 def mark_section_extraction_failed(
@@ -456,6 +523,19 @@ def write_section_concepts(
     concepts: List[Dict[str, Any]],
     replace_section_mentions: bool = True,
 ) -> None:
+    """
+    Mark a section as successfully processed and write accepted concepts.
+
+    When replace_section_mentions=True, old MENTIONS edges are cleared before
+    writing the newly validated set. This avoids stale section-level mentions
+    after reruns with different validation/prompt settings.
+
+    Concept-level type state is intentionally provisional here. The final
+    canonical_type should be assigned later by entity_disambiguation.py.
+    """
+    if replace_section_mentions:
+        clear_section_mentions(tx, section_uid)
+
     tx.run(
         """
         MATCH (s:Section {uid: $uid})
@@ -463,15 +543,8 @@ def write_section_concepts(
             s.entity_extracted_at = datetime(),
             s.entity_extraction_status = 'success'
         REMOVE s.entity_extraction_failed_at
-        WITH s
-        OPTIONAL MATCH (s)-[old:MENTIONS]->(:Concept)
-        FOREACH (
-            _ IN CASE WHEN $replace_section_mentions THEN [1] ELSE [] END |
-            DELETE old
-        )
         """,
         uid=section_uid,
-        replace_section_mentions=replace_section_mentions,
     )
 
     if not concepts:
@@ -482,19 +555,53 @@ def write_section_concepts(
         MATCH (s:Section {uid: $uid})
         WITH s, $concepts AS concepts
         UNWIND concepts AS concept
+
         MERGE (c:Concept {name: concept.name})
         ON CREATE SET
-            c.canonical_type = concept.type,
             c.observed_types = [concept.type],
+            c.type_resolution_status = 'pending',
+            c.needs_type_review = false,
             c.created_at = datetime()
-        ON MATCH SET
+
+        WITH
+            s,
+            concept,
+            c,
+            coalesce(c.observed_types, []) AS old_observed_types,
+            c.type_resolution_status AS previous_status,
+            coalesce(c.type_resolution_status, 'pending') AS old_status,
+            coalesce(c.needs_type_review, false) AS old_needs_type_review
+
+        SET
             c.observed_types =
                 CASE
-                    WHEN c.observed_types IS NULL THEN [concept.type]
-                    WHEN concept.type IN c.observed_types THEN c.observed_types
-                    ELSE c.observed_types + concept.type
+                    WHEN concept.type IN old_observed_types THEN old_observed_types
+                    ELSE old_observed_types + concept.type
+                END,
+            c.canonical_type =
+                CASE
+                    WHEN previous_status IS NULL THEN NULL
+                    WHEN old_status IN ['single_type', 'resolved']
+                         AND NOT (concept.type IN old_observed_types)
+                    THEN NULL
+                    ELSE c.canonical_type
+                END,
+            c.type_resolution_status =
+                CASE
+                    WHEN old_status IN ['single_type', 'resolved']
+                         AND NOT (concept.type IN old_observed_types)
+                    THEN 'pending'
+                    ELSE old_status
+                END,
+            c.needs_type_review =
+                CASE
+                    WHEN old_status IN ['single_type', 'resolved']
+                         AND NOT (concept.type IN old_observed_types)
+                    THEN true
+                    ELSE old_needs_type_review
                 END,
             c.updated_at = datetime()
+
         MERGE (s)-[r:MENTIONS]->(c)
         ON CREATE SET
             r.observed_types = [concept.type],
@@ -611,6 +718,9 @@ def validate_and_log_concepts(
     - accepted: concepts safe to write
     - rejected: concepts discarded before write
     - stats: validation counters
+
+    Normal INFO logging is intentionally compact for cluster runs.
+    Detailed concept names remain available in DEBUG logs and JSONL review files.
     """
     validation = validate_concepts_against_source(
         concepts=concepts,
@@ -643,8 +753,11 @@ def validate_and_log_concepts(
     )
 
     if accepted:
-        logger.info(
-            " -> accepted: %s",
+        accepted_sample = accepted[:CONCEPT_DEBUG_LOG_LIMIT]
+        logger.debug(
+            " -> accepted concepts sample (%d/%d): %s",
+            len(accepted_sample),
+            len(accepted),
             ", ".join(
                 (
                     f"{c['name']} [{c['type']}]"
@@ -659,13 +772,20 @@ def validate_and_log_concepts(
                         else ""
                     )
                 )
-                for c in accepted
+                for c in accepted_sample
             ),
         )
 
+        omitted_count = len(accepted) - len(accepted_sample)
+        if omitted_count > 0:
+            logger.debug(
+                " -> accepted concepts omitted from debug log: %d",
+                omitted_count,
+            )
+
     if rejected:
         rejection_summary = summarize_rejections(rejected)
-        logger.info(
+        logger.debug(
             " -> rejected summary: %s",
             ", ".join(
                 f"{reason}={count}"
@@ -673,8 +793,8 @@ def validate_and_log_concepts(
             ),
         )
 
-        rejected_sample = rejected[:REJECTED_CONCEPT_LOG_LIMIT]
-        logger.info(
+        rejected_sample = rejected[:CONCEPT_DEBUG_LOG_LIMIT]
+        logger.debug(
             " -> rejected concepts sample (%d/%d): %s",
             len(rejected_sample),
             len(rejected),
@@ -686,8 +806,8 @@ def validate_and_log_concepts(
 
         omitted_count = len(rejected) - len(rejected_sample)
         if omitted_count > 0:
-            logger.info(
-                " -> rejected concepts omitted from log: %d",
+            logger.debug(
+                " -> rejected concepts omitted from debug log: %d",
                 omitted_count,
             )
 
@@ -876,6 +996,11 @@ def add_entities_from_sections(
       supported by an acronym short form present in the section text;
     - validate_entities.py can also expand a raw acronym short form extracted by
       the LLM into its cached long form before graph writing.
+
+    Empty-body policy:
+    - when use_section_text=True, title-only sections with empty body text are
+      skipped and marked as skipped_empty;
+    - when use_section_text=False, title-only extraction is still allowed.
     """
     if max_sections_per_batch < 1:
         raise ValueError("max_sections_per_batch must be >= 1")
@@ -898,6 +1023,7 @@ def add_entities_from_sections(
         "entity_review_accepted_records": 0,
         "entity_review_rejected_records": 0,
         "entity_review_export_failures": 0,
+        "orphan_concepts_deleted": 0,
     }
 
     with driver.session() as session:
@@ -932,7 +1058,7 @@ def add_entities_from_sections(
             max_sections=max_sections,
         )
 
-        prepared_rows = []
+        prepared_rows: List[Dict[str, Any]] = []
 
         for record in result:
             row = {
@@ -942,6 +1068,21 @@ def add_entities_from_sections(
                 "title": record["title"],
                 "text": record["text"],
             }
+
+            if use_section_text and not has_section_body(row):
+                stats["skipped_sections"] += 1
+                session.execute_write(
+                    mark_section_extraction_skipped_empty,
+                    row["uid"],
+                    replace_section_mentions,
+                )
+                logger.info(
+                    "Skipping section with empty body | doc=%s section=%s title=%r",
+                    row["doc_id"],
+                    row["section_id"],
+                    row["title"],
+                )
+                continue
 
             source_text = build_source_text(
                 row=row,
@@ -1011,9 +1152,10 @@ def add_entities_from_sections(
             )
 
         logger.info(
-            "Preparing entity extraction for %d sections%s | model=%s | max_sections_per_batch=%d",
+            "Preparing entity extraction for %d sections%s | skipped_empty=%d | model=%s | max_sections_per_batch=%d",
             len(prepared_rows),
             f" in document {doc_id}" if doc_id else "",
+            stats["skipped_sections"],
             model_name,
             max_sections_per_batch,
         )
@@ -1143,8 +1285,18 @@ def add_entities_from_sections(
                 output_dir=entity_review_output_dir,
             )
 
+        stats["orphan_concepts_deleted"] = session.execute_write(
+            delete_orphan_concepts
+        )
+
+        if stats["orphan_concepts_deleted"] > 0:
+            logger.info(
+                "Deleted orphan Concept nodes | count=%d",
+                stats["orphan_concepts_deleted"],
+            )
+
         logger.info(
-            "Entity extraction completed | processed=%d | successful=%d | failed=%d | skipped=%d | sections_with_concepts=%d | concepts_written=%d | concepts_rejected_by_validation=%d | acronym_supported_concepts=%d | sections_with_acronym_supported_concepts=%d | docs_with_acronym_cache=%d | acronyms_loaded=%d | review_accepted=%d | review_rejected=%d | review_export_failures=%d",
+            "Entity extraction completed | processed=%d | successful=%d | failed=%d | skipped=%d | sections_with_concepts=%d | concepts_written=%d | concepts_rejected_by_validation=%d | acronym_supported_concepts=%d | sections_with_acronym_supported_concepts=%d | docs_with_acronym_cache=%d | acronyms_loaded=%d | review_accepted=%d | review_rejected=%d | review_export_failures=%d | orphan_concepts_deleted=%d",
             stats["processed_sections"],
             stats["successful_sections"],
             stats["failed_sections"],
@@ -1159,6 +1311,7 @@ def add_entities_from_sections(
             stats["entity_review_accepted_records"],
             stats["entity_review_rejected_records"],
             stats["entity_review_export_failures"],
+            stats["orphan_concepts_deleted"],
         )
 
         return stats

@@ -13,6 +13,14 @@ Important note:
 - We intentionally do NOT wipe canonical_type during reset.
   This allows a previous/manual canonical_type to be preserved in tie cases
   if it is still among the top-supported types.
+- If a concept has tied type evidence and no existing defensible canonical_type,
+  we set canonical_type = "ambiguous" rather than choosing an arbitrary type.
+- If a concept has no valid type evidence after recomputation, we set
+  canonical_type = "no_supported_type".
+- Therefore, after disambiguation, Concept.canonical_type can be either:
+    - one of the allowed entity types;
+    - "ambiguous";
+    - "no_supported_type".
 """
 
 import logging
@@ -44,6 +52,37 @@ def setup_disambiguation_schema(tx) -> None:
         """
     )
 
+    tx.run(
+        """
+        CREATE INDEX concept_canonical_type IF NOT EXISTS
+        FOR (c:Concept)
+        ON (c.canonical_type)
+        """
+    )
+
+
+def delete_orphan_concepts(tx) -> int:
+    """
+    Delete Concept nodes that are no longer referenced by any Section.
+
+    This is useful after reruns where old MENTIONS relationships are replaced,
+    or when failed/skipped sections clear stale mentions.
+    """
+    result = tx.run(
+        """
+        MATCH (c:Concept)
+        WHERE NOT EXISTS {
+            MATCH (:Section)-[:MENTIONS]->(c)
+        }
+        WITH collect(c) AS concepts_to_delete, count(c) AS deleted_count
+        FOREACH (c IN concepts_to_delete | DETACH DELETE c)
+        RETURN deleted_count
+        """
+    )
+
+    record = result.single()
+    return int(record["deleted_count"] or 0) if record is not None else 0
+
 
 def reset_type_resolution_state(tx) -> None:
     """
@@ -52,6 +91,9 @@ def reset_type_resolution_state(tx) -> None:
     We intentionally keep c.canonical_type untouched here so that, if the next
     recomputation ends in a tie, an existing/manual canonical_type can be kept
     provided it is still among the top-supported types.
+
+    Concepts for which the old canonical_type is no longer supported will have it
+    overwritten during resolution.
     """
     tx.run(
         """
@@ -70,27 +112,43 @@ def resolve_types_by_section_support(tx) -> None:
     Recompute concept type support from current Section-[:MENTIONS]->Concept relationships.
 
     Each section contributes at most one support per type for a given concept because
-    relationship observed_types are already deduplicated at write time.
+    relationship observed_types are expected to be deduplicated at write time.
+
+    Resolution policy:
+    - one observed type:
+        canonical_type = that type
+    - multiple observed types with a unique top-supported type:
+        canonical_type = the unique winner
+    - tied top-supported types:
+        preserve existing canonical_type only if it is among the tied top types;
+        otherwise canonical_type = "ambiguous"
     """
     tx.run(
         """
         MATCH (c:Concept)<-[r:MENTIONS]-(:Section)
         UNWIND coalesce(r.observed_types, []) AS supported_type
+        WITH c, supported_type
+        WHERE supported_type IS NOT NULL AND supported_type <> ""
+
         WITH c, supported_type, count(*) AS support_count
         ORDER BY c.name, support_count DESC, supported_type ASC
+
         WITH c, collect({type: supported_type, count: support_count}) AS support_rows
-        WITH c,
-             support_rows,
-             [row IN support_rows | row.type] AS observed_types,
-             [row IN support_rows | row.type + '=' + toString(row.count)] AS type_support_pairs,
-             [row IN support_rows WHERE row.count = support_rows[0].count | row.type] AS top_types
+        WITH
+            c,
+            support_rows,
+            [row IN support_rows | row.type] AS observed_types,
+            [row IN support_rows | row.type + '=' + toString(row.count)] AS type_support_pairs,
+            [row IN support_rows WHERE row.count = support_rows[0].count | row.type] AS top_types
+
         SET c.observed_types = observed_types,
             c.type_support_pairs = type_support_pairs,
             c.canonical_type =
                 CASE
+                    WHEN size(observed_types) = 1 THEN observed_types[0]
                     WHEN size(top_types) = 1 THEN top_types[0]
                     WHEN c.canonical_type IS NOT NULL AND c.canonical_type IN top_types THEN c.canonical_type
-                    ELSE top_types[0]
+                    ELSE 'ambiguous'
                 END,
             c.needs_type_review =
                 CASE
@@ -121,30 +179,13 @@ def mark_concepts_without_supported_types(tx) -> None:
         """
         MATCH (c:Concept)
         WHERE c.observed_types IS NULL OR size(c.observed_types) = 0
-        SET c.canonical_type = null,
+        SET c.canonical_type = 'no_supported_type',
             c.type_support_pairs = [],
             c.needs_type_review = true,
             c.type_resolution_status = 'no_supported_types_after_recompute',
             c.type_resolution_updated_at = datetime()
         """
     )
-
-
-def delete_orphan_concepts(tx) -> int:
-    """
-    Delete Concept nodes that are no longer referenced by any Section.
-    """
-    result = tx.run(
-        """
-        MATCH (c:Concept)
-        WHERE NOT (:Section)-[:MENTIONS]->(c)
-        WITH collect(c) AS concepts_to_delete
-        FOREACH (c IN concepts_to_delete | DETACH DELETE c)
-        RETURN size(concepts_to_delete) AS deleted_count
-        """
-    )
-    record = result.single()
-    return int(record["deleted_count"]) if record is not None else 0
 
 
 def summarize_disambiguation(tx) -> Dict[str, int]:
@@ -157,9 +198,12 @@ def summarize_disambiguation(tx) -> Dict[str, int]:
             count(CASE WHEN c.type_resolution_status = 'resolved_single_supported_type' THEN 1 END) AS resolved_single_type,
             count(CASE WHEN c.type_resolution_status = 'resolved_by_section_support' THEN 1 END) AS resolved_by_support,
             count(CASE WHEN c.type_resolution_status = 'ambiguous_tied_section_support' THEN 1 END) AS ambiguous_tied_support,
-            count(CASE WHEN c.type_resolution_status = 'no_supported_types_after_recompute' THEN 1 END) AS no_supported_types
+            count(CASE WHEN c.type_resolution_status = 'no_supported_types_after_recompute' THEN 1 END) AS no_supported_types,
+            count(CASE WHEN c.canonical_type = 'ambiguous' THEN 1 END) AS concepts_with_ambiguous_canonical_type,
+            count(CASE WHEN c.canonical_type = 'no_supported_type' THEN 1 END) AS concepts_with_no_supported_type
         """
     )
+
     record = result.single()
 
     if record is None:
@@ -170,6 +214,8 @@ def summarize_disambiguation(tx) -> Dict[str, int]:
             "resolved_by_support": 0,
             "ambiguous_tied_support": 0,
             "no_supported_types": 0,
+            "concepts_with_ambiguous_canonical_type": 0,
+            "concepts_with_no_supported_type": 0,
         }
 
     return {
@@ -179,6 +225,12 @@ def summarize_disambiguation(tx) -> Dict[str, int]:
         "resolved_by_support": int(record["resolved_by_support"]),
         "ambiguous_tied_support": int(record["ambiguous_tied_support"]),
         "no_supported_types": int(record["no_supported_types"]),
+        "concepts_with_ambiguous_canonical_type": int(
+            record["concepts_with_ambiguous_canonical_type"]
+        ),
+        "concepts_with_no_supported_type": int(
+            record["concepts_with_no_supported_type"]
+        ),
     }
 
 
@@ -190,24 +242,27 @@ def disambiguate_concepts(
     Recompute concept type resolution from current section-level support.
 
     Strategy:
-    - reset concept-level type state
-    - aggregate current support from Section-[:MENTIONS]->Concept relationships
     - optionally delete orphan concepts
-    - flag concepts with no current supported types
+    - reset recomputed concept-level type state
+    - aggregate current support from Section-[:MENTIONS]->Concept relationships
     - resolve concepts with a single supported type
     - resolve multi-type concepts by majority support when there is a unique winner
-    - flag concepts that remain tied across top-supported types
+    - preserve existing/manual canonical_type in tied cases only if still supported
+    - mark unresolved tied concepts with canonical_type = "ambiguous"
+    - mark malformed concepts with no current supported types as
+      canonical_type = "no_supported_type"
     """
     with driver.session() as session:
         session.execute_write(setup_disambiguation_schema)
-        session.execute_write(reset_type_resolution_state)
-        session.execute_write(resolve_types_by_section_support)
 
         deleted_orphan_concepts = 0
         if delete_orphans:
             deleted_orphan_concepts = session.execute_write(delete_orphan_concepts)
 
+        session.execute_write(reset_type_resolution_state)
+        session.execute_write(resolve_types_by_section_support)
         session.execute_write(mark_concepts_without_supported_types)
+
         summary = session.execute_read(summarize_disambiguation)
 
     stats = {
@@ -217,16 +272,24 @@ def disambiguate_concepts(
         "resolved_by_support": summary["resolved_by_support"],
         "ambiguous_tied_support": summary["ambiguous_tied_support"],
         "no_supported_types": summary["no_supported_types"],
+        "concepts_with_ambiguous_canonical_type": summary[
+            "concepts_with_ambiguous_canonical_type"
+        ],
+        "concepts_with_no_supported_type": summary[
+            "concepts_with_no_supported_type"
+        ],
         "deleted_orphan_concepts": deleted_orphan_concepts,
     }
 
     logger.info(
-        "Concept disambiguation completed | total=%d | resolved_single=%d | resolved_by_support=%d | ambiguous_tied=%d | no_supported_types=%d | deleted_orphans=%d | needs_review=%d",
+        "Concept disambiguation completed | total=%d | resolved_single=%d | resolved_by_support=%d | ambiguous_tied=%d | no_supported_types=%d | ambiguous_canonical=%d | no_supported_canonical=%d | deleted_orphans=%d | needs_review=%d",
         stats["total_concepts"],
         stats["resolved_single_type"],
         stats["resolved_by_support"],
         stats["ambiguous_tied_support"],
         stats["no_supported_types"],
+        stats["concepts_with_ambiguous_canonical_type"],
+        stats["concepts_with_no_supported_type"],
         stats["deleted_orphan_concepts"],
         stats["concepts_needing_review"],
     )
