@@ -19,12 +19,13 @@ QUERIES = {
             c.name AS Concept,
             c.observed_types AS Types,
             c.type_support_pairs AS Type_Support,
-            c.canonical_type AS Chosen_Canonical,
+            c.canonical_type AS Canonical_Type,
             c.type_resolution_status AS Resolution_Status
         ORDER BY Concept ASC
+        LIMIT 100
     """,
 
-    "3. Entities Distribution by Canonical Type": """
+    "3. Entity Distribution by Canonical Type": """
         MATCH (c:Concept)
         RETURN
             coalesce(c.canonical_type, 'UNRESOLVED') AS Type,
@@ -32,35 +33,38 @@ QUERIES = {
         ORDER BY Count DESC, Type ASC
     """,
 
-    "4. Sections with Most Entities (Density Check)": """
+    "4. Sections with Most Accepted Concepts": """
         MATCH (s:Section)-[:MENTIONS]->(c:Concept)
         RETURN
             s.uid AS Section,
             s.title AS Title,
             count(DISTINCT c) AS Entity_Count
         ORDER BY Entity_Count DESC, Section ASC
-        LIMIT 5
+        LIMIT 10
     """,
 
-    "5. Ambiguous Concepts with Tied Support": """
+    "5. Ambiguous Concepts with Tied Type Support": """
         MATCH (c:Concept)
         WHERE c.type_resolution_status = 'ambiguous_tied_section_support'
         RETURN
             c.name AS Concept,
             c.observed_types AS Types,
             c.type_support_pairs AS Type_Support,
-            c.canonical_type AS Chosen_Canonical
+            c.canonical_type AS Canonical_Type
         ORDER BY Concept ASC
+        LIMIT 100
     """,
 
-    "6. Cross-Document Concepts (Shared Knowledge)": """
+    "6. Cross-Document Concepts": """
         MATCH (c:Concept)<-[:MENTIONS]-(s:Section)
         WITH c, collect(DISTINCT s.doc_id) AS docs
         WHERE size(docs) > 1
         RETURN
             c.name AS Shared_Concept,
+            c.canonical_type AS Type,
             docs AS Found_In_Docs
         ORDER BY Shared_Concept ASC
+        LIMIT 100
     """,
 
     "7. Type Resolution Status Summary": """
@@ -89,34 +93,23 @@ QUERIES = {
             s.uid AS Section,
             s.title AS Title,
             size(coalesce(s.text, '')) AS Text_Length,
-            coalesce(s.entity_extraction_status, 'UNSET') AS Status
+            coalesce(s.entity_extraction_status, 'UNSET') AS Entity_Status,
+            coalesce(s.embedding_status, 'UNSET') AS Embedding_Status
         ORDER BY Text_Length DESC, Section ASC
         LIMIT 20
     """,
 
-    "10. Failed Sections with Structural Children": """
-        MATCH (s:Section)
-        WHERE s.entity_extraction_status = 'failed'
-        RETURN
-            s.uid AS Section,
-            s.title AS Title,
-            size(coalesce(s.text, '')) AS Text_Length,
-            EXISTS { (s)-[:HAS_CHILD]->(:Section) } AS Has_Children
-        ORDER BY Text_Length DESC, Section ASC
-        LIMIT 20
-    """,
-
-    "11. Entity Extraction Status vs Text Length": """
+    "10. Entity Extraction Status vs Text Length": """
         MATCH (s:Section)
         RETURN
             coalesce(s.entity_extraction_status, 'UNSET') AS Status,
             count(*) AS Sections,
-            avg(size(coalesce(s.text, ''))) AS Avg_Text_Length,
+            round(avg(size(coalesce(s.text, ''))), 2) AS Avg_Text_Length,
             max(size(coalesce(s.text, ''))) AS Max_Text_Length
         ORDER BY Sections DESC, Status ASC
     """,
 
-    "12. Success Status but No Extracted Concepts": """
+    "11. Successfully Processed Sections with Zero Accepted Concepts": """
         MATCH (s:Section)
         WHERE s.entity_extraction_status = 'success'
           AND NOT (s)-[:MENTIONS]->(:Concept)
@@ -128,7 +121,7 @@ QUERIES = {
         LIMIT 30
     """,
 
-    "13. Sections Still Unset for Entity Extraction": """
+    "12. Sections Still Unset for Entity Extraction": """
         MATCH (s:Section)
         WHERE s.entity_extraction_status IS NULL
            OR s.entity_extracted IS NULL
@@ -142,7 +135,7 @@ QUERIES = {
         LIMIT 50
     """,
 
-    "14. Sections Exceeding Emergency Single-Section Limit": """
+    "13. Sections with Body Text Longer Than 12000 Characters": """
         MATCH (s:Section)
         WHERE size(coalesce(s.text, '')) > 12000
         RETURN
@@ -154,7 +147,7 @@ QUERIES = {
         LIMIT 50
     """,
 
-    "15. Duplicate MENTIONS Edges Per Section-Concept Pair": """
+    "14. Duplicate MENTIONS Edges Per Section-Concept Pair": """
         MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
         WITH s, c, count(r) AS rel_count
         WHERE rel_count > 1
@@ -166,7 +159,7 @@ QUERIES = {
         LIMIT 50
     """,
 
-    "16. Orphan Concepts with No Supporting Sections": """
+    "15. Orphan Concepts with No Supporting Sections": """
         MATCH (c:Concept)
         WHERE NOT (:Section)-[:MENTIONS]->(c)
         RETURN
@@ -177,7 +170,7 @@ QUERIES = {
         LIMIT 50
     """,
 
-    "17. Concepts Missing Canonical or Observed Type Info": """
+    "16. Concepts Missing Canonical or Observed Type Info": """
         MATCH (c:Concept)
         WHERE c.canonical_type IS NULL
            OR c.observed_types IS NULL
@@ -191,7 +184,7 @@ QUERIES = {
         LIMIT 50
     """,
 
-    "18. Potentially Overused Concepts with Document Spread": """
+    "17. Potentially Overused Concepts with Document Spread": """
         MATCH (c:Concept)<-[:MENTIONS]-(s:Section)
         WITH c, count(DISTINCT s) AS section_count, collect(DISTINCT s.doc_id) AS docs
         WHERE section_count > 20
@@ -205,13 +198,13 @@ QUERIES = {
         LIMIT 30
     """,
 
-    "19. Sections with Suspiciously High Entity Density": """
+    "18. Sections with Suspiciously High Entity Density": """
         MATCH (s:Section)-[:MENTIONS]->(c:Concept)
         WITH
             s,
             count(DISTINCT c) AS entity_count,
             size(coalesce(s.text, '')) AS text_len
-        WHERE text_len > 0
+        WHERE text_len >= 500
         RETURN
             s.uid AS Section,
             s.title AS Title,
@@ -222,10 +215,10 @@ QUERIES = {
         LIMIT 30
     """,
 
-    "20. Failed Sections That Also Have Children": """
+    "19. Failed Sections That Also Have Children": """
         MATCH (s:Section)
         WHERE s.entity_extraction_status = 'failed'
-          AND EXISTS { (s)-[:HAS_CHILD]->(:Section) }
+          AND EXISTS { MATCH (s)-[:HAS_CHILD]->(:Section) }
         RETURN
             s.uid AS Section,
             s.title AS Title,
@@ -233,30 +226,126 @@ QUERIES = {
         ORDER BY Text_Length DESC, Section ASC
         LIMIT 30
     """,
+
+    "20. Mention Support Method Summary": """
+        MATCH (:Section)-[r:MENTIONS]->(:Concept)
+        RETURN
+            coalesce(r.support_method, 'UNSET') AS Support_Method,
+            count(*) AS Count
+        ORDER BY Count DESC, Support_Method ASC
+    """,
+
+    "21. Acronym-Supported Mentions": """
+        MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+        WHERE r.support_method = 'acronym'
+        RETURN
+            s.uid AS Section,
+            s.title AS Title,
+            c.name AS Concept,
+            c.canonical_type AS Type,
+            r.acronym_short AS Acronym,
+            r.acronym_definition AS Acronym_Definition,
+            r.acronym_match_method AS Acronym_Match_Method,
+            r.expanded_from_acronym AS Expanded_From_Acronym,
+            r.raw_name AS Raw_Name
+        ORDER BY Section ASC, Concept ASC
+        LIMIT 50
+    """,
+
+    "22. Expanded Acronym Concepts": """
+        MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+        WHERE coalesce(r.expanded_from_acronym, false) = true
+        RETURN
+            s.uid AS Section,
+            s.title AS Title,
+            r.raw_name AS Raw_LLM_Name,
+            c.name AS Written_Concept,
+            c.canonical_type AS Type,
+            r.acronym_short AS Acronym,
+            r.acronym_definition AS Acronym_Definition,
+            r.acronym_match_method AS Acronym_Match_Method
+        ORDER BY Section ASC, Written_Concept ASC
+        LIMIT 50
+    """,
+
+    "23. Acronym-Supported Mentions Missing Metadata": """
+        MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+        WHERE r.support_method = 'acronym'
+          AND (
+                r.acronym_short IS NULL
+             OR r.acronym_definition IS NULL
+             OR r.acronym_match_method IS NULL
+          )
+        RETURN
+            s.uid AS Section,
+            c.name AS Concept,
+            r.acronym_short AS Acronym,
+            r.acronym_definition AS Acronym_Definition,
+            r.acronym_match_method AS Acronym_Match_Method
+        ORDER BY Section ASC, Concept ASC
+        LIMIT 50
+    """,
+
+    "24. Mentions Missing Validation Metadata": """
+        MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+        WHERE r.support_method IS NULL
+           OR r.validation_reason IS NULL
+        RETURN
+            s.uid AS Section,
+            c.name AS Concept,
+            c.canonical_type AS Type,
+            r.support_method AS Support_Method,
+            r.validation_reason AS Validation_Reason
+        ORDER BY Section ASC, Concept ASC
+        LIMIT 50
+    """,
+
+    "25. Raw Acronym-Like Mentions Written Without Expansion": """
+        MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+        WHERE r.raw_name IS NOT NULL
+          AND r.raw_name =~ '^[A-Z0-9][A-Z0-9./+-]{1,}$'
+          AND coalesce(r.expanded_from_acronym, false) = false
+          AND c.name = toLower(r.raw_name)
+        RETURN
+            s.uid AS Section,
+            c.name AS Concept,
+            r.raw_name AS Raw_Name,
+            c.canonical_type AS Type,
+            r.support_method AS Support_Method,
+            r.validation_reason AS Validation_Reason
+        ORDER BY Section ASC, Concept ASC
+        LIMIT 50
+    """,
 }
 
 
-def run_viz():
-    print("[INFO] Initializing connection for Entity Visualization...")
+def run_viz() -> None:
+    print("[INFO] Initializing connection for final KG diagnostic queries...")
     driver = get_neo4j_driver(verify=True)
 
     try:
         with driver.session() as session:
             for title, cypher in QUERIES.items():
                 print(f"\n---> {title}")
-                result = session.run(cypher)
-                records = list(result)
 
-                if not records:
-                    print("     No data found.")
-                else:
-                    for record in records:
-                        print(f"     {dict(record)}")
+                try:
+                    result = session.run(cypher)
+                    records = list(result)
+
+                    if not records:
+                        print("     No data found.")
+                    else:
+                        for record in records:
+                            print(f"     {dict(record)}")
+
+                except Exception as exc:
+                    print(f"     [ERROR] Query failed: {exc}")
 
                 print("-" * 60)
+
     finally:
         close_driver(driver)
-        print("\n[INFO] Visualization queries finished.")
+        print("\n[INFO] Final KG diagnostic queries finished.")
 
 
 if __name__ == "__main__":

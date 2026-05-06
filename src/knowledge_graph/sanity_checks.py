@@ -4,17 +4,21 @@ Sanity checks for the knowledge-graph pipeline.
 This module defines phase-aware Neo4j checks used to validate:
 - graph structure after loading
 - entity extraction outputs
+- concept type-resolution outputs
+- acronym-supported entity-validation metadata
 - embedding outputs
 
 Each check is tagged by phase so the pipeline can run only the
 relevant validations for the current stage.
+
 """
 
-from neo4j import Driver
 import logging
 from typing import Any, Dict, List, Set
 
 from neo4j import Driver
+
+from knowledge_graph.entity_schema import ALLOWED_TYPES
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +34,29 @@ PHASE_EXPANSION: Dict[str, Set[str]] = {
 }
 
 
+SPECIAL_CANONICAL_TYPES = {
+    "ambiguous",
+    "no_supported_type",
+}
+
+VALID_CANONICAL_TYPES = sorted(ALLOWED_TYPES | SPECIAL_CANONICAL_TYPES)
+VALID_ENTITY_TYPES = sorted(ALLOWED_TYPES)
+
+
 CHECKS: List[Dict[str, Any]] = [
+    {
+        "name": "documents_missing_doc_id",
+        "title": "Documents missing doc_id",
+        "group": "Document structure",
+        "phases": {"structure"},
+        "level": "ERROR",
+        "query": """
+            MATCH (d:Document)
+            WHERE d.doc_id IS NULL OR trim(d.doc_id) = ''
+            RETURN elementId(d) AS node_id
+            ORDER BY node_id
+        """,
+    },
     {
         "name": "documents_without_sections",
         "title": "Documents without sections",
@@ -39,7 +65,9 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "ERROR",
         "query": """
             MATCH (d:Document)
-            WHERE NOT (d)-[:HAS_SECTION]->(:Section)
+            WHERE NOT EXISTS {
+                MATCH (d)-[:HAS_SECTION]->(:Section)
+            }
             RETURN d.doc_id AS doc_id
             ORDER BY doc_id
         """,
@@ -51,23 +79,44 @@ CHECKS: List[Dict[str, Any]] = [
         "phases": {"structure"},
         "level": "ERROR",
         "query": """
-            MATCH (d1:Document)-[:HAS_SECTION]->(s:Section)<-[:HAS_SECTION]-(d2:Document)
-            WHERE d1 <> d2
-            RETURN DISTINCT s.uid AS uid, d1.doc_id AS doc_1, d2.doc_id AS doc_2
-            ORDER BY uid, doc_1, doc_2
+            MATCH (d:Document)-[:HAS_SECTION]->(s:Section)
+            WITH s, collect(DISTINCT d.doc_id) AS docs
+            WHERE size(docs) > 1
+            RETURN s.uid AS uid, docs
+            ORDER BY uid
         """,
     },
     {
         "name": "orphan_sections",
-        "title": "Orphan sections (no document)",
+        "title": "Orphan sections with no document",
         "group": "Document structure",
         "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
-            WHERE NOT (:Document)-[:HAS_SECTION]->(s)
+            WHERE NOT EXISTS {
+                MATCH (:Document)-[:HAS_SECTION]->(s)
+            }
             RETURN s.uid AS uid
             ORDER BY uid
+        """,
+    },
+    {
+        "name": "sections_missing_identity_fields",
+        "title": "Sections missing identity fields",
+        "group": "Section identity",
+        "phases": {"structure"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)
+            WHERE s.uid IS NULL OR trim(s.uid) = ''
+               OR s.doc_id IS NULL OR trim(s.doc_id) = ''
+               OR s.section_id IS NULL OR trim(s.section_id) = ''
+            RETURN s.uid AS uid,
+                   s.doc_id AS doc_id,
+                   s.section_id AS section_id,
+                   s.title AS title
+            ORDER BY doc_id, uid
         """,
     },
     {
@@ -78,6 +127,7 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
+            WHERE s.uid IS NOT NULL
             WITH s.uid AS uid, count(*) AS n
             WHERE n > 1
             RETURN uid, n
@@ -86,13 +136,15 @@ CHECKS: List[Dict[str, Any]] = [
     },
     {
         "name": "uid_doc_id_mismatch",
-        "title": "UID / doc_id mismatch",
+        "title": "Section UID / doc_id mismatch",
         "group": "Section identity",
         "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
-            WHERE NOT s.uid STARTS WITH s.doc_id + "::"
+            WHERE s.uid IS NOT NULL
+              AND s.doc_id IS NOT NULL
+              AND NOT s.uid STARTS WITH s.doc_id + "::"
             RETURN s.uid AS uid, s.doc_id AS doc_id
             ORDER BY uid
         """,
@@ -112,14 +164,32 @@ CHECKS: List[Dict[str, Any]] = [
         """,
     },
     {
+        "name": "has_child_edges_crossing_documents",
+        "title": "HAS_CHILD edges crossing documents",
+        "group": "Hierarchy",
+        "phases": {"structure"},
+        "level": "ERROR",
+        "query": """
+            MATCH (p:Section)-[:HAS_CHILD]->(c:Section)
+            WHERE p.doc_id <> c.doc_id
+            RETURN p.uid AS parent_uid,
+                   c.uid AS child_uid,
+                   p.doc_id AS parent_doc_id,
+                   c.doc_id AS child_doc_id
+            ORDER BY parent_uid, child_uid
+        """,
+    },
+    {
         "name": "cycles_in_has_child",
-        "title": "Cycles in HAS_CHILD",
+        "title": "Cycles in HAS_CHILD hierarchy",
         "group": "Hierarchy",
         "phases": {"structure"},
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
-            WHERE (s)-[:HAS_CHILD*1..]->(s)
+            WHERE EXISTS {
+                MATCH (s)-[:HAS_CHILD*1..]->(s)
+            }
             RETURN DISTINCT s.uid AS uid
             ORDER BY uid
         """,
@@ -138,8 +208,36 @@ CHECKS: List[Dict[str, Any]] = [
         """,
     },
     {
-        "name": "sections_missing_text",
-        "title": "Sections missing text",
+        "name": "duplicate_next_edges_from_same_section",
+        "title": "Sections with multiple outgoing NEXT edges",
+        "group": "Hierarchy",
+        "phases": {"structure"},
+        "level": "WARNING",
+        "query": """
+            MATCH (a:Section)-[:NEXT]->(b:Section)
+            WITH a, count(DISTINCT b) AS outgoing_next
+            WHERE outgoing_next > 1
+            RETURN a.uid AS uid, outgoing_next
+            ORDER BY outgoing_next DESC, uid
+        """,
+    },
+    {
+        "name": "duplicate_next_edges_to_same_section",
+        "title": "Sections with multiple incoming NEXT edges",
+        "group": "Hierarchy",
+        "phases": {"structure"},
+        "level": "WARNING",
+        "query": """
+            MATCH (a:Section)-[:NEXT]->(b:Section)
+            WITH b, count(DISTINCT a) AS incoming_next
+            WHERE incoming_next > 1
+            RETURN b.uid AS uid, incoming_next
+            ORDER BY incoming_next DESC, uid
+        """,
+    },
+    {
+        "name": "sections_with_empty_body_text",
+        "title": "Sections with empty body text",
         "group": "Section content",
         "phases": {"structure"},
         "level": "INFO",
@@ -159,14 +257,16 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH (s:Section)
             WHERE coalesce(s.is_empty, false) = true
-              AND NOT (s)-[:HAS_CHILD]->(:Section)
+              AND NOT EXISTS {
+                  MATCH (s)-[:HAS_CHILD]->(:Section)
+              }
             RETURN s.uid AS uid, s.title AS title
             ORDER BY uid
         """,
     },
-     {
+    {
         "name": "parent_sections_with_direct_body_text",
-        "title": "Parent sections with direct body text",
+        "title": "Parent sections that also contain body text",
         "group": "Section content",
         "phases": {"structure"},
         "level": "INFO",
@@ -174,71 +274,165 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH (s:Section)-[:HAS_CHILD]->(:Section)
             WHERE coalesce(s.is_empty, false) = false
               AND coalesce(trim(s.text), '') <> ''
-              AND size(s.text) > 100
-            RETURN DISTINCT s.uid AS uid, size(s.text) AS text_len
+              AND size(coalesce(s.text, '')) > 100
+            RETURN DISTINCT s.uid AS uid,
+                   s.title AS title,
+                   size(coalesce(s.text, '')) AS text_len
             ORDER BY text_len DESC, uid
         """,
     },
+
+    # ---------------------------------------------------------------------
+    # Concept and type-resolution checks
+    # ---------------------------------------------------------------------
     {
         "name": "orphan_concepts",
-        "title": "Orphan concepts",
-        "group": "Concepts",
+        "title": "Orphan concepts with no section mentions",
+        "group": "Concept type resolution",
         "phases": {"entities"},
         "level": "INFO",
         "query": """
             MATCH (c:Concept)
-            WHERE NOT (:Section)-[:MENTIONS]->(c)
-            RETURN c.name AS name
+            WHERE NOT EXISTS {
+                MATCH (:Section)-[:MENTIONS]->(c)
+            }
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.type_resolution_status AS type_resolution_status
             ORDER BY name
         """,
     },
     {
-        "name": "concepts_without_canonical_type",
-        "title": "Concepts without canonical type",
-        "group": "Concepts",
+        "name": "concept_type_resolution_status_summary",
+        "title": "Concept type-resolution status summary",
+        "group": "Concept type resolution",
         "phases": {"entities"},
-        "level": "ERROR",
+        "level": "INFO",
+        "is_summary": True,
         "query": """
             MATCH (c:Concept)
-            WHERE c.canonical_type IS NULL
-            RETURN c.name AS name
+            RETURN coalesce(c.type_resolution_status, 'UNSET') AS status,
+                   count(c) AS n
+            ORDER BY n DESC, status ASC
+        """,
+    },
+    {
+        "name": "concept_canonical_type_summary",
+        "title": "Concept canonical_type summary",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH (c:Concept)
+            RETURN coalesce(c.canonical_type, 'UNSET') AS canonical_type,
+                   count(c) AS n
+            ORDER BY n DESC, canonical_type ASC
+        """,
+    },
+    {
+        "name": "concepts_still_pending_type_resolution",
+        "title": "Concepts still pending type resolution",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "INFO",
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.type_resolution_status IS NULL
+               OR c.type_resolution_status = 'pending'
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.type_resolution_status AS type_resolution_status
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "concepts_with_unexpected_canonical_type",
+        "title": "Concepts with unexpected canonical_type values",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "valid_canonical_types": VALID_CANONICAL_TYPES,
+        },
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.canonical_type IS NOT NULL
+              AND NOT (c.canonical_type IN $valid_canonical_types)
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.type_resolution_status AS type_resolution_status
             ORDER BY name
         """,
     },
     {
         "name": "concepts_without_observed_types",
         "title": "Concepts without observed_types",
-        "group": "Concepts",
+        "group": "Concept type resolution",
         "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (c:Concept)
             WHERE c.observed_types IS NULL OR size(c.observed_types) = 0
-            RETURN c.name AS name, c.canonical_type AS canonical_type
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.type_resolution_status AS type_resolution_status
             ORDER BY name
         """,
     },
     {
         "name": "canonical_type_not_in_observed_types",
-        "title": "Canonical type not present in observed_types",
-        "group": "Concepts",
+        "title": "Resolved canonical type not present in observed_types",
+        "group": "Concept type resolution",
         "phases": {"entities"},
         "level": "WARNING",
         "query": """
             MATCH (c:Concept)
             WHERE c.canonical_type IS NOT NULL
+              AND NOT (c.canonical_type IN ['ambiguous', 'no_supported_type'])
               AND c.observed_types IS NOT NULL
-              AND NOT c.canonical_type IN c.observed_types
+              AND NOT (c.canonical_type IN c.observed_types)
             RETURN c.name AS name,
                    c.canonical_type AS canonical_type,
-                   c.observed_types AS observed_types
+                   c.observed_types AS observed_types,
+                   c.type_support_pairs AS type_support_pairs,
+                   c.type_resolution_status AS type_resolution_status
             ORDER BY name
         """,
     },
     {
-        "name": "ambiguous_concepts_needing_review",
-        "title": "Ambiguous concepts needing review",
-        "group": "Concepts",
+        "name": "resolved_concepts_without_valid_canonical_type",
+        "title": "Resolved concepts without a valid canonical entity type",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "allowed_entity_types": VALID_ENTITY_TYPES,
+        },
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.type_resolution_status IN [
+                'resolved_single_supported_type',
+                'resolved_by_section_support'
+            ]
+              AND (
+                    c.canonical_type IS NULL
+                 OR NOT (c.canonical_type IN $allowed_entity_types)
+              )
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.type_support_pairs AS type_support_pairs,
+                   c.type_resolution_status AS type_resolution_status
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "concepts_marked_for_type_review",
+        "title": "Concepts marked for type review",
+        "group": "Concept type resolution",
         "phases": {"entities"},
         "level": "WARNING",
         "query": """
@@ -253,50 +447,99 @@ CHECKS: List[Dict[str, Any]] = [
         """,
     },
     {
-        "name": "concepts_missing_type_resolution_status",
-        "title": "Concepts missing type resolution status",
-        "group": "Concepts",
+        "name": "ambiguous_concepts_not_flagged_for_review",
+        "title": "Ambiguous concepts not flagged for review",
+        "group": "Concept type resolution",
         "phases": {"entities"},
-        "level": "WARNING",
+        "level": "ERROR",
         "query": """
             MATCH (c:Concept)
-            WHERE c.type_resolution_status IS NULL
+            WHERE c.canonical_type = 'ambiguous'
+              AND coalesce(c.needs_type_review, false) = false
             RETURN c.name AS name,
                    c.canonical_type AS canonical_type,
-                   c.observed_types AS observed_types
+                   c.observed_types AS observed_types,
+                   c.type_support_pairs AS type_support_pairs,
+                   c.type_resolution_status AS type_resolution_status
             ORDER BY name
         """,
     },
     {
-        "name": "concepts_used_in_only_one_document",
-        "title": "Concepts used in only one document",
-        "group": "Concepts",
+        "name": "no_supported_type_concepts_not_flagged_for_review",
+        "title": "No-supported-type concepts not flagged for review",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.canonical_type = 'no_supported_type'
+              AND coalesce(c.needs_type_review, false) = false
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.type_support_pairs AS type_support_pairs,
+                   c.type_resolution_status AS type_resolution_status
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "resolved_concepts_flagged_for_review",
+        "title": "Resolved concepts still flagged for type review",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (c:Concept)
+            WHERE c.type_resolution_status IN [
+                'resolved_single_supported_type',
+                'resolved_by_section_support'
+            ]
+              AND coalesce(c.needs_type_review, false) = true
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.type_support_pairs AS type_support_pairs,
+                   c.type_resolution_status AS type_resolution_status
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "document_specific_concepts",
+        "title": "Document-specific concepts",
+        "group": "Concept diagnostics",
         "phases": {"entities"},
         "level": "INFO",
         "query": """
             MATCH (c:Concept)<-[:MENTIONS]-(s:Section)
             WITH c, collect(DISTINCT s.doc_id) AS docs
             WHERE size(docs) = 1
-            RETURN c.name AS name, docs
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   docs
             ORDER BY name
         """,
     },
     {
-        "name": "highly_overused_concepts",
-        "title": "Highly overused concepts",
-        "group": "Concepts",
+        "name": "potentially_over_broad_high_frequency_concepts",
+        "title": "Potentially over-broad high-frequency concepts",
+        "group": "Concept diagnostics",
         "phases": {"entities"},
-        "level": "WARNING",
+        "level": "INFO",
         "query": """
             MATCH (s:Section)-[:MENTIONS]->(c:Concept)
             WITH c, count(DISTINCT s) AS n
             WHERE n > 30
             RETURN c.name AS name,
                    c.canonical_type AS canonical_type,
+                   c.type_resolution_status AS type_resolution_status,
                    n
             ORDER BY n DESC, name
         """,
     },
+
+    # ---------------------------------------------------------------------
+    # Entity extraction state checks
+    # ---------------------------------------------------------------------
     {
         "name": "sections_missing_entity_extracted_flag",
         "title": "Sections missing entity_extracted flag",
@@ -306,8 +549,10 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH (s:Section)
             WHERE s.entity_extracted IS NULL
-            RETURN s.uid AS uid
-            ORDER BY uid
+            RETURN s.uid AS uid,
+                   s.doc_id AS doc_id,
+                   s.title AS title
+            ORDER BY doc_id, uid
         """,
     },
     {
@@ -368,6 +613,194 @@ CHECKS: List[Dict[str, Any]] = [
             ORDER BY uid
         """,
     },
+    {
+        "name": "skipped_empty_sections_with_mentions",
+        "title": "Skipped-empty sections that still have entity mentions",
+        "group": "Entity extraction state",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[:MENTIONS]->(c:Concept)
+            WHERE s.entity_extraction_status = 'skipped_empty'
+            RETURN s.uid AS uid,
+                   s.title AS title,
+                   c.name AS concept
+            ORDER BY uid, concept
+        """,
+    },
+    {
+        "name": "failed_sections_with_mentions",
+        "title": "Failed entity-extraction sections that still have mentions",
+        "group": "Entity extraction state",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[:MENTIONS]->(c:Concept)
+            WHERE s.entity_extraction_status = 'failed'
+            RETURN s.uid AS uid,
+                   s.title AS title,
+                   c.name AS concept
+            ORDER BY uid, concept
+        """,
+    },
+
+    # ---------------------------------------------------------------------
+    # Mention relationship checks
+    # ---------------------------------------------------------------------
+    {
+        "name": "mention_support_method_summary",
+        "title": "MENTIONS support_method summary",
+        "group": "Mention relationships",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH (:Section)-[r:MENTIONS]->(:Concept)
+            RETURN coalesce(r.support_method, 'UNSET') AS support_method,
+                   count(r) AS n
+            ORDER BY n DESC, support_method ASC
+        """,
+    },
+    {
+        "name": "mentions_without_observed_types",
+        "title": "MENTIONS relationships without observed_types",
+        "group": "Mention relationships",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WHERE r.observed_types IS NULL OR size(r.observed_types) = 0
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   r.observed_types AS observed_types
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "mentions_with_unexpected_observed_type",
+        "title": "MENTIONS relationships with unexpected observed type values",
+        "group": "Mention relationships",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "allowed_entity_types": VALID_ENTITY_TYPES,
+        },
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            UNWIND coalesce(r.observed_types, []) AS observed_type
+            WITH s, r, c, observed_type
+            WHERE observed_type IS NOT NULL
+              AND observed_type <> ''
+              AND NOT (observed_type IN $allowed_entity_types)
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   observed_type,
+                   r.observed_types AS observed_types
+            ORDER BY section_uid, concept, observed_type
+        """,
+    },
+    {
+        "name": "mentions_missing_validation_metadata",
+        "title": "MENTIONS relationships missing validation metadata",
+        "group": "Mention relationships",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WHERE r.support_method IS NULL
+               OR r.validation_reason IS NULL
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   r.support_method AS support_method,
+                   r.validation_reason AS validation_reason
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "mentions_with_multiple_observed_types",
+        "title": "MENTIONS relationships with multiple observed types",
+        "group": "Mention relationships",
+        "phases": {"entities"},
+        "level": "INFO",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WHERE r.observed_types IS NOT NULL
+              AND size(r.observed_types) > 1
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   r.observed_types AS observed_types
+            ORDER BY section_uid, concept
+        """,
+    },
+
+    # ---------------------------------------------------------------------
+    # Acronym validation checks
+    # ---------------------------------------------------------------------
+    {
+        "name": "acronym_supported_mentions_missing_metadata",
+        "title": "Acronym-supported mentions missing acronym metadata",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WHERE r.support_method = 'acronym'
+              AND (
+                    r.acronym_short IS NULL
+                 OR trim(r.acronym_short) = ''
+                 OR r.acronym_definition IS NULL
+                 OR trim(r.acronym_definition) = ''
+                 OR r.acronym_match_method IS NULL
+                 OR trim(r.acronym_match_method) = ''
+              )
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   r.acronym_short AS acronym_short,
+                   r.acronym_definition AS acronym_definition,
+                   r.acronym_match_method AS acronym_match_method
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "expanded_acronym_mentions_missing_raw_name",
+        "title": "Expanded acronym mentions missing raw_name",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WHERE coalesce(r.expanded_from_acronym, false) = true
+              AND (r.raw_name IS NULL OR trim(r.raw_name) = '')
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   r.raw_name AS raw_name,
+                   r.acronym_short AS acronym_short,
+                   r.acronym_definition AS acronym_definition
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "expanded_acronym_mentions_without_acronym_support",
+        "title": "Expanded acronym mentions without acronym support metadata",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WHERE coalesce(r.expanded_from_acronym, false) = true
+              AND r.support_method <> 'acronym'
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   r.support_method AS support_method,
+                   r.raw_name AS raw_name,
+                   r.acronym_short AS acronym_short
+            ORDER BY section_uid, concept
+        """,
+    },
+
+    # ---------------------------------------------------------------------
+    # Embedding checks
+    # ---------------------------------------------------------------------
     {
         "name": "sections_missing_has_embedding_flag",
         "title": "Sections missing has_embedding flag",
@@ -541,17 +974,22 @@ def _run_check(tx, check: Dict[str, Any], sample_limit: int) -> Dict[str, Any]:
     Each check is run once for the exact count and, only when useful,
     once more to fetch a limited sample for logging.
     """
+    query_params = dict(check.get("params") or {})
+
     count_query = check.get("count_query") or _build_count_query(check["query"])
     sample_query = check.get("sample_query") or _build_sample_query(check["query"])
 
-    count_record = tx.run(count_query).single()
+    count_record = tx.run(count_query, **query_params).single()
     count = int(count_record["n"]) if count_record is not None else 0
 
     is_summary = bool(check.get("is_summary", False))
 
     sample: List[Dict[str, Any]] = []
     if sample_limit > 0 and (is_summary or count > 0):
-        sample_rows = list(tx.run(sample_query, sample_limit=sample_limit))
+        sample_params = dict(query_params)
+        sample_params["sample_limit"] = sample_limit
+
+        sample_rows = list(tx.run(sample_query, **sample_params))
         sample = [dict(row) for row in sample_rows]
 
     return {
