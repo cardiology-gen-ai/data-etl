@@ -1,14 +1,19 @@
 """
 llm_utils.py
 
-Local LLM/embedding utilities for the knowledge-graph pipeline.
+Provider-aware LLM/embedding utilities for the knowledge-graph pipeline.
+
+The default provider remains the local HuggingFace path used on Leonardo.
+OpenAI support is additive and is selected explicitly through environment
+variables.
 """
 
 import gc
 import logging
+import math
 import os
 from functools import lru_cache
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
 from sentence_transformers import SentenceTransformer
@@ -16,6 +21,17 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
+
+LOCAL_HF_PROVIDER = "local_hf"
+OPENAI_PROVIDER = "openai"
+
+_PROVIDER_ALIASES = {
+    "hf": LOCAL_HF_PROVIDER,
+    "huggingface": LOCAL_HF_PROVIDER,
+    "local": LOCAL_HF_PROVIDER,
+    "local_hf": LOCAL_HF_PROVIDER,
+    "openai": OPENAI_PROVIDER,
+}
 
 
 def _get_env_bool(name: str, default: bool) -> bool:
@@ -92,6 +108,46 @@ def _clear_cuda_cache() -> None:
         logger.debug("torch.cuda.ipc_collect() failed or unavailable: %s", e)
 
 
+def _normalize_provider(value: Optional[str], env_name: str) -> str:
+    raw = (value or LOCAL_HF_PROVIDER).strip().lower().replace("-", "_")
+    provider = _PROVIDER_ALIASES.get(raw)
+
+    if provider is None:
+        supported = ", ".join(sorted(set(_PROVIDER_ALIASES.values())))
+        raise RuntimeError(
+            f"Unsupported {env_name}={value!r}. Supported providers: {supported}"
+        )
+
+    return provider
+
+
+def get_chat_provider() -> str:
+    """
+    Return the configured chat provider.
+
+    KG_CHAT_PROVIDER is preferred. KG_MODEL_PROVIDER is accepted as a shared
+    fallback for runs where chat and embeddings use the same backend.
+    """
+    return _normalize_provider(
+        _get_optional_env("KG_CHAT_PROVIDER") or _get_optional_env("KG_MODEL_PROVIDER"),
+        "KG_CHAT_PROVIDER",
+    )
+
+
+def get_embedding_provider() -> str:
+    """
+    Return the configured embedding provider.
+
+    KG_EMBEDDING_PROVIDER is preferred. KG_MODEL_PROVIDER is accepted as a
+    shared fallback for runs where chat and embeddings use the same backend.
+    """
+    return _normalize_provider(
+        _get_optional_env("KG_EMBEDDING_PROVIDER")
+        or _get_optional_env("KG_MODEL_PROVIDER"),
+        "KG_EMBEDDING_PROVIDER",
+    )
+
+
 def get_chat_model_ref() -> str:
     """
     Return the reference used to load the chat model.
@@ -99,6 +155,9 @@ def get_chat_model_ref() -> str:
     If KG_CHAT_MODEL_PATH is set, loading uses that local/custom path.
     Otherwise KG_CHAT_MODEL is used.
     """
+    if get_chat_provider() != LOCAL_HF_PROVIDER:
+        return _get_required_env("KG_CHAT_MODEL")
+
     return _get_optional_env("KG_CHAT_MODEL_PATH") or _get_required_env("KG_CHAT_MODEL")
 
 
@@ -109,6 +168,9 @@ def get_embedding_model_ref() -> str:
     If KG_EMBEDDING_MODEL_PATH is set, loading uses that local/custom path.
     Otherwise KG_EMBEDDING_MODEL is used.
     """
+    if get_embedding_provider() != LOCAL_HF_PROVIDER:
+        return _get_required_env("KG_EMBEDDING_MODEL")
+
     return _get_optional_env("KG_EMBEDDING_MODEL_PATH") or _get_required_env(
         "KG_EMBEDDING_MODEL"
     )
@@ -130,6 +192,11 @@ def get_embedding_model_name() -> str:
 
 @lru_cache(maxsize=1)
 def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]:
+    if get_chat_provider() != LOCAL_HF_PROVIDER:
+        raise RuntimeError(
+            "get_chat_tokenizer_and_model() is only available for KG_CHAT_PROVIDER=local_hf"
+        )
+
     model_ref = get_chat_model_ref()
     hf_token = _get_optional_env("HF_TOKEN")
     local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
@@ -167,6 +234,11 @@ def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]
 
 @lru_cache(maxsize=1)
 def get_embedding_model() -> SentenceTransformer:
+    if get_embedding_provider() != LOCAL_HF_PROVIDER:
+        raise RuntimeError(
+            "get_embedding_model() is only available for KG_EMBEDDING_PROVIDER=local_hf"
+        )
+
     model_ref = get_embedding_model_ref()
     hf_token = _get_optional_env("HF_TOKEN")
     local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
@@ -194,6 +266,51 @@ def get_embedding_model() -> SentenceTransformer:
     return model
 
 
+@lru_cache(maxsize=1)
+def get_openai_client():
+    """
+    Lazily create the plain OpenAI client.
+
+    OPENAI_API_KEY is required only when an OpenAI provider is selected.
+    """
+    _get_required_env("OPENAI_API_KEY")
+
+    try:
+        from openai import OpenAI
+    except ImportError as e:
+        raise RuntimeError(
+            "The OpenAI Python package is required for KG_*_PROVIDER=openai. "
+            "Install the data-etl project dependencies first."
+        ) from e
+
+    return OpenAI()
+
+
+def _log_openai_usage(response: Any, operation: str, model_name: str) -> None:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+
+    input_tokens = (
+        getattr(usage, "prompt_tokens", None)
+        or getattr(usage, "input_tokens", None)
+    )
+    output_tokens = (
+        getattr(usage, "completion_tokens", None)
+        or getattr(usage, "output_tokens", None)
+    )
+    total_tokens = getattr(usage, "total_tokens", None)
+
+    logger.info(
+        "OpenAI usage | operation=%s | model=%s | input_tokens=%s | output_tokens=%s | total_tokens=%s",
+        operation,
+        model_name,
+        input_tokens,
+        output_tokens,
+        total_tokens,
+    )
+
+
 def clear_chat_model_cache() -> None:
     """
     Release the cached chat tokenizer/model and clear CUDA cache.
@@ -204,6 +321,7 @@ def clear_chat_model_cache() -> None:
     logger.info("Clearing cached chat model/tokenizer")
 
     get_chat_tokenizer_and_model.cache_clear()
+    get_openai_client.cache_clear()
     gc.collect()
     _clear_cuda_cache()
 
@@ -217,6 +335,7 @@ def clear_embedding_model_cache() -> None:
     logger.info("Clearing cached embedding model")
 
     get_embedding_model.cache_clear()
+    get_openai_client.cache_clear()
     gc.collect()
     _clear_cuda_cache()
 
@@ -229,17 +348,102 @@ def clear_all_model_caches() -> None:
 
     get_chat_tokenizer_and_model.cache_clear()
     get_embedding_model.cache_clear()
+    get_openai_client.cache_clear()
     gc.collect()
     _clear_cuda_cache()
+
+
+def _build_openai_response_format(
+    json_mode: bool,
+    json_schema: Optional[Dict[str, Any]],
+    json_schema_name: str,
+) -> Optional[Dict[str, Any]]:
+    if json_schema is not None:
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": json_schema_name,
+                "strict": True,
+                "schema": json_schema,
+            },
+        }
+
+    if json_mode:
+        return {"type": "json_object"}
+
+    return None
+
+
+def _generate_openai_chat_text(
+    messages: List[Dict[str, str]],
+    json_mode: bool,
+    max_new_tokens: Optional[int],
+    json_schema: Optional[Dict[str, Any]],
+    json_schema_name: str,
+) -> str:
+    client = get_openai_client()
+    model_name = get_chat_model_name()
+
+    request: Dict[str, Any] = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": 0,
+    }
+
+    effective_max_tokens = (
+        max_new_tokens
+        if max_new_tokens is not None
+        else _get_env_int("KG_CHAT_MAX_NEW_TOKENS", 512)
+    )
+    request["max_tokens"] = effective_max_tokens
+
+    response_format = _build_openai_response_format(
+        json_mode=json_mode,
+        json_schema=json_schema,
+        json_schema_name=json_schema_name,
+    )
+    if response_format is not None:
+        request["response_format"] = response_format
+
+    logger.info(
+        "Calling OpenAI chat model | model=%s | json_mode=%s | schema=%s | max_tokens=%d",
+        model_name,
+        json_mode,
+        json_schema_name if json_schema is not None else None,
+        effective_max_tokens,
+    )
+
+    response = client.chat.completions.create(**request)
+    _log_openai_usage(response, operation="chat", model_name=model_name)
+
+    if not response.choices:
+        raise RuntimeError("OpenAI chat response did not contain choices")
+
+    content = response.choices[0].message.content
+    if content is None:
+        raise RuntimeError("OpenAI chat response content was empty")
+
+    return content.strip()
 
 
 def generate_chat_text(
     messages: List[Dict[str, str]],
     json_mode: bool = False,
     max_new_tokens: Optional[int] = None,
+    json_schema: Optional[Dict[str, Any]] = None,
+    json_schema_name: str = "kg_response",
 ) -> str:
     if not messages:
         raise ValueError("messages must not be empty")
+
+    if get_chat_provider() == OPENAI_PROVIDER:
+        return _generate_openai_chat_text(
+            messages=messages,
+            json_mode=json_mode,
+            max_new_tokens=max_new_tokens,
+            json_schema=json_schema,
+            json_schema_name=json_schema_name,
+        )
 
     tokenizer, model = get_chat_tokenizer_and_model()
 
@@ -297,12 +501,68 @@ def generate_chat_text(
     return text
 
 
+def _iter_batches(items: List[str], batch_size: int) -> Iterable[List[str]]:
+    if batch_size < 1:
+        raise ValueError("batch_size must be >= 1")
+
+    for i in range(0, len(items), batch_size):
+        yield items[i:i + batch_size]
+
+
+def _l2_normalize(vector: List[float]) -> List[float]:
+    norm = math.sqrt(sum(float(x) * float(x) for x in vector))
+    if norm == 0:
+        return vector
+
+    return [float(x) / norm for x in vector]
+
+
+def _embed_texts_openai(
+    texts: List[str],
+    batch_size: int,
+) -> List[List[float]]:
+    client = get_openai_client()
+    model_name = get_embedding_model_name()
+    vectors: List[List[float]] = []
+
+    for batch in _iter_batches(texts, batch_size):
+        logger.info(
+            "Calling OpenAI embedding model | model=%s | batch_size=%d",
+            model_name,
+            len(batch),
+        )
+
+        response = client.embeddings.create(
+            model=model_name,
+            input=batch,
+        )
+        _log_openai_usage(response, operation="embedding", model_name=model_name)
+
+        batch_vectors = [
+            _l2_normalize(item.embedding)
+            for item in sorted(response.data, key=lambda item: item.index)
+        ]
+
+        if len(batch_vectors) != len(batch):
+            raise RuntimeError(
+                "OpenAI embedding response size mismatch | "
+                f"expected={len(batch)} | received={len(batch_vectors)}"
+            )
+
+        vectors.extend(batch_vectors)
+
+    return vectors
+
+
 def embed_texts(
     texts: List[str],
     batch_size: int = 8,
 ) -> List[List[float]]:
     if not texts:
         return []
+
+    if get_embedding_provider() == OPENAI_PROVIDER:
+        return _embed_texts_openai(texts=texts, batch_size=batch_size)
 
     model = get_embedding_model()
 

@@ -61,6 +61,7 @@ class GraphPipelineConfig:
 
     # Graph loader
     graph_loader_batch_size: int = 200
+    graph_loader_min_text_chars_to_embed: int = 20
     graph_loader_replace_existing_document: bool = True
 
     # Entity extraction
@@ -102,6 +103,7 @@ class GraphPipelineConfig:
     sanity_mode: Optional[str] = "full"
     sanity_sample_limit: int = 10
     sanity_log_samples: bool = True
+    quality_max_chunk_chars: int = 50000
 
 
 def _get_optional_env(name: str) -> Optional[str]:
@@ -110,6 +112,114 @@ def _get_optional_env(name: str) -> Optional[str]:
         return None
     value = value.strip()
     return value if value else None
+
+
+def _get_env_bool(name: str, default: bool) -> bool:
+    value = _get_optional_env(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _get_env_int(name: str, default: int) -> int:
+    value = _get_optional_env(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError as e:
+        raise RuntimeError(
+            f"Environment variable {name} must be an integer, got: {value!r}"
+        ) from e
+
+
+def _get_env_optional_int(name: str) -> Optional[int]:
+    value = _get_optional_env(name)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError as e:
+        raise RuntimeError(
+            f"Environment variable {name} must be an integer, got: {value!r}"
+        ) from e
+
+
+def _coerce_bool(value: Any, name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return bool(value)
+
+
+def _coerce_int(value: Any, name: str) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError) as e:
+        raise RuntimeError(
+            f"Configuration value {name} must be an integer, got: {value!r}"
+        ) from e
+
+
+def _get_config_value(config: dict, *keys: str, default: Any = None) -> Any:
+    current: Any = config
+    for key in keys:
+        if not isinstance(current, dict) or key not in current:
+            return default
+        current = current[key]
+    return current
+
+
+def _get_env_or_config_str(
+    env_name: str,
+    config_value: Any,
+    default: Optional[str] = None,
+) -> Optional[str]:
+    env_value = _get_optional_env(env_name)
+    if env_value is not None:
+        return env_value
+    if config_value is None:
+        return default
+    return str(config_value)
+
+
+def _get_env_or_config_bool(
+    env_name: str,
+    config_value: Any,
+    default: bool,
+) -> bool:
+    env_value = _get_optional_env(env_name)
+    if env_value is not None:
+        return _coerce_bool(env_value, env_name)
+    if config_value is None:
+        return default
+    return _coerce_bool(config_value, env_name)
+
+
+def _get_env_or_config_int(
+    env_name: str,
+    config_value: Any,
+    default: int,
+) -> int:
+    env_value = _get_optional_env(env_name)
+    if env_value is not None:
+        return _coerce_int(env_value, env_name)
+    if config_value is None:
+        return default
+    return _coerce_int(config_value, env_name)
+
+
+def _get_env_or_config_optional_int(
+    env_name: str,
+    config_value: Any,
+) -> Optional[int]:
+    env_value = _get_optional_env(env_name)
+    if env_value is not None:
+        return _coerce_int(env_value, env_name)
+    if config_value in (None, ""):
+        return None
+    return _coerce_int(config_value, env_name)
 
 
 def _resolve_config_path_from_env() -> Path:
@@ -128,6 +238,48 @@ def _resolve_config_path_from_env() -> Path:
         raw = raw[len("CONFIG_PATH="):].strip()
 
     return Path(raw).expanduser().resolve()
+
+
+def load_app_config_from_env() -> tuple[dict, Path, str]:
+    """
+    Load the configured app section from CONFIG_PATH.
+    """
+    config_path = _resolve_config_path_from_env()
+    app_id = _get_optional_env("KG_APP_ID") or "cardiology_protocols"
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        raw_config = json.load(f)
+
+    if app_id not in raw_config:
+        raise KeyError(f"App id '{app_id}' not found in config file {config_path}")
+
+    return raw_config[app_id], config_path, app_id
+
+
+def _resolve_project_path(
+    value: Any,
+    default: Path,
+    project_root: Path,
+) -> Path:
+    if value in (None, ""):
+        return default.resolve()
+
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute():
+        path = project_root / path
+
+    return path.resolve()
+
+
+def _resolve_project_path_from_env(
+    name: str,
+    default: Path,
+    project_root: Path,
+) -> Path:
+    """
+    Resolve a path-like env var relative to the project root.
+    """
+    return _resolve_project_path(_get_optional_env(name), default, project_root)
 
 
 def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
@@ -212,8 +364,15 @@ def make_graph_pipeline_config(
     run_embeddings: bool = False,
     run_entity_disambiguation: bool = False,
     run_sanity_checks: bool = True,
+    graph_loader_batch_size: int = 200,
+    graph_loader_min_text_chars_to_embed: int = 20,
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
+    entity_max_sections: Optional[int] = None,
+    entity_max_sections_per_batch: int = 1,
+    entity_max_batch_chars: int = 30000,
+    entity_emergency_max_single_chars: int = 12000,
+    entity_skip_processed: bool = True,
     entity_replace_section_mentions: bool = True,
     entity_use_acronym_validation: bool = True,
     entity_acronym_dir: Optional[Path] = None,
@@ -221,10 +380,17 @@ def make_graph_pipeline_config(
     entity_review_output_dir: Optional[Path] = None,
     entity_clear_previous_review: bool = True,
     entity_include_source_preview_in_review: bool = False,
+    embedding_max_sections: Optional[int] = None,
+    embedding_batch_size: int = 8,
+    embedding_force_reembed: bool = False,
+    embedding_include_title: bool = True,
+    embedding_include_body: bool = True,
+    embedding_max_chars_per_section: int = 8000,
     embedding_allow_title_only: bool = False,
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     sanity_mode: Optional[str] = "full",
+    quality_max_chunk_chars: int = 50000,
 ) -> GraphPipelineConfig:
     """
     Build the graph pipeline config.
@@ -272,15 +438,16 @@ def make_graph_pipeline_config(
         run_entity_disambiguation=run_entity_disambiguation,
         run_sanity_checks=run_sanity_checks,
 
-        graph_loader_batch_size=200,
+        graph_loader_batch_size=graph_loader_batch_size,
+        graph_loader_min_text_chars_to_embed=graph_loader_min_text_chars_to_embed,
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
 
         entity_use_section_text=entity_use_section_text,
-        entity_max_sections=None,
-        entity_max_sections_per_batch=1,
-        entity_max_batch_chars=30000,
-        entity_emergency_max_single_chars=12000,
-        entity_skip_processed=True,
+        entity_max_sections=entity_max_sections,
+        entity_max_sections_per_batch=entity_max_sections_per_batch,
+        entity_max_batch_chars=entity_max_batch_chars,
+        entity_emergency_max_single_chars=entity_emergency_max_single_chars,
+        entity_skip_processed=entity_skip_processed,
         entity_replace_section_mentions=entity_replace_section_mentions,
 
         entity_use_acronym_validation=entity_use_acronym_validation,
@@ -291,12 +458,12 @@ def make_graph_pipeline_config(
         entity_clear_previous_review=entity_clear_previous_review,
         entity_include_source_preview_in_review=entity_include_source_preview_in_review,
 
-        embedding_max_sections=None,
-        embedding_batch_size=8,
-        embedding_force_reembed=False,
-        embedding_include_title=True,
-        embedding_include_body=True,
-        embedding_max_chars_per_section=8000,
+        embedding_max_sections=embedding_max_sections,
+        embedding_batch_size=embedding_batch_size,
+        embedding_force_reembed=embedding_force_reembed,
+        embedding_include_title=embedding_include_title,
+        embedding_include_body=embedding_include_body,
+        embedding_max_chars_per_section=embedding_max_chars_per_section,
         embedding_allow_title_only=embedding_allow_title_only,
 
         clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
@@ -306,14 +473,19 @@ def make_graph_pipeline_config(
         sanity_mode=sanity_mode,
         sanity_sample_limit=10,
         sanity_log_samples=True,
+        quality_max_chunk_chars=quality_max_chunk_chars,
     )
 
 
 def inject_kg_runtime_env(
+    kg_chat_provider: Optional[str] = None,
+    kg_embedding_provider: Optional[str] = None,
     kg_chat_model: Optional[str] = None,
+    kg_chat_model_path: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
-    kg_local_files_only: bool = True,
-    kg_chat_max_new_tokens: int = 2048,
+    kg_embedding_model_path: Optional[str] = None,
+    kg_local_files_only: Optional[bool] = None,
+    kg_chat_max_new_tokens: Optional[int] = None,
 ) -> None:
     """
     Inject runtime environment variables for knowledge_graph.llm_utils.
@@ -321,17 +493,34 @@ def inject_kg_runtime_env(
     This remains a pragmatic bridge until model/runtime settings are moved
     into a cleaner explicit config object.
     """
+    if kg_chat_provider:
+        os.environ["KG_CHAT_PROVIDER"] = kg_chat_provider
+
+    if kg_embedding_provider:
+        os.environ["KG_EMBEDDING_PROVIDER"] = kg_embedding_provider
+
     if kg_chat_model:
         os.environ["KG_CHAT_MODEL"] = kg_chat_model
+
+    if kg_chat_model_path is not None:
+        os.environ["KG_CHAT_MODEL_PATH"] = kg_chat_model_path
 
     if kg_embedding_model:
         os.environ["KG_EMBEDDING_MODEL"] = kg_embedding_model
 
-    os.environ["KG_LOCAL_FILES_ONLY"] = "true" if kg_local_files_only else "false"
-    os.environ["KG_CHAT_MAX_NEW_TOKENS"] = str(kg_chat_max_new_tokens)
+    if kg_embedding_model_path is not None:
+        os.environ["KG_EMBEDDING_MODEL_PATH"] = kg_embedding_model_path
+
+    if kg_local_files_only is not None:
+        os.environ["KG_LOCAL_FILES_ONLY"] = "true" if kg_local_files_only else "false"
+
+    if kg_chat_max_new_tokens is not None:
+        os.environ["KG_CHAT_MAX_NEW_TOKENS"] = str(kg_chat_max_new_tokens)
 
     logger.info(
-        "Injected KG runtime env | chat=%s | embedding=%s | local_files_only=%s | max_new_tokens=%s",
+        "Injected KG runtime env | chat_provider=%s | embedding_provider=%s | chat=%s | embedding=%s | local_files_only=%s | max_new_tokens=%s",
+        kg_chat_provider,
+        kg_embedding_provider,
         kg_chat_model,
         kg_embedding_model,
         kg_local_files_only,
@@ -353,8 +542,15 @@ def main(
     run_embeddings: bool = False,
     run_entity_disambiguation: bool = False,
     run_sanity_checks: bool = True,
+    graph_loader_batch_size: int = 200,
+    graph_loader_min_text_chars_to_embed: int = 20,
     graph_loader_replace_existing_document: bool = True,
     entity_use_section_text: bool = True,
+    entity_max_sections: Optional[int] = None,
+    entity_max_sections_per_batch: int = 1,
+    entity_max_batch_chars: int = 30000,
+    entity_emergency_max_single_chars: int = 12000,
+    entity_skip_processed: bool = True,
     entity_replace_section_mentions: bool = True,
     entity_use_acronym_validation: bool = True,
     entity_acronym_dir: Optional[Path] = None,
@@ -362,14 +558,25 @@ def main(
     entity_review_output_dir: Optional[Path] = None,
     entity_clear_previous_review: bool = True,
     entity_include_source_preview_in_review: bool = False,
+    embedding_max_sections: Optional[int] = None,
+    embedding_batch_size: int = 8,
+    embedding_force_reembed: bool = False,
+    embedding_include_title: bool = True,
+    embedding_include_body: bool = True,
+    embedding_max_chars_per_section: int = 8000,
     embedding_allow_title_only: bool = False,
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     sanity_mode: Optional[str] = "full",
+    quality_max_chunk_chars: int = 50000,
+    kg_chat_provider: Optional[str] = None,
+    kg_embedding_provider: Optional[str] = None,
     kg_chat_model: Optional[str] = None,
+    kg_chat_model_path: Optional[str] = None,
     kg_embedding_model: Optional[str] = None,
-    kg_local_files_only: bool = True,
-    kg_chat_max_new_tokens: int = 2048,
+    kg_embedding_model_path: Optional[str] = None,
+    kg_local_files_only: Optional[bool] = None,
+    kg_chat_max_new_tokens: Optional[int] = None,
 ):
     """
     Run the KG pipeline.
@@ -394,24 +601,19 @@ def main(
         raise ValueError("sanity_mode must be set when run_sanity_checks=True")
 
     inject_kg_runtime_env(
+        kg_chat_provider=kg_chat_provider,
+        kg_embedding_provider=kg_embedding_provider,
         kg_chat_model=kg_chat_model,
+        kg_chat_model_path=kg_chat_model_path,
         kg_embedding_model=kg_embedding_model,
+        kg_embedding_model_path=kg_embedding_model_path,
         kg_local_files_only=kg_local_files_only,
         kg_chat_max_new_tokens=kg_chat_max_new_tokens,
     )
 
-    config_path = _resolve_config_path_from_env()
+    app_config, config_path, app_id = load_app_config_from_env()
     logger.info("Using config path: %s", config_path)
-
-    app_id = _get_optional_env("KG_APP_ID") or "cardiology_protocols"
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw_config = json.load(f)
-
-    if app_id not in raw_config:
-        raise KeyError(f"App id '{app_id}' not found in config file {config_path}")
-
-    app_config = raw_config[app_id]
+    logger.info("Using app id: %s", app_id)
     preprocessing_dict = app_config["preprocessing"]
 
     preprocessing_config = PreprocessingConfig.from_config(
@@ -438,8 +640,15 @@ def main(
         run_embeddings=run_embeddings,
         run_entity_disambiguation=run_entity_disambiguation,
         run_sanity_checks=run_sanity_checks,
+        graph_loader_batch_size=graph_loader_batch_size,
+        graph_loader_min_text_chars_to_embed=graph_loader_min_text_chars_to_embed,
         graph_loader_replace_existing_document=graph_loader_replace_existing_document,
         entity_use_section_text=entity_use_section_text,
+        entity_max_sections=entity_max_sections,
+        entity_max_sections_per_batch=entity_max_sections_per_batch,
+        entity_max_batch_chars=entity_max_batch_chars,
+        entity_emergency_max_single_chars=entity_emergency_max_single_chars,
+        entity_skip_processed=entity_skip_processed,
         entity_replace_section_mentions=entity_replace_section_mentions,
         entity_use_acronym_validation=entity_use_acronym_validation,
         entity_acronym_dir=entity_acronym_dir,
@@ -447,10 +656,17 @@ def main(
         entity_review_output_dir=entity_review_output_dir,
         entity_clear_previous_review=entity_clear_previous_review,
         entity_include_source_preview_in_review=entity_include_source_preview_in_review,
+        embedding_max_sections=embedding_max_sections,
+        embedding_batch_size=embedding_batch_size,
+        embedding_force_reembed=embedding_force_reembed,
+        embedding_include_title=embedding_include_title,
+        embedding_include_body=embedding_include_body,
+        embedding_max_chars_per_section=embedding_max_chars_per_section,
         embedding_allow_title_only=embedding_allow_title_only,
         clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
         disambiguation_delete_orphans=disambiguation_delete_orphans,
         sanity_mode=sanity_mode,
+        quality_max_chunk_chars=quality_max_chunk_chars,
     )
 
     if clear_neo4j_before_run:
@@ -483,19 +699,181 @@ if __name__ == "__main__":
     )
 
     project_root = Path(__file__).resolve().parent.parent
-    pdf_dir = project_root / "test_data" / "pdfdocs"
-    work_root = project_root / "test_data" / "graph_cache_test"
+    env_path = project_root / ".env"
+    loaded = load_dotenv(env_path)
+    logger.info("Loading .env from: %s", env_path)
+    logger.info(".env loaded: %s", loaded)
 
-    PIPELINE_PHASE = os.getenv(
-        "KG_PIPELINE_PHASE",
-        "preprocess",
+    app_config, config_path, app_id = load_app_config_from_env()
+    logger.info("Using config path: %s", config_path)
+    logger.info("Using app id: %s", app_id)
+
+    kg_config = app_config.get("knowledge_graph", {})
+
+    pdf_dir = _resolve_project_path(
+        _get_optional_env("KG_PDF_DIR")
+        or _get_config_value(kg_config, "pipeline", "pdf_dir"),
+        project_root / "test_data" / "pdfdocs",
+        project_root,
+    )
+    work_root = _resolve_project_path(
+        _get_optional_env("KG_WORK_ROOT")
+        or _get_config_value(kg_config, "pipeline", "work_root"),
+        project_root / "test_data" / "graph_cache_test",
+        project_root,
+    )
+
+    PIPELINE_PHASE = (
+        _get_optional_env("KG_PIPELINE_PHASE")
+        or _get_config_value(
+            kg_config,
+            "pipeline",
+            "phase",
+            default="preprocess",
+        )
     ).strip().lower()  # preprocess, graph, entities, embeddings, full
 
     SANITY_MODE = _resolve_sanity_mode_from_phase(PIPELINE_PHASE)
 
-    # Runtime model settings
-    KG_CHAT_MODEL = "Qwen/Qwen2.5-14B-Instruct"
-    KG_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-8B"
+    # Runtime model settings come from config.json by default. .env can still
+    # override them for local/emergency runs without changing tracked config.
+    KG_CHAT_PROVIDER = (
+        _get_optional_env("KG_CHAT_PROVIDER")
+        or _get_optional_env("KG_MODEL_PROVIDER")
+        or _get_config_value(kg_config, "providers", "chat_provider")
+        or "local_hf"
+    )
+    KG_EMBEDDING_PROVIDER = (
+        _get_optional_env("KG_EMBEDDING_PROVIDER")
+        or _get_optional_env("KG_MODEL_PROVIDER")
+        or _get_config_value(kg_config, "providers", "embedding_provider")
+        or "local_hf"
+    )
+    KG_CHAT_MODEL = _get_env_or_config_str(
+        "KG_CHAT_MODEL",
+        _get_config_value(kg_config, "models", "chat_model"),
+    ) or (
+        "gpt-4.1-mini"
+        if KG_CHAT_PROVIDER.strip().lower().replace("-", "_") == "openai"
+        else "Qwen/Qwen2.5-14B-Instruct"
+    )
+    KG_CHAT_MODEL_PATH = _get_env_or_config_str(
+        "KG_CHAT_MODEL_PATH",
+        _get_config_value(kg_config, "models", "chat_model_path"),
+        "",
+    )
+    KG_EMBEDDING_MODEL = _get_env_or_config_str(
+        "KG_EMBEDDING_MODEL",
+        _get_config_value(kg_config, "models", "embedding_model"),
+    ) or (
+        "text-embedding-3-small"
+        if KG_EMBEDDING_PROVIDER.strip().lower().replace("-", "_") == "openai"
+        else "Qwen/Qwen3-Embedding-8B"
+    )
+    KG_EMBEDDING_MODEL_PATH = _get_env_or_config_str(
+        "KG_EMBEDDING_MODEL_PATH",
+        _get_config_value(kg_config, "models", "embedding_model_path"),
+        "",
+    )
+    KG_LOCAL_FILES_ONLY = _get_env_or_config_bool(
+        "KG_LOCAL_FILES_ONLY",
+        _get_config_value(kg_config, "providers", "local_files_only"),
+        default=(
+            KG_CHAT_PROVIDER.strip().lower().replace("-", "_") != "openai"
+            or KG_EMBEDDING_PROVIDER.strip().lower().replace("-", "_") != "openai"
+        ),
+    )
+    KG_CHAT_MAX_NEW_TOKENS = _get_env_or_config_int(
+        "KG_CHAT_MAX_NEW_TOKENS",
+        _get_config_value(kg_config, "models", "chat_max_new_tokens"),
+        2048,
+    )
+
+    runtime_kwargs = {
+        "kg_chat_provider": KG_CHAT_PROVIDER,
+        "kg_embedding_provider": KG_EMBEDDING_PROVIDER,
+        "kg_chat_model": KG_CHAT_MODEL,
+        "kg_chat_model_path": KG_CHAT_MODEL_PATH,
+        "kg_embedding_model": KG_EMBEDDING_MODEL,
+        "kg_embedding_model_path": KG_EMBEDDING_MODEL_PATH,
+        "kg_local_files_only": KG_LOCAL_FILES_ONLY,
+        "kg_chat_max_new_tokens": KG_CHAT_MAX_NEW_TOKENS,
+    }
+
+    limit_kwargs = {
+        "graph_loader_batch_size": _get_env_or_config_int(
+            "KG_GRAPH_LOADER_BATCH_SIZE",
+            _get_config_value(kg_config, "graph_loader", "batch_size"),
+            200,
+        ),
+        "graph_loader_min_text_chars_to_embed": _get_env_or_config_int(
+            "MIN_TEXT_CHARS_TO_EMBED",
+            _get_config_value(kg_config, "graph_loader", "min_text_chars_to_embed"),
+            20,
+        ),
+        "entity_max_sections": _get_env_or_config_optional_int(
+            "KG_ENTITY_MAX_SECTIONS",
+            _get_config_value(kg_config, "entities", "max_sections"),
+        ),
+        "entity_max_sections_per_batch": _get_env_or_config_int(
+            "KG_ENTITY_MAX_SECTIONS_PER_BATCH",
+            _get_config_value(kg_config, "entities", "max_sections_per_batch"),
+            1,
+        ),
+        "entity_max_batch_chars": _get_env_or_config_int(
+            "KG_ENTITY_MAX_BATCH_CHARS",
+            _get_config_value(kg_config, "entities", "max_batch_chars"),
+            30000,
+        ),
+        "entity_emergency_max_single_chars": _get_env_or_config_int(
+            "KG_ENTITY_EMERGENCY_MAX_SINGLE_CHARS",
+            _get_config_value(kg_config, "entities", "emergency_max_single_chars"),
+            12000,
+        ),
+        "entity_skip_processed": _get_env_or_config_bool(
+            "KG_ENTITY_SKIP_PROCESSED",
+            _get_config_value(kg_config, "entities", "skip_processed"),
+            True,
+        ),
+        "embedding_max_sections": _get_env_or_config_optional_int(
+            "KG_EMBEDDING_MAX_SECTIONS",
+            _get_config_value(kg_config, "section_embeddings", "max_sections"),
+        ),
+        "embedding_batch_size": _get_env_or_config_int(
+            "KG_EMBEDDING_BATCH_SIZE",
+            _get_config_value(kg_config, "section_embeddings", "batch_size"),
+            8,
+        ),
+        "embedding_force_reembed": _get_env_or_config_bool(
+            "KG_EMBEDDING_FORCE_REEMBED",
+            _get_config_value(kg_config, "section_embeddings", "force_reembed"),
+            False,
+        ),
+        "embedding_include_title": _get_env_or_config_bool(
+            "KG_EMBEDDING_INCLUDE_TITLE",
+            _get_config_value(kg_config, "section_embeddings", "include_title"),
+            True,
+        ),
+        "embedding_include_body": _get_env_or_config_bool(
+            "KG_EMBEDDING_INCLUDE_BODY",
+            _get_config_value(kg_config, "section_embeddings", "include_body"),
+            True,
+        ),
+        "embedding_max_chars_per_section": _get_env_or_config_int(
+            "KG_EMBEDDING_MAX_CHARS_PER_SECTION",
+            _get_config_value(
+                kg_config,
+                "section_embeddings",
+                "max_chars_per_section",
+            ),
+            8000,
+        ),
+        "quality_max_chunk_chars": _get_env_or_config_int(
+            "KG_QUALITY_MAX_CHUNK_CHARS",
+            _get_config_value(kg_config, "quality", "max_chunk_chars"),
+            50000,
+        ),
+    }
 
     if PIPELINE_PHASE == "preprocess":
         main(
@@ -524,10 +902,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
-            kg_chat_model=KG_CHAT_MODEL,
-            kg_embedding_model=KG_EMBEDDING_MODEL,
-            kg_local_files_only=True,
-            kg_chat_max_new_tokens=2048,
+            **runtime_kwargs,
+            **limit_kwargs,
         )
 
     elif PIPELINE_PHASE == "graph":
@@ -555,10 +931,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
-            kg_chat_model=KG_CHAT_MODEL,
-            kg_embedding_model=KG_EMBEDDING_MODEL,
-            kg_local_files_only=True,
-            kg_chat_max_new_tokens=2048,
+            **runtime_kwargs,
+            **limit_kwargs,
         )
 
     elif PIPELINE_PHASE == "entities":
@@ -585,10 +959,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
-            kg_chat_model=KG_CHAT_MODEL,
-            kg_embedding_model=KG_EMBEDDING_MODEL,
-            kg_local_files_only=True,
-            kg_chat_max_new_tokens=2048,
+            **runtime_kwargs,
+            **limit_kwargs,
         )
 
     elif PIPELINE_PHASE == "embeddings":
@@ -615,10 +987,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
-            kg_chat_model=KG_CHAT_MODEL,
-            kg_embedding_model=KG_EMBEDDING_MODEL,
-            kg_local_files_only=True,
-            kg_chat_max_new_tokens=2048,
+            **runtime_kwargs,
+            **limit_kwargs,
         )
 
     elif PIPELINE_PHASE == "full":
@@ -649,10 +1019,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
-            kg_chat_model=KG_CHAT_MODEL,
-            kg_embedding_model=KG_EMBEDDING_MODEL,
-            kg_local_files_only=True,
-            kg_chat_max_new_tokens=2048,
+            **runtime_kwargs,
+            **limit_kwargs,
         )
 
     else:

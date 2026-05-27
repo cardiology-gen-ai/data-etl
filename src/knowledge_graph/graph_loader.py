@@ -9,7 +9,7 @@ from neo4j import Driver
 
 logger = logging.getLogger(__name__)
 
-MIN_TEXT_CHARS_TO_EMBED = int(os.getenv("MIN_TEXT_CHARS_TO_EMBED", "20"))
+DEFAULT_MIN_TEXT_CHARS_TO_EMBED = int(os.getenv("MIN_TEXT_CHARS_TO_EMBED", "20"))
 
 
 def chunked(items: List[Dict[str, Any]], batch_size: int) -> Iterable[List[Dict[str, Any]]]:
@@ -27,7 +27,10 @@ def make_section_uid(doc_id: str, section_id: str) -> str:
     return f"{doc_id}::{section_id}"
 
 
-def infer_should_embed(section: Dict[str, Any]) -> bool:
+def infer_should_embed(
+    section: Dict[str, Any],
+    min_text_chars_to_embed: int = DEFAULT_MIN_TEXT_CHARS_TO_EMBED,
+) -> bool:
     """
     Decide whether a section is eligible for embeddings.
 
@@ -44,10 +47,13 @@ def infer_should_embed(section: Dict[str, Any]) -> bool:
         return False
 
     text = (section.get("text") or "").strip()
-    return len(text) >= MIN_TEXT_CHARS_TO_EMBED
+    return len(text) >= min_text_chars_to_embed
 
 
-def normalize_section_record(section: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_section_record(
+    section: Dict[str, Any],
+    min_text_chars_to_embed: int = DEFAULT_MIN_TEXT_CHARS_TO_EMBED,
+) -> Dict[str, Any]:
     """
     Normalize one raw chunk/section record into the structure used for Neo4j ingestion.
     """
@@ -62,7 +68,7 @@ def normalize_section_record(section: Dict[str, Any]) -> Dict[str, Any]:
         "level": section.get("section_level"),
         "text": section.get("text"),
         "is_empty": section.get("is_empty"),
-        "embed": infer_should_embed(section),
+        "embed": infer_should_embed(section, min_text_chars_to_embed),
         "page_start": section.get("page_start"),
         "page_end": section.get("page_end"),
         "parent_section_id": section.get("parent_section_id"),
@@ -257,6 +263,7 @@ def build_graph_from_chunks(
     driver: Driver,
     chunk_file: Path,
     batch_size: int = 200,
+    min_text_chars_to_embed: int = DEFAULT_MIN_TEXT_CHARS_TO_EMBED,
     replace_existing_document: bool = True,
 ) -> Optional[str]:
     """
@@ -266,6 +273,8 @@ def build_graph_from_chunks(
         driver: Neo4j driver
         chunk_file: JSON file containing hierarchical chunks for one document
         batch_size: number of rows/relationships written per batch
+        min_text_chars_to_embed: minimum text length for section embedding
+            eligibility when a section does not set `embed` explicitly
         replace_existing_document: if True, delete existing sections for this
             document before reloading them from the chunk file
 
@@ -292,7 +301,13 @@ def build_graph_from_chunks(
         replace_existing_document,
     )
 
-    normalized_sections = [normalize_section_record(chunk) for chunk in chunks]
+    normalized_sections = [
+        normalize_section_record(
+            chunk,
+            min_text_chars_to_embed=min_text_chars_to_embed,
+        )
+        for chunk in chunks
+    ]
     section_uids = [section["uid"] for section in normalized_sections]
 
     parent_child_pairs = []
