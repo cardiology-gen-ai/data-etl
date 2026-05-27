@@ -607,8 +607,9 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
+            WITH s, properties(s) AS section_props
             WHERE s.entity_extraction_status = 'failed'
-              AND s.entity_extraction_failed_at IS NULL
+              AND section_props['entity_extraction_failed_at'] IS NULL
             RETURN s.uid AS uid
             ORDER BY uid
         """,
@@ -744,20 +745,21 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "ERROR",
         "query": """
             MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-            WHERE r.support_method = 'acronym'
+            WITH s, r, c, properties(r) AS mention_props
+            WHERE mention_props['support_method'] = 'acronym'
               AND (
-                    r.acronym_short IS NULL
-                 OR trim(r.acronym_short) = ''
-                 OR r.acronym_definition IS NULL
-                 OR trim(r.acronym_definition) = ''
-                 OR r.acronym_match_method IS NULL
-                 OR trim(r.acronym_match_method) = ''
+                    mention_props['acronym_short'] IS NULL
+                 OR trim(mention_props['acronym_short']) = ''
+                 OR mention_props['acronym_definition'] IS NULL
+                 OR trim(mention_props['acronym_definition']) = ''
+                 OR mention_props['acronym_match_method'] IS NULL
+                 OR trim(mention_props['acronym_match_method']) = ''
               )
             RETURN s.uid AS section_uid,
                    c.name AS concept,
-                   r.acronym_short AS acronym_short,
-                   r.acronym_definition AS acronym_definition,
-                   r.acronym_match_method AS acronym_match_method
+                   mention_props['acronym_short'] AS acronym_short,
+                   mention_props['acronym_definition'] AS acronym_definition,
+                   mention_props['acronym_match_method'] AS acronym_match_method
             ORDER BY section_uid, concept
         """,
     },
@@ -769,13 +771,17 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "WARNING",
         "query": """
             MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-            WHERE coalesce(r.expanded_from_acronym, false) = true
-              AND (r.raw_name IS NULL OR trim(r.raw_name) = '')
+            WITH s, r, c, properties(r) AS mention_props
+            WHERE coalesce(mention_props['expanded_from_acronym'], false) = true
+              AND (
+                    mention_props['raw_name'] IS NULL
+                 OR trim(mention_props['raw_name']) = ''
+              )
             RETURN s.uid AS section_uid,
                    c.name AS concept,
-                   r.raw_name AS raw_name,
-                   r.acronym_short AS acronym_short,
-                   r.acronym_definition AS acronym_definition
+                   mention_props['raw_name'] AS raw_name,
+                   mention_props['acronym_short'] AS acronym_short,
+                   mention_props['acronym_definition'] AS acronym_definition
             ORDER BY section_uid, concept
         """,
     },
@@ -787,13 +793,14 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "WARNING",
         "query": """
             MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-            WHERE coalesce(r.expanded_from_acronym, false) = true
-              AND r.support_method <> 'acronym'
+            WITH s, r, c, properties(r) AS mention_props
+            WHERE coalesce(mention_props['expanded_from_acronym'], false) = true
+              AND mention_props['support_method'] <> 'acronym'
             RETURN s.uid AS section_uid,
                    c.name AS concept,
-                   r.support_method AS support_method,
-                   r.raw_name AS raw_name,
-                   r.acronym_short AS acronym_short
+                   mention_props['support_method'] AS support_method,
+                   mention_props['raw_name'] AS raw_name,
+                   mention_props['acronym_short'] AS acronym_short
             ORDER BY section_uid, concept
         """,
     },
