@@ -40,7 +40,7 @@
         },
         "knowledge_graph": {
             "pipeline": {
-                "phase": "preprocess",
+                "phase": "graph",
                 "pdf_dir": "test_data/smoke/pdfdocs",
                 "work_root": "test_data/smoke"
             },

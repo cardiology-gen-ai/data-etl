@@ -947,7 +947,7 @@ def _build_count_query(query: str) -> str:
     Wrap a check query so it returns only the total number of matching rows.
     """
     return f"""
-        CALL {{
+        CALL () {{
             {query.strip()}
         }}
         RETURN count(*) AS n
@@ -959,7 +959,7 @@ def _build_sample_query(query: str) -> str:
     Wrap a check query so it returns only a limited sample of matching rows.
     """
     return f"""
-        CALL {{
+        CALL () {{
             {query.strip()}
         }}
         RETURN *
