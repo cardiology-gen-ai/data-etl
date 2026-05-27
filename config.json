@@ -1,16 +1,17 @@
 {
     "cardiology_protocols": {
         "indexing": {
-            "name": "cardiology_protocols",
+            "name": "all_mini_cardiology_protocols",
             "description": "Documents containing medical protocols for cardiologic patients.",
             "type": "faiss",
             "distance": "cosine",
-            "alias": "qdrant_cardio_current"
+            "alias": "faiss_cardio_current"
         },
         "embeddings": {
-            "deployment": "jina/jina-embeddings-v2-small-en",
-            "ollama": true,
-            "kwargs": {}
+            "deployment": "sentence-transformers/all-MiniLM-L6-v2",
+            "kwargs": {
+                "device": "cpu"
+            }
         },
         "preprocessing": {
             "storage": {
@@ -35,6 +36,47 @@
                 "splitter": "recursive",
                 "chunk_size": 1000,
                 "chunk_overlap": 200
+            }
+        },
+        "knowledge_graph": {
+            "pipeline": {
+                "phase": "preprocess",
+                "pdf_dir": "test_data/smoke/pdfdocs",
+                "work_root": "test_data/smoke"
+            },
+            "providers": {
+                "chat_provider": "openai",
+                "embedding_provider": "openai",
+                "local_files_only": false
+            },
+            "models": {
+                "chat_model": "gpt-4.1-mini",
+                "chat_model_path": "",
+                "embedding_model": "text-embedding-3-small",
+                "embedding_model_path": "",
+                "chat_max_new_tokens": 1024
+            },
+            "graph_loader": {
+                "batch_size": 200,
+                "min_text_chars_to_embed": 20
+            },
+            "entities": {
+                "max_sections": 2,
+                "max_sections_per_batch": 2,
+                "max_batch_chars": 30000,
+                "emergency_max_single_chars": 12000,
+                "skip_processed": true
+            },
+            "section_embeddings": {
+                "max_sections": 2,
+                "batch_size": 8,
+                "force_reembed": false,
+                "include_title": true,
+                "include_body": true,
+                "max_chars_per_section": 8000
+            },
+            "quality": {
+                "max_chunk_chars": 50000
             }
         }
     }
