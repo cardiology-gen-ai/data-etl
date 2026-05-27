@@ -77,6 +77,58 @@ logger = logging.getLogger(__name__)
 CONCEPT_DEBUG_LOG_LIMIT = 30
 
 
+def _concept_json_schema() -> Dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": sorted(ALLOWED_TYPES),
+            },
+        },
+        "required": ["name", "type"],
+        "additionalProperties": False,
+    }
+
+
+SINGLE_ENTITY_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "concepts": {
+            "type": "array",
+            "items": _concept_json_schema(),
+        },
+    },
+    "required": ["concepts"],
+    "additionalProperties": False,
+}
+
+
+BATCH_ENTITY_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "uid": {"type": "string"},
+                    "concepts": {
+                        "type": "array",
+                        "items": _concept_json_schema(),
+                    },
+                },
+                "required": ["uid", "concepts"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["sections"],
+    "additionalProperties": False,
+}
+
+
 def truncate_for_log(text: str, max_chars: int = 2000) -> str:
     text = text.strip()
     if len(text) <= max_chars:
@@ -277,7 +329,12 @@ def extract_concepts_single(text: str) -> Optional[List[Dict[str, Any]]]:
     ]
 
     try:
-        content = generate_chat_text(messages=messages, json_mode=True)
+        content = generate_chat_text(
+            messages=messages,
+            json_mode=True,
+            json_schema=SINGLE_ENTITY_RESPONSE_SCHEMA,
+            json_schema_name="entity_extraction_single",
+        )
     except Exception as e:
         logger.exception("Single request failed: %s", e)
         return None
@@ -290,6 +347,9 @@ def extract_concepts_single(text: str) -> Optional[List[Dict[str, Any]]]:
 
     try:
         data = parse_llm_json(content)
+        if isinstance(data, dict) and "concepts" in data:
+            data = data["concepts"]
+
         if not isinstance(data, list):
             raise ValueError("Single-section LLM output is not a list")
 
@@ -333,7 +393,12 @@ def extract_concepts_batch(
     ]
 
     try:
-        content = generate_chat_text(messages=messages, json_mode=True)
+        content = generate_chat_text(
+            messages=messages,
+            json_mode=True,
+            json_schema=BATCH_ENTITY_RESPONSE_SCHEMA,
+            json_schema_name="entity_extraction_batch",
+        )
     except Exception as e:
         logger.exception("Batch request failed: %s", e)
         return None
@@ -346,6 +411,9 @@ def extract_concepts_batch(
 
     try:
         data = parse_llm_json(content)
+        if isinstance(data, dict) and "sections" in data:
+            data = data["sections"]
+
         if not isinstance(data, list):
             raise ValueError("Batch LLM output is not a list")
 
