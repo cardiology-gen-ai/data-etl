@@ -830,7 +830,8 @@ CHECKS: List[Dict[str, Any]] = [
         "is_summary": True,
         "query": """
             MATCH (s:Section)
-            RETURN coalesce(s.embedding_status, 'UNSET') AS status,
+            WITH s, properties(s) AS section_props
+            RETURN coalesce(section_props['embedding_status'], 'UNSET') AS status,
                    count(s) AS n
             ORDER BY n DESC, status ASC
         """,
@@ -843,11 +844,18 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
-            WHERE (coalesce(s.has_embedding, false) = true AND s.embedding IS NULL)
-               OR (coalesce(s.has_embedding, false) = false AND s.embedding IS NOT NULL)
+            WITH s, properties(s) AS section_props
+            WHERE (
+                    coalesce(section_props['has_embedding'], false) = true
+                    AND section_props['embedding'] IS NULL
+                  )
+               OR (
+                    coalesce(section_props['has_embedding'], false) = false
+                    AND section_props['embedding'] IS NOT NULL
+                  )
             RETURN s.uid AS uid,
-                   s.has_embedding AS has_embedding,
-                   s.embedding IS NOT NULL AS has_embedding_vector
+                   section_props['has_embedding'] AS has_embedding,
+                   section_props['embedding'] IS NOT NULL AS has_embedding_vector
             ORDER BY uid
         """,
     },
@@ -859,18 +867,19 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
-            WHERE s.embedding IS NOT NULL
+            WITH s, properties(s) AS section_props
+            WHERE section_props['embedding'] IS NOT NULL
               AND (
-                    s.embedding_dim IS NULL
-                 OR s.embedding_model IS NULL
-                 OR s.embedding_updated_at IS NULL
-                 OR size(s.embedding) <> s.embedding_dim
+                    section_props['embedding_dim'] IS NULL
+                 OR section_props['embedding_model'] IS NULL
+                 OR section_props['embedding_updated_at'] IS NULL
+                 OR size(section_props['embedding']) <> section_props['embedding_dim']
               )
             RETURN s.uid AS uid,
-                   s.embedding_dim AS embedding_dim,
-                   size(s.embedding) AS actual_dim,
-                   s.embedding_model AS embedding_model,
-                   s.embedding_updated_at AS embedding_updated_at
+                   section_props['embedding_dim'] AS embedding_dim,
+                   size(section_props['embedding']) AS actual_dim,
+                   section_props['embedding_model'] AS embedding_model,
+                   section_props['embedding_updated_at'] AS embedding_updated_at
             ORDER BY uid
         """,
     },
@@ -882,11 +891,15 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "ERROR",
         "query": """
             MATCH (s:Section)
-            WHERE s.embedding_status = 'success'
-              AND (s.embedding IS NULL OR coalesce(s.has_embedding, false) = false)
+            WITH s, properties(s) AS section_props
+            WHERE section_props['embedding_status'] = 'success'
+              AND (
+                    section_props['embedding'] IS NULL
+                 OR coalesce(section_props['has_embedding'], false) = false
+              )
             RETURN s.uid AS uid,
-                   s.embedding_status AS status,
-                   s.has_embedding AS has_embedding
+                   section_props['embedding_status'] AS status,
+                   section_props['has_embedding'] AS has_embedding
             ORDER BY uid
         """,
     },
@@ -898,8 +911,9 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "WARNING",
         "query": """
             MATCH (s:Section)
-            WHERE s.embedding_status = 'failed'
-              AND s.embedding_failed_at IS NULL
+            WITH s, properties(s) AS section_props
+            WHERE section_props['embedding_status'] = 'failed'
+              AND section_props['embedding_failed_at'] IS NULL
             RETURN s.uid AS uid
             ORDER BY uid
         """,
@@ -912,11 +926,12 @@ CHECKS: List[Dict[str, Any]] = [
         "level": "INFO",
         "query": """
             MATCH (s:Section)
+            WITH s, properties(s) AS section_props
             WHERE coalesce(s.embed, false) = true
-              AND s.embedding IS NULL
+              AND section_props['embedding'] IS NULL
             RETURN DISTINCT s.uid AS uid,
                    s.doc_id AS doc_id,
-                   s.embedding_status AS embedding_status
+                   section_props['embedding_status'] AS embedding_status
             ORDER BY doc_id, uid
         """,
     },

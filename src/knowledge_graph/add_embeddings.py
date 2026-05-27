@@ -132,6 +132,7 @@ def fetch_sections_to_embed(
     with driver.session() as session:
         query = """
         MATCH (s:Section)
+        WITH s, properties(s) AS section_props
         WHERE ($doc_id IS NULL OR s.doc_id = $doc_id)
           AND coalesce(s.embed, false) = true
         """
@@ -139,7 +140,7 @@ def fetch_sections_to_embed(
         if not force_reembed:
             query += """
               AND coalesce(s.has_embedding, false) = false
-              AND coalesce(s.embedding_status, '') <> 'skipped_empty'
+              AND coalesce(section_props['embedding_status'], '') <> 'skipped_empty'
             """
 
         query += """
