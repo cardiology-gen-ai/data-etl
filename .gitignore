@@ -95,3 +95,4 @@ src/knowledge_graph/test.py
 src/knowledge_graph/tests2.py
 src/knowledge_graph/check_val.py
 scripts/cleanup.slurm
+data_fix/

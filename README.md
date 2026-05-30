@@ -33,3 +33,29 @@ Finally, start the main script:
 ```
 uv run -m src.main
 ```
+
+## Knowledge graph runs
+
+For local runs on a laptop or workstation configure `data-etl/.env`
+with the Neo4j target you want, then run the graph pipeline directly:
+
+```bash
+cd data-etl
+KG_PIPELINE_PHASE=graph ../.venv/bin/python src/main_graph.py
+KG_PIPELINE_PHASE=entities ../.venv/bin/python src/main_graph.py
+../.venv/bin/python -m knowledge_graph.visualize_entities
+```
+
+For Neo4j Aura, set `NEO4J_URI=neo4j+s://...`, `NEO4J_USERNAME`, and
+`NEO4J_PASSWORD` in `.env`. For a local Neo4j server, set
+`NEO4J_URI=bolt://localhost:7687`. The standalone KG utilities load `.env`
+automatically.
+
+The `scripts/` folder is for cluster execution. Those jobs run through
+Slurm and default to `KG_NEO4J_MODE=local`, which starts a local Neo4j
+Singularity container on the compute node. This is the expected mode on the
+cluster because compute nodes do not have internet access. Use
+`KG_NEO4J_MODE=external` only when the cluster/network environment is explicitly
+allowed to reach an external Neo4j instance such as Aura.
+
+
