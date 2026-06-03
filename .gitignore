@@ -8,6 +8,7 @@ qdrant_storage/
 .env.leonardo
 
 /test_data/
+first_prototype/
 
 # Sensitive config files (exclude from Git)
 config/local.yaml
