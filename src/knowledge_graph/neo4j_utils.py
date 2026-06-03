@@ -11,12 +11,36 @@ Responsibilities:
 
 import logging
 import os
+from pathlib import Path
 from typing import Optional
 
 from neo4j import Driver, GraphDatabase
+from dotenv import load_dotenv
 
 
 logger = logging.getLogger(__name__)
+_DOTENV_LOADED = False
+
+
+def load_project_dotenv_once() -> None:
+    """
+    Load the repository .env once for standalone KG scripts.
+
+    main_graph.py already loads .env explicitly, but small diagnostic modules
+    such as query_graph.py and visualize_entities.py call neo4j_utils directly.
+    Loading here keeps all Neo4j entrypoints on the same Aura/local config.
+    """
+    global _DOTENV_LOADED
+
+    if _DOTENV_LOADED:
+        return
+
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if env_path.exists():
+        loaded = load_dotenv(env_path, override=False)
+        logger.info("Loaded Neo4j environment from %s: %s", env_path, loaded)
+
+    _DOTENV_LOADED = True
 
 
 def _get_optional_env(name: str, default: Optional[str] = None) -> Optional[str]:
@@ -37,6 +61,8 @@ def load_neo4j_config() -> dict:
     - no-auth local connection:
         NEO4J_URI only
     """
+    load_project_dotenv_once()
+
     uri = _get_optional_env("NEO4J_URI", "bolt://localhost:7687")
     username = _get_optional_env("NEO4J_USERNAME", "neo4j")
     password = os.getenv("NEO4J_PASSWORD")
