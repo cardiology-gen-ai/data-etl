@@ -57,6 +57,7 @@ class GraphPipelineConfig:
     run_entity_extraction: bool = True
     run_embeddings: bool = True
     run_entity_disambiguation: bool = True
+    run_entity_normalization: bool = False
     run_sanity_checks: bool = True
 
     # Graph loader
@@ -98,6 +99,26 @@ class GraphPipelineConfig:
 
     # Entity disambiguation
     disambiguation_delete_orphans: bool = True
+
+    # Entity UMLS normalization
+    entity_normalization_doc_id: Optional[str] = None
+    entity_normalization_backend: str = "umls_api"
+    entity_normalization_model_name: str = "en_core_sci_sm"
+    entity_normalization_linker_name: str = "umls"
+    entity_normalization_threshold: float = 0.85
+    entity_normalization_max_candidates: int = 3
+    entity_normalization_use_acronyms: bool = True
+    entity_normalization_acronym_dir: Optional[Path] = None
+    entity_normalization_force: bool = False
+    entity_normalization_dry_run: bool = False
+    entity_normalization_export_review: bool = True
+    entity_normalization_review_output_dir: Optional[Path] = None
+    entity_normalization_fuzzy_threshold: int = 90
+    entity_normalization_api_cache_dir: Optional[Path] = None
+    entity_normalization_api_timeout: float = 30.0
+    entity_normalization_api_rate_limit_per_second: float = 5.0
+    entity_normalization_local_files_only: bool = False
+    entity_normalization_min_available_memory_gb: float = 8.0
 
     # Sanity checks
     sanity_mode: Optional[str] = "full"
@@ -162,6 +183,15 @@ def _coerce_int(value: Any, name: str) -> int:
         ) from e
 
 
+def _coerce_float(value: Any, name: str) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as e:
+        raise RuntimeError(
+            f"Configuration value {name} must be a number, got: {value!r}"
+        ) from e
+
+
 def _get_config_value(config: dict, *keys: str, default: Any = None) -> Any:
     current: Any = config
     for key in keys:
@@ -208,6 +238,19 @@ def _get_env_or_config_int(
     if config_value is None:
         return default
     return _coerce_int(config_value, env_name)
+
+
+def _get_env_or_config_float(
+    env_name: str,
+    config_value: Any,
+    default: float,
+) -> float:
+    env_value = _get_optional_env(env_name)
+    if env_value is not None:
+        return _coerce_float(env_value, env_name)
+    if config_value is None:
+        return default
+    return _coerce_float(config_value, env_name)
 
 
 def _get_env_or_config_optional_int(
@@ -291,6 +334,7 @@ def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
     - graph -> structure
     - entities -> entities
     - embeddings -> embeddings
+    - normalization -> entities
     - full -> full
     """
     phase = phase.strip().lower()
@@ -300,13 +344,15 @@ def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
         "graph": "structure",
         "entities": "entities",
         "embeddings": "embeddings",
+        "normalization": "entities",
         "full": "full",
     }
 
     if phase not in mapping:
         raise ValueError(
             f"Unsupported PIPELINE_PHASE='{phase}'. "
-            "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', 'full'."
+            "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', "
+            "'normalization', 'full'."
         )
 
     return mapping[phase]
@@ -356,6 +402,10 @@ def make_graph_pipeline_config(
     work_root: Path,
     run_preprocessing: bool = False,
     run_acronym_extraction: bool = True,
+    force_toc: bool = False,
+    force_markdown: bool = False,
+    force_anchors: bool = False,
+    force_chunks: bool = False,
     force_acronyms: bool = False,
     acronym_sample_size: int = 0,
     acronym_print_all: bool = False,
@@ -389,6 +439,25 @@ def make_graph_pipeline_config(
     embedding_allow_title_only: bool = False,
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
+    run_entity_normalization: bool = False,
+    entity_normalization_doc_id: Optional[str] = None,
+    entity_normalization_backend: str = "umls_api",
+    entity_normalization_model_name: str = "en_core_sci_sm",
+    entity_normalization_linker_name: str = "umls",
+    entity_normalization_threshold: float = 0.85,
+    entity_normalization_max_candidates: int = 3,
+    entity_normalization_use_acronyms: bool = True,
+    entity_normalization_acronym_dir: Optional[Path] = None,
+    entity_normalization_force: bool = False,
+    entity_normalization_dry_run: bool = False,
+    entity_normalization_export_review: bool = True,
+    entity_normalization_review_output_dir: Optional[Path] = None,
+    entity_normalization_fuzzy_threshold: int = 90,
+    entity_normalization_api_cache_dir: Optional[Path] = None,
+    entity_normalization_api_timeout: float = 30.0,
+    entity_normalization_api_rate_limit_per_second: float = 5.0,
+    entity_normalization_local_files_only: bool = False,
+    entity_normalization_min_available_memory_gb: float = 8.0,
     sanity_mode: Optional[str] = "full",
     quality_max_chunk_chars: int = 50000,
 ) -> GraphPipelineConfig:
@@ -410,6 +479,23 @@ def make_graph_pipeline_config(
         else None
     )
 
+    resolved_entity_normalization_acronym_dir = (
+        entity_normalization_acronym_dir.resolve()
+        if entity_normalization_acronym_dir is not None
+        else None
+    )
+
+    resolved_entity_normalization_review_output_dir = (
+        entity_normalization_review_output_dir.resolve()
+        if entity_normalization_review_output_dir is not None
+        else None
+    )
+    resolved_entity_normalization_api_cache_dir = (
+        entity_normalization_api_cache_dir.resolve()
+        if entity_normalization_api_cache_dir is not None
+        else None
+    )
+
     return GraphPipelineConfig(
         pdf_dir=pdf_dir,
         toc_dir=(work_root / "toc").resolve(),
@@ -422,10 +508,10 @@ def make_graph_pipeline_config(
 
         run_preprocessing=run_preprocessing,
 
-        force_toc=False,
-        force_markdown=False,
-        force_anchors=False,
-        force_chunks=False,
+        force_toc=force_toc,
+        force_markdown=force_markdown,
+        force_anchors=force_anchors,
+        force_chunks=force_chunks,
         force_acronyms=force_acronyms,
 
         run_acronym_extraction=run_acronym_extraction,
@@ -436,6 +522,7 @@ def make_graph_pipeline_config(
         run_entity_extraction=run_entity_extraction,
         run_embeddings=run_embeddings,
         run_entity_disambiguation=run_entity_disambiguation,
+        run_entity_normalization=run_entity_normalization,
         run_sanity_checks=run_sanity_checks,
 
         graph_loader_batch_size=graph_loader_batch_size,
@@ -469,6 +556,31 @@ def make_graph_pipeline_config(
         clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
 
         disambiguation_delete_orphans=disambiguation_delete_orphans,
+
+        entity_normalization_doc_id=entity_normalization_doc_id,
+        entity_normalization_backend=entity_normalization_backend,
+        entity_normalization_model_name=entity_normalization_model_name,
+        entity_normalization_linker_name=entity_normalization_linker_name,
+        entity_normalization_threshold=entity_normalization_threshold,
+        entity_normalization_max_candidates=entity_normalization_max_candidates,
+        entity_normalization_use_acronyms=entity_normalization_use_acronyms,
+        entity_normalization_acronym_dir=resolved_entity_normalization_acronym_dir,
+        entity_normalization_force=entity_normalization_force,
+        entity_normalization_dry_run=entity_normalization_dry_run,
+        entity_normalization_export_review=entity_normalization_export_review,
+        entity_normalization_review_output_dir=(
+            resolved_entity_normalization_review_output_dir
+        ),
+        entity_normalization_fuzzy_threshold=entity_normalization_fuzzy_threshold,
+        entity_normalization_api_cache_dir=resolved_entity_normalization_api_cache_dir,
+        entity_normalization_api_timeout=entity_normalization_api_timeout,
+        entity_normalization_api_rate_limit_per_second=(
+            entity_normalization_api_rate_limit_per_second
+        ),
+        entity_normalization_local_files_only=entity_normalization_local_files_only,
+        entity_normalization_min_available_memory_gb=(
+            entity_normalization_min_available_memory_gb
+        ),
 
         sanity_mode=sanity_mode,
         sanity_sample_limit=10,
@@ -534,6 +646,10 @@ def main(
     clear_neo4j_before_run: bool = False,
     run_preprocessing: bool = False,
     run_acronym_extraction: bool = True,
+    force_toc: bool = False,
+    force_markdown: bool = False,
+    force_anchors: bool = False,
+    force_chunks: bool = False,
     force_acronyms: bool = False,
     acronym_sample_size: int = 0,
     acronym_print_all: bool = False,
@@ -567,6 +683,25 @@ def main(
     embedding_allow_title_only: bool = False,
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
+    run_entity_normalization: bool = False,
+    entity_normalization_doc_id: Optional[str] = None,
+    entity_normalization_backend: str = "umls_api",
+    entity_normalization_model_name: str = "en_core_sci_sm",
+    entity_normalization_linker_name: str = "umls",
+    entity_normalization_threshold: float = 0.85,
+    entity_normalization_max_candidates: int = 3,
+    entity_normalization_use_acronyms: bool = True,
+    entity_normalization_acronym_dir: Optional[Path] = None,
+    entity_normalization_force: bool = False,
+    entity_normalization_dry_run: bool = False,
+    entity_normalization_export_review: bool = True,
+    entity_normalization_review_output_dir: Optional[Path] = None,
+    entity_normalization_fuzzy_threshold: int = 90,
+    entity_normalization_api_cache_dir: Optional[Path] = None,
+    entity_normalization_api_timeout: float = 30.0,
+    entity_normalization_api_rate_limit_per_second: float = 5.0,
+    entity_normalization_local_files_only: bool = False,
+    entity_normalization_min_available_memory_gb: float = 8.0,
     sanity_mode: Optional[str] = "full",
     quality_max_chunk_chars: int = 50000,
     kg_chat_provider: Optional[str] = None,
@@ -632,6 +767,10 @@ def main(
         work_root=work_root,
         run_preprocessing=run_preprocessing,
         run_acronym_extraction=run_acronym_extraction,
+        force_toc=force_toc,
+        force_markdown=force_markdown,
+        force_anchors=force_anchors,
+        force_chunks=force_chunks,
         force_acronyms=force_acronyms,
         acronym_sample_size=acronym_sample_size,
         acronym_print_all=acronym_print_all,
@@ -639,6 +778,7 @@ def main(
         run_entity_extraction=run_entity_extraction,
         run_embeddings=run_embeddings,
         run_entity_disambiguation=run_entity_disambiguation,
+        run_entity_normalization=run_entity_normalization,
         run_sanity_checks=run_sanity_checks,
         graph_loader_batch_size=graph_loader_batch_size,
         graph_loader_min_text_chars_to_embed=graph_loader_min_text_chars_to_embed,
@@ -665,6 +805,28 @@ def main(
         embedding_allow_title_only=embedding_allow_title_only,
         clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
         disambiguation_delete_orphans=disambiguation_delete_orphans,
+        entity_normalization_doc_id=entity_normalization_doc_id,
+        entity_normalization_backend=entity_normalization_backend,
+        entity_normalization_model_name=entity_normalization_model_name,
+        entity_normalization_linker_name=entity_normalization_linker_name,
+        entity_normalization_threshold=entity_normalization_threshold,
+        entity_normalization_max_candidates=entity_normalization_max_candidates,
+        entity_normalization_use_acronyms=entity_normalization_use_acronyms,
+        entity_normalization_acronym_dir=entity_normalization_acronym_dir,
+        entity_normalization_force=entity_normalization_force,
+        entity_normalization_dry_run=entity_normalization_dry_run,
+        entity_normalization_export_review=entity_normalization_export_review,
+        entity_normalization_review_output_dir=entity_normalization_review_output_dir,
+        entity_normalization_fuzzy_threshold=entity_normalization_fuzzy_threshold,
+        entity_normalization_api_cache_dir=entity_normalization_api_cache_dir,
+        entity_normalization_api_timeout=entity_normalization_api_timeout,
+        entity_normalization_api_rate_limit_per_second=(
+            entity_normalization_api_rate_limit_per_second
+        ),
+        entity_normalization_local_files_only=entity_normalization_local_files_only,
+        entity_normalization_min_available_memory_gb=(
+            entity_normalization_min_available_memory_gb
+        ),
         sanity_mode=sanity_mode,
         quality_max_chunk_chars=quality_max_chunk_chars,
     )
@@ -678,6 +840,9 @@ def main(
 
     if summary.get("disambiguation_stats") is not None:
         logger.info("Disambiguation stats: %s", summary["disambiguation_stats"])
+
+    if summary.get("normalization_stats") is not None:
+        logger.info("UMLS normalization stats: %s", summary["normalization_stats"])
 
     if summary.get("sanity_summary") is not None:
         logger.info(
@@ -731,7 +896,7 @@ if __name__ == "__main__":
             "phase",
             default="preprocess",
         )
-    ).strip().lower()  # preprocess, graph, entities, embeddings, full
+    ).strip().lower()  # preprocess, graph, entities, embeddings, normalization, full
 
     SANITY_MODE = _resolve_sanity_mode_from_phase(PIPELINE_PHASE)
 
@@ -874,6 +1039,159 @@ if __name__ == "__main__":
             50000,
         ),
     }
+    cache_kwargs = {
+        "force_toc": _get_env_or_config_bool(
+            "KG_FORCE_TOC",
+            _get_config_value(kg_config, "pipeline", "force_toc"),
+            False,
+        ),
+        "force_markdown": _get_env_or_config_bool(
+            "KG_FORCE_MARKDOWN",
+            _get_config_value(kg_config, "pipeline", "force_markdown"),
+            False,
+        ),
+        "force_anchors": _get_env_or_config_bool(
+            "KG_FORCE_ANCHORS",
+            _get_config_value(kg_config, "pipeline", "force_anchors"),
+            False,
+        ),
+        "force_chunks": _get_env_or_config_bool(
+            "KG_FORCE_CHUNKS",
+            _get_config_value(kg_config, "pipeline", "force_chunks"),
+            False,
+        ),
+    }
+
+    normalization_acronym_dir_value = (
+        _get_optional_env("KG_ENTITY_NORMALIZATION_ACRONYM_DIR")
+        or _get_config_value(kg_config, "entity_normalization", "acronym_dir")
+    )
+    normalization_review_dir_value = (
+        _get_optional_env("KG_ENTITY_NORMALIZATION_REVIEW_OUTPUT_DIR")
+        or _get_config_value(kg_config, "entity_normalization", "review_output_dir")
+    )
+    normalization_api_cache_dir_value = (
+        _get_optional_env("KG_ENTITY_NORMALIZATION_API_CACHE_DIR")
+        or _get_config_value(kg_config, "entity_normalization", "api_cache_dir")
+    )
+
+    normalization_kwargs = {
+        "entity_normalization_doc_id": _get_env_or_config_str(
+            "KG_ENTITY_NORMALIZATION_DOC_ID",
+            _get_config_value(kg_config, "entity_normalization", "doc_id"),
+        ),
+        "entity_normalization_backend": _get_env_or_config_str(
+            "KG_ENTITY_NORMALIZATION_BACKEND",
+            _get_config_value(kg_config, "entity_normalization", "backend"),
+            "umls_api",
+        ) or "umls_api",
+        "entity_normalization_model_name": _get_env_or_config_str(
+            "KG_ENTITY_NORMALIZATION_MODEL_NAME",
+            _get_config_value(kg_config, "entity_normalization", "model_name"),
+            "en_core_sci_sm",
+        ) or "en_core_sci_sm",
+        "entity_normalization_linker_name": _get_env_or_config_str(
+            "KG_ENTITY_NORMALIZATION_LINKER_NAME",
+            _get_config_value(kg_config, "entity_normalization", "linker_name"),
+            "umls",
+        ) or "umls",
+        "entity_normalization_threshold": _get_env_or_config_float(
+            "KG_ENTITY_NORMALIZATION_THRESHOLD",
+            _get_config_value(kg_config, "entity_normalization", "threshold"),
+            0.85,
+        ),
+        "entity_normalization_max_candidates": _get_env_or_config_int(
+            "KG_ENTITY_NORMALIZATION_MAX_CANDIDATES",
+            _get_config_value(kg_config, "entity_normalization", "max_candidates"),
+            3,
+        ),
+        "entity_normalization_use_acronyms": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_USE_ACRONYMS",
+            _get_config_value(kg_config, "entity_normalization", "use_acronyms"),
+            True,
+        ),
+        "entity_normalization_acronym_dir": (
+            _resolve_project_path(
+                normalization_acronym_dir_value,
+                work_root / "acronyms",
+                project_root,
+            )
+            if normalization_acronym_dir_value not in (None, "")
+            else None
+        ),
+        "entity_normalization_force": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_FORCE",
+            _get_config_value(kg_config, "entity_normalization", "force"),
+            False,
+        ),
+        "entity_normalization_dry_run": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_DRY_RUN",
+            _get_config_value(kg_config, "entity_normalization", "dry_run"),
+            False,
+        ),
+        "entity_normalization_export_review": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_EXPORT_REVIEW",
+            _get_config_value(kg_config, "entity_normalization", "export_review"),
+            True,
+        ),
+        "entity_normalization_review_output_dir": (
+            _resolve_project_path(
+                normalization_review_dir_value,
+                work_root / "entity_review",
+                project_root,
+            )
+            if normalization_review_dir_value not in (None, "")
+            else None
+        ),
+        "entity_normalization_fuzzy_threshold": _get_env_or_config_int(
+            "KG_ENTITY_NORMALIZATION_FUZZY_THRESHOLD",
+            _get_config_value(kg_config, "entity_normalization", "fuzzy_threshold"),
+            90,
+        ),
+        "entity_normalization_api_cache_dir": (
+            _resolve_project_path(
+                normalization_api_cache_dir_value,
+                work_root / "umls_api_cache",
+                project_root,
+            )
+            if normalization_api_cache_dir_value not in (None, "")
+            else None
+        ),
+        "entity_normalization_api_timeout": _get_env_or_config_float(
+            "KG_ENTITY_NORMALIZATION_API_TIMEOUT",
+            _get_config_value(kg_config, "entity_normalization", "api_timeout"),
+            30.0,
+        ),
+        "entity_normalization_api_rate_limit_per_second": _get_env_or_config_float(
+            "KG_ENTITY_NORMALIZATION_API_RATE_LIMIT_PER_SECOND",
+            _get_config_value(
+                kg_config,
+                "entity_normalization",
+                "api_rate_limit_per_second",
+            ),
+            5.0,
+        ),
+        "entity_normalization_local_files_only": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_LOCAL_FILES_ONLY",
+            _get_config_value(kg_config, "entity_normalization", "local_files_only"),
+            False,
+        ),
+        "entity_normalization_min_available_memory_gb": _get_env_or_config_float(
+            "KG_ENTITY_NORMALIZATION_MIN_AVAILABLE_MEMORY_GB",
+            _get_config_value(
+                kg_config,
+                "entity_normalization",
+                "min_available_memory_gb",
+            ),
+            8.0,
+        ),
+    }
+
+    RUN_ENTITY_NORMALIZATION = _get_env_or_config_bool(
+        "KG_RUN_ENTITY_NORMALIZATION",
+        _get_config_value(kg_config, "entity_normalization", "enabled"),
+        False,
+    )
 
     if PIPELINE_PHASE == "preprocess":
         main(
@@ -889,6 +1207,7 @@ if __name__ == "__main__":
             run_entity_extraction=False,
             run_embeddings=False,
             run_entity_disambiguation=False,
+            run_entity_normalization=False,
             run_sanity_checks=False,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
@@ -904,6 +1223,8 @@ if __name__ == "__main__":
             sanity_mode=SANITY_MODE,
             **runtime_kwargs,
             **limit_kwargs,
+            **cache_kwargs,
+            **normalization_kwargs,
         )
 
     elif PIPELINE_PHASE == "graph":
@@ -917,6 +1238,7 @@ if __name__ == "__main__":
             run_entity_extraction=False,
             run_embeddings=False,
             run_entity_disambiguation=False,
+            run_entity_normalization=False,
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
@@ -933,6 +1255,8 @@ if __name__ == "__main__":
             sanity_mode=SANITY_MODE,
             **runtime_kwargs,
             **limit_kwargs,
+            **cache_kwargs,
+            **normalization_kwargs,
         )
 
     elif PIPELINE_PHASE == "entities":
@@ -946,6 +1270,7 @@ if __name__ == "__main__":
             run_entity_extraction=True,
             run_embeddings=False,
             run_entity_disambiguation=True,
+            run_entity_normalization=RUN_ENTITY_NORMALIZATION,
             run_sanity_checks=True,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
@@ -961,6 +1286,8 @@ if __name__ == "__main__":
             sanity_mode=SANITY_MODE,
             **runtime_kwargs,
             **limit_kwargs,
+            **cache_kwargs,
+            **normalization_kwargs,
         )
 
     elif PIPELINE_PHASE == "embeddings":
@@ -974,6 +1301,7 @@ if __name__ == "__main__":
             run_entity_extraction=False,
             run_embeddings=True,
             run_entity_disambiguation=False,
+            run_entity_normalization=False,
             run_sanity_checks=True,
             entity_use_section_text=True,
             entity_replace_section_mentions=True,
@@ -989,6 +1317,39 @@ if __name__ == "__main__":
             sanity_mode=SANITY_MODE,
             **runtime_kwargs,
             **limit_kwargs,
+            **cache_kwargs,
+            **normalization_kwargs,
+        )
+
+    elif PIPELINE_PHASE == "normalization":
+        main(
+            pdf_dir=pdf_dir,
+            work_root=work_root,
+            clear_neo4j_before_run=False,
+            run_preprocessing=False,
+            run_acronym_extraction=False,
+            run_graph_loader=False,
+            run_entity_extraction=False,
+            run_embeddings=False,
+            run_entity_disambiguation=False,
+            run_entity_normalization=True,
+            run_sanity_checks=True,
+            entity_use_section_text=True,
+            entity_replace_section_mentions=True,
+            entity_use_acronym_validation=True,
+            entity_acronym_dir=None,
+            entity_export_review=True,
+            entity_review_output_dir=None,
+            entity_clear_previous_review=True,
+            entity_include_source_preview_in_review=False,
+            embedding_allow_title_only=False,
+            clear_chat_cache_before_embeddings=True,
+            disambiguation_delete_orphans=True,
+            sanity_mode=SANITY_MODE,
+            **runtime_kwargs,
+            **limit_kwargs,
+            **cache_kwargs,
+            **normalization_kwargs,
         )
 
     elif PIPELINE_PHASE == "full":
@@ -1005,6 +1366,7 @@ if __name__ == "__main__":
             run_entity_extraction=True,
             run_embeddings=True,
             run_entity_disambiguation=True,
+            run_entity_normalization=RUN_ENTITY_NORMALIZATION,
             run_sanity_checks=True,
             graph_loader_replace_existing_document=True,
             entity_use_section_text=True,
@@ -1021,10 +1383,13 @@ if __name__ == "__main__":
             sanity_mode=SANITY_MODE,
             **runtime_kwargs,
             **limit_kwargs,
+            **cache_kwargs,
+            **normalization_kwargs,
         )
 
     else:
         raise ValueError(
             f"Unsupported PIPELINE_PHASE='{PIPELINE_PHASE}'. "
-            "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', 'full'."
+            "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', "
+            "'normalization', 'full'."
         )
