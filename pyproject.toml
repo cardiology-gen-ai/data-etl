@@ -46,6 +46,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+normalization = [
+    "click>=8.1,<9",
+    "spacy>=3.7,<3.9",
+    "scispacy>=0.6.2,<0.7",
+    "rapidfuzz>=3.9.0,<4",
+    "requests>=2.32,<3"
+]
+
 documentation = [
     "sphinx==7.3.7",
     "sphinxcontrib-mermaid==1.0.0",
