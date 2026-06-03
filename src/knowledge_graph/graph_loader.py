@@ -64,6 +64,7 @@ def normalize_section_record(
         "uid": make_section_uid(doc_id, section_id),
         "doc_id": doc_id,
         "section_id": section_id,
+        "printed_section_id": section.get("printed_section_id"),
         "title": section.get("section_title"),
         "level": section.get("section_level"),
         "text": section.get("text"),
@@ -72,6 +73,10 @@ def normalize_section_record(
         "page_start": section.get("page_start"),
         "page_end": section.get("page_end"),
         "parent_section_id": section.get("parent_section_id"),
+        "part_index": section.get("part_index"),
+        "part_count": section.get("part_count"),
+        "quality_flags": section.get("quality_flags") or [],
+        "boundary_source": section.get("boundary_source"),
     }
 
 
@@ -167,6 +172,7 @@ def create_sections_batch(tx, sections: List[Dict[str, Any]]) -> None:
             uid: section.uid,
             doc_id: section.doc_id,
             section_id: section.section_id,
+            printed_section_id: section.printed_section_id,
             title: section.title,
             level: section.level,
             text: section.text,
@@ -174,6 +180,10 @@ def create_sections_batch(tx, sections: List[Dict[str, Any]]) -> None:
             embed: section.embed,
             page_start: section.page_start,
             page_end: section.page_end,
+            part_index: section.part_index,
+            part_count: section.part_count,
+            quality_flags: section.quality_flags,
+            boundary_source: section.boundary_source,
 
             has_embedding: false,
             embedding: null,

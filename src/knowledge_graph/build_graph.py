@@ -10,6 +10,8 @@ Main responsibilities:
 - optionally run entity extraction and embeddings on existing graph data
 - optionally use cached document-level acronyms during entity validation
 - optionally run global concept disambiguation
+- optionally normalize Concept nodes against UMLS/scispaCy and record
+  duplicate candidates
 - optionally run sanity checks, using the phase-aware sanity_mode provided
   by the pipeline config (for example: structure, entities, embeddings, full)
 
@@ -159,6 +161,7 @@ def requires_neo4j(config) -> bool:
         getattr(config, "run_entity_extraction", False),
         getattr(config, "run_embeddings", False),
         getattr(config, "run_entity_disambiguation", False),
+        getattr(config, "run_entity_normalization", False),
         getattr(config, "run_sanity_checks", False),
     ])
 
@@ -429,6 +432,7 @@ def load_or_build_chunks(
         markdown_manager=markdown_manager,
         anchors=anchors,
         doc_id=doc_id,
+        max_chunk_chars=getattr(config, "quality_max_chunk_chars", 50000),
     )
 
     chunk_path.write_text(
@@ -562,6 +566,11 @@ def process_document_graph_loading(
         driver=driver,
         chunk_file=chunk_path,
         batch_size=getattr(config, "graph_loader_batch_size", 200),
+        min_text_chars_to_embed=getattr(
+            config,
+            "graph_loader_min_text_chars_to_embed",
+            20,
+        ),
         replace_existing_document=getattr(
             config,
             "graph_loader_replace_existing_document",
@@ -653,6 +662,90 @@ def process_document_embeddings(
             8000,
         ),
         allow_title_only=getattr(config, "embedding_allow_title_only", False),
+    )
+
+
+def process_entity_normalization(
+    driver,
+    config,
+) -> Dict[str, int]:
+    """
+    Run optional UMLS/scispaCy normalization for existing Concept nodes.
+
+    The import is intentionally local to this enabled phase so normal KG runs
+    do not require optional scispaCy dependencies.
+    """
+    from knowledge_graph.umls_normalization import normalize_concepts_with_umls
+
+    use_acronyms = bool(
+        getattr(config, "entity_normalization_use_acronyms", True)
+    )
+
+    acronym_dir = None
+    if use_acronyms:
+        configured_acronym_dir = getattr(
+            config,
+            "entity_normalization_acronym_dir",
+            None,
+        )
+        acronym_dir = (
+            Path(configured_acronym_dir)
+            if configured_acronym_dir is not None
+            else get_entity_acronym_dir(config)
+        )
+
+    return normalize_concepts_with_umls(
+        driver=driver,
+        doc_id=getattr(config, "entity_normalization_doc_id", None),
+        backend=getattr(config, "entity_normalization_backend", "umls_api"),
+        model_name=getattr(
+            config,
+            "entity_normalization_model_name",
+            "en_core_sci_sm",
+        ),
+        linker_name=getattr(
+            config,
+            "entity_normalization_linker_name",
+            "umls",
+        ),
+        threshold=float(
+            getattr(config, "entity_normalization_threshold", 0.85)
+        ),
+        max_candidates=int(
+            getattr(config, "entity_normalization_max_candidates", 3)
+        ),
+        use_acronyms=use_acronyms,
+        acronym_dir=acronym_dir,
+        dry_run=bool(getattr(config, "entity_normalization_dry_run", False)),
+        export_review=bool(
+            getattr(config, "entity_normalization_export_review", True)
+        ),
+        review_output_dir=optional_path(
+            getattr(config, "entity_normalization_review_output_dir", None)
+        ),
+        force=bool(getattr(config, "entity_normalization_force", False)),
+        fuzzy_threshold=int(
+            getattr(config, "entity_normalization_fuzzy_threshold", 90)
+        ),
+        local_files_only=bool(
+            getattr(config, "entity_normalization_local_files_only", False)
+        ),
+        min_available_memory_gb=float(
+            getattr(config, "entity_normalization_min_available_memory_gb", 8.0)
+        ),
+        api_cache_dir=optional_path(
+            getattr(config, "entity_normalization_api_cache_dir", None)
+        ),
+        api_timeout=float(
+            getattr(config, "entity_normalization_api_timeout", 30.0)
+        ),
+        api_rate_limit_per_second=float(
+            getattr(
+                config,
+                "entity_normalization_api_rate_limit_per_second",
+                5.0,
+            )
+        ),
     )
 
 
@@ -843,7 +936,8 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     4. clear chat model cache before embeddings, if needed
     5. compute embeddings for all documents
     6. run global concept disambiguation
-    7. run sanity checks
+    7. optionally run UMLS normalization
+    8. run sanity checks
     """
     ensure_pipeline_dirs(config)
 
@@ -864,6 +958,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     preprocessing_results: List[Dict[str, Any]] = []
     document_results: List[Dict[str, Any]] = []
     disambiguation_stats = None
+    normalization_stats = None
     sanity_summary = None
 
     try:
@@ -1045,6 +1140,13 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                 ),
             )
 
+        if need_neo4j and getattr(config, "run_entity_normalization", False):
+            logger.info("Running optional UMLS concept normalization")
+            normalization_stats = process_entity_normalization(
+                driver=driver,
+                config=config,
+            )
+
         if need_neo4j and getattr(config, "run_sanity_checks", False):
             sanity_mode = getattr(config, "sanity_mode", "full")
             logger.info(
@@ -1066,6 +1168,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
         "documents_processed": len(document_results),
         "document_results": document_results,
         "disambiguation_stats": disambiguation_stats,
+        "normalization_stats": normalization_stats,
         "sanity_summary": sanity_summary,
     }
 
