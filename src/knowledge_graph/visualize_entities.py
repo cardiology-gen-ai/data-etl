@@ -77,12 +77,13 @@ QUERIES = {
 
     "8. Failed Entity Extraction Sections by Length": """
         MATCH (s:Section)
-        WHERE s.entity_extraction_status = 'failed'
+        WITH s, properties(s) AS section_props
+        WHERE section_props['entity_extraction_status'] = 'failed'
         RETURN
             s.uid AS Section,
             s.title AS Title,
             size(coalesce(s.text, '')) AS Text_Length,
-            s.entity_extraction_failed_at AS Failed_At
+            section_props['entity_extraction_failed_at'] AS Failed_At
         ORDER BY Text_Length DESC, Section ASC
         LIMIT 20
     """,
@@ -229,91 +230,192 @@ QUERIES = {
 
     "20. Mention Support Method Summary": """
         MATCH (:Section)-[r:MENTIONS]->(:Concept)
+        WITH properties(r) AS mention_props
         RETURN
-            coalesce(r.support_method, 'UNSET') AS Support_Method,
+            coalesce(mention_props['support_method'], 'UNSET') AS Support_Method,
             count(*) AS Count
         ORDER BY Count DESC, Support_Method ASC
     """,
 
     "21. Acronym-Supported Mentions": """
         MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-        WHERE r.support_method = 'acronym'
+        WITH s, r, c, properties(r) AS mention_props
+        WHERE mention_props['support_method'] = 'acronym'
         RETURN
             s.uid AS Section,
             s.title AS Title,
             c.name AS Concept,
             c.canonical_type AS Type,
-            r.acronym_short AS Acronym,
-            r.acronym_definition AS Acronym_Definition,
-            r.acronym_match_method AS Acronym_Match_Method,
-            r.expanded_from_acronym AS Expanded_From_Acronym,
-            r.raw_name AS Raw_Name
+            mention_props['acronym_short'] AS Acronym,
+            mention_props['acronym_definition'] AS Acronym_Definition,
+            mention_props['acronym_match_method'] AS Acronym_Match_Method,
+            mention_props['expanded_from_acronym'] AS Expanded_From_Acronym,
+            mention_props['raw_name'] AS Raw_Name
         ORDER BY Section ASC, Concept ASC
         LIMIT 50
     """,
 
     "22. Expanded Acronym Concepts": """
         MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-        WHERE coalesce(r.expanded_from_acronym, false) = true
+        WITH s, r, c, properties(r) AS mention_props
+        WHERE coalesce(mention_props['expanded_from_acronym'], false) = true
         RETURN
             s.uid AS Section,
             s.title AS Title,
-            r.raw_name AS Raw_LLM_Name,
+            mention_props['raw_name'] AS Raw_LLM_Name,
             c.name AS Written_Concept,
             c.canonical_type AS Type,
-            r.acronym_short AS Acronym,
-            r.acronym_definition AS Acronym_Definition,
-            r.acronym_match_method AS Acronym_Match_Method
+            mention_props['acronym_short'] AS Acronym,
+            mention_props['acronym_definition'] AS Acronym_Definition,
+            mention_props['acronym_match_method'] AS Acronym_Match_Method
         ORDER BY Section ASC, Written_Concept ASC
         LIMIT 50
     """,
 
     "23. Acronym-Supported Mentions Missing Metadata": """
         MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-        WHERE r.support_method = 'acronym'
+        WITH s, r, c, properties(r) AS mention_props
+        WHERE mention_props['support_method'] = 'acronym'
           AND (
-                r.acronym_short IS NULL
-             OR r.acronym_definition IS NULL
-             OR r.acronym_match_method IS NULL
+                mention_props['acronym_short'] IS NULL
+             OR mention_props['acronym_definition'] IS NULL
+             OR mention_props['acronym_match_method'] IS NULL
           )
         RETURN
             s.uid AS Section,
             c.name AS Concept,
-            r.acronym_short AS Acronym,
-            r.acronym_definition AS Acronym_Definition,
-            r.acronym_match_method AS Acronym_Match_Method
+            mention_props['acronym_short'] AS Acronym,
+            mention_props['acronym_definition'] AS Acronym_Definition,
+            mention_props['acronym_match_method'] AS Acronym_Match_Method
         ORDER BY Section ASC, Concept ASC
         LIMIT 50
     """,
 
     "24. Mentions Missing Validation Metadata": """
         MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-        WHERE r.support_method IS NULL
-           OR r.validation_reason IS NULL
+        WITH s, r, c, properties(r) AS mention_props
+        WHERE mention_props['support_method'] IS NULL
+           OR mention_props['validation_reason'] IS NULL
         RETURN
             s.uid AS Section,
             c.name AS Concept,
             c.canonical_type AS Type,
-            r.support_method AS Support_Method,
-            r.validation_reason AS Validation_Reason
+            mention_props['support_method'] AS Support_Method,
+            mention_props['validation_reason'] AS Validation_Reason
         ORDER BY Section ASC, Concept ASC
         LIMIT 50
     """,
 
     "25. Raw Acronym-Like Mentions Written Without Expansion": """
         MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
-        WHERE r.raw_name IS NOT NULL
-          AND r.raw_name =~ '^[A-Z0-9][A-Z0-9./+-]{1,}$'
-          AND coalesce(r.expanded_from_acronym, false) = false
-          AND c.name = toLower(r.raw_name)
+        WITH s, r, c, properties(r) AS mention_props
+        WHERE mention_props['raw_name'] IS NOT NULL
+          AND mention_props['raw_name'] =~ '^[A-Z0-9][A-Z0-9./+-]{1,}$'
+          AND coalesce(mention_props['expanded_from_acronym'], false) = false
+          AND c.name = toLower(mention_props['raw_name'])
         RETURN
             s.uid AS Section,
             c.name AS Concept,
-            r.raw_name AS Raw_Name,
+            mention_props['raw_name'] AS Raw_Name,
             c.canonical_type AS Type,
-            r.support_method AS Support_Method,
-            r.validation_reason AS Validation_Reason
+            mention_props['support_method'] AS Support_Method,
+            mention_props['validation_reason'] AS Validation_Reason
         ORDER BY Section ASC, Concept ASC
+        LIMIT 50
+    """,
+
+    "26. UMLS Normalization Status Summary": """
+        MATCH (c:Concept)
+        WITH c, properties(c) AS concept_props
+        WHERE concept_props['normalization_status'] IS NOT NULL
+           OR concept_props['umls_cui'] IS NOT NULL
+        RETURN
+            coalesce(concept_props['normalization_status'], 'UNSET') AS Normalization_Status,
+            count(*) AS Count
+        ORDER BY Count DESC, Normalization_Status ASC
+    """,
+
+    "27. Top UMLS-Normalized Concepts": """
+        MATCH (c:Concept)
+        WITH c, properties(c) AS concept_props
+        WHERE concept_props['umls_cui'] IS NOT NULL
+        RETURN
+            c.name AS Concept,
+            c.canonical_type AS Type,
+            concept_props['umls_cui'] AS CUI,
+            concept_props['umls_canonical_name'] AS UMLS_Name,
+            concept_props['umls_score'] AS Score,
+            concept_props['normalization_method'] AS Method
+        ORDER BY Score DESC, Concept ASC
+        LIMIT 50
+    """,
+
+    "28. Low Confidence or Unmatched Concepts": """
+        MATCH (c:Concept)
+        WITH c, properties(c) AS concept_props
+        WHERE concept_props['normalization_status'] IN ['umls_low_confidence', 'umls_no_match', 'failed']
+        RETURN
+            c.name AS Concept,
+            c.canonical_type AS Type,
+            concept_props['normalization_status'] AS Status,
+            concept_props['umls_cui'] AS CUI,
+            concept_props['umls_canonical_name'] AS UMLS_Name,
+            concept_props['umls_score'] AS Score
+        ORDER BY Status ASC, Concept ASC
+        LIMIT 50
+    """,
+
+    "29. SAME_AS Duplicate Evidence": """
+        MATCH (a:Concept)-[r]->(b:Concept)
+        WITH a, r, b, properties(a) AS source_props, properties(r) AS rel_props, properties(b) AS target_props
+        WHERE type(r) = 'SAME_AS'
+        RETURN
+            a.name AS Source,
+            b.name AS Target,
+            source_props['umls_cui'] AS Source_CUI,
+            target_props['umls_cui'] AS Target_CUI,
+            rel_props['method'] AS Method,
+            rel_props['score'] AS Score,
+            rel_props['status'] AS Status
+        ORDER BY Source ASC, Target ASC
+        LIMIT 50
+    """,
+
+    "30. POSSIBLY_SAME_AS Candidate Duplicates": """
+        MATCH (a:Concept)-[r]->(b:Concept)
+        WITH a, r, b, properties(r) AS rel_props
+        WHERE type(r) = 'POSSIBLY_SAME_AS'
+        RETURN
+            a.name AS Source,
+            b.name AS Target,
+            a.canonical_type AS Source_Type,
+            b.canonical_type AS Target_Type,
+            rel_props['method'] AS Method,
+            rel_props['score'] AS Score,
+            rel_props['status'] AS Status
+        ORDER BY Score DESC, Source ASC, Target ASC
+        LIMIT 50
+    """,
+
+    "31. UMLS Metadata Problems": """
+        MATCH (c:Concept)
+        WITH c, properties(c) AS concept_props
+        WHERE concept_props['normalization_status'] = 'umls_matched'
+          AND (
+                concept_props['umls_cui'] IS NULL
+             OR concept_props['umls_canonical_name'] IS NULL
+             OR concept_props['umls_score'] IS NULL
+             OR concept_props['normalized_name'] IS NULL
+             OR concept_props['normalized_at'] IS NULL
+          )
+        RETURN
+            c.name AS Concept,
+            c.canonical_type AS Type,
+            concept_props['umls_cui'] AS CUI,
+            concept_props['umls_canonical_name'] AS UMLS_Name,
+            concept_props['umls_score'] AS Score,
+            concept_props['normalization_status'] AS Status
+        ORDER BY Concept ASC
         LIMIT 50
     """,
 }

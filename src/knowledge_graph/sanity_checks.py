@@ -536,6 +536,144 @@ CHECKS: List[Dict[str, Any]] = [
             ORDER BY n DESC, name
         """,
     },
+    {
+        "name": "concept_normalization_status_summary",
+        "title": "Concept normalization_status summary",
+        "group": "UMLS normalization",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH (c:Concept)
+            WITH c, properties(c) AS concept_props
+            WHERE concept_props['normalization_status'] IS NOT NULL
+               OR concept_props['umls_cui'] IS NOT NULL
+            RETURN coalesce(concept_props['normalization_status'], 'UNSET') AS status,
+                   count(c) AS n
+            ORDER BY n DESC, status ASC
+        """,
+    },
+    {
+        "name": "umls_matched_concepts_missing_metadata",
+        "title": "UMLS-matched concepts missing normalization metadata",
+        "group": "UMLS normalization",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (c:Concept)
+            WITH c, properties(c) AS concept_props
+            WHERE concept_props['normalization_status'] = 'umls_matched'
+              AND (
+                    concept_props['umls_cui'] IS NULL
+                 OR trim(concept_props['umls_cui']) = ''
+                 OR concept_props['umls_canonical_name'] IS NULL
+                 OR trim(concept_props['umls_canonical_name']) = ''
+                 OR concept_props['umls_score'] IS NULL
+                 OR concept_props['umls_linker_name'] IS NULL
+                 OR concept_props['umls_model_name'] IS NULL
+                 OR concept_props['normalized_name'] IS NULL
+                 OR concept_props['normalized_at'] IS NULL
+              )
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   concept_props['umls_cui'] AS umls_cui,
+                   concept_props['umls_canonical_name'] AS umls_canonical_name,
+                   concept_props['umls_score'] AS umls_score,
+                   concept_props['normalization_status'] AS normalization_status
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "concepts_with_umls_cui_but_unmatched_status",
+        "title": "Concepts with UMLS CUI but non-matched normalization status",
+        "group": "UMLS normalization",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (c:Concept)
+            WITH c, properties(c) AS concept_props
+            WHERE concept_props['umls_cui'] IS NOT NULL
+              AND trim(concept_props['umls_cui']) <> ''
+              AND coalesce(concept_props['normalization_status'], '') <> 'umls_matched'
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   concept_props['umls_cui'] AS umls_cui,
+                   concept_props['normalization_status'] AS normalization_status,
+                   concept_props['normalization_method'] AS normalization_method
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "same_as_edges_inconsistent_umls_cui",
+        "title": "SAME_AS UMLS edges with missing or inconsistent CUIs",
+        "group": "UMLS normalization",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (a:Concept)-[r]->(b:Concept)
+            WITH a, r, b, properties(a) AS source_props, properties(r) AS rel_props, properties(b) AS target_props
+            WHERE type(r) = 'SAME_AS'
+              AND rel_props['method'] = 'umls_cui'
+              AND (
+                    a = b
+                 OR source_props['umls_cui'] IS NULL
+                 OR target_props['umls_cui'] IS NULL
+                 OR source_props['umls_cui'] <> target_props['umls_cui']
+              )
+            RETURN a.name AS source_concept,
+                   b.name AS target_concept,
+                   source_props['umls_cui'] AS source_cui,
+                   target_props['umls_cui'] AS target_cui,
+                   rel_props['status'] AS status,
+                   rel_props['score'] AS score
+            ORDER BY source_concept, target_concept
+        """,
+    },
+    {
+        "name": "possibly_same_as_self_edges",
+        "title": "POSSIBLY_SAME_AS self edges",
+        "group": "UMLS normalization",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (a:Concept)-[r]->(b:Concept)
+            WITH a, r, b, properties(r) AS rel_props
+            WHERE type(r) = 'POSSIBLY_SAME_AS'
+              AND a = b
+            RETURN a.name AS concept,
+                   rel_props['method'] AS method,
+                   rel_props['status'] AS status,
+                   rel_props['score'] AS score
+            ORDER BY concept
+        """,
+    },
+    {
+        "name": "short_fuzzy_duplicate_candidates_without_evidence",
+        "title": "Short fuzzy duplicate candidates without UMLS/acronym evidence",
+        "group": "UMLS normalization",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (a:Concept)-[r]->(b:Concept)
+            WITH a, r, b, properties(a) AS source_props, properties(r) AS rel_props, properties(b) AS target_props
+            WHERE type(r) = 'POSSIBLY_SAME_AS'
+              AND rel_props['method'] = 'fuzzy_name'
+              AND size(a.name) <= 3
+              AND size(b.name) <= 3
+              AND (
+                    source_props['umls_cui'] IS NULL
+                 OR target_props['umls_cui'] IS NULL
+                 OR source_props['umls_cui'] <> target_props['umls_cui']
+              )
+            RETURN a.name AS source_concept,
+                   b.name AS target_concept,
+                   source_props['umls_cui'] AS source_cui,
+                   target_props['umls_cui'] AS target_cui,
+                   rel_props['score'] AS score,
+                   rel_props['status'] AS status
+            ORDER BY score DESC, source_concept, target_concept
+        """,
+    },
 
     # ---------------------------------------------------------------------
     # Entity extraction state checks
