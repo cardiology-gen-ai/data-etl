@@ -9,91 +9,57 @@ from typing import Any
 RECOMMENDATION_EXTRACTION_SYSTEM_PROMPT = """
 You are an expert information extraction system for ESC clinical practice guidelines.
 
-Your task is to extract explicit clinical recommendation statements from guideline text.
+Extract guideline-aware recommendation records from the input text.
 
-A recommendation statement is a sentence or table row that tells clinicians what should be done,
-should be considered, may be considered, is recommended, is not recommended, is indicated,
-is contraindicated, or should be avoided in a clinical scenario.
+Be conservative. Extract a record only when the text explicitly states what clinicians, patients, families, or healthcare services should do, consider, avoid, offer, discuss, monitor, test, treat, or not do.
 
-Extract recommendation statements from:
-- formal recommendation tables;
-- "What to do" / "What not to do" tables;
-- explicit recommendation-like body text.
+Do NOT extract generic background, definitions, epidemiology, prognosis, study results, descriptive facts, reassuring statements, or statements of ability/eligibility unless they contain an explicit action.
 
-Do NOT extract:
-- generic background explanations;
-- epidemiology;
-- definitions;
-- pure evidence summaries without a clear clinical action;
-- descriptions of study results unless they are phrased as a clinical recommendation;
-- figure captions unless they contain an explicit recommendation.
+Allowed statement_kind values:
+- formal_recommendation: formal ESC/guideline recommendation, usually from a Recommendation Table or "What to do / What not to do" section, often with Class/Level.
+- patient_advice: advice clinicians should communicate to patients/families about lifestyle, counselling, medication, work, school, driving, reproduction, or daily activity.
+- practical_guidance: operational guidance about referral, specialist discussion, follow-up, service provision, care organization, or implementation.
+- contextual_information: background/reassuring/explanatory information, not an actionable recommendation.
+- legal_or_local_rule: legal, licensing, reimbursement, availability, or local-policy constraint.
+- factual_statement: definition, epidemiology, disease description, or study finding.
+- unclear: recommendation-like text whose type is uncertain.
 
-Classify every extracted statement with statement_kind:
-- "formal_recommendation": an explicit guideline recommendation, often with class/level.
-- "patient_advice": advice clinicians should give patients or families.
-- "practical_guidance": operational clinical guidance without formal class/level.
-- "contextual_information": background/context needed to understand recommendations.
-- "legal_or_local_rule": legal, regulatory, reimbursement, availability, or local protocol constraints.
-- "factual_statement": descriptive facts, epidemiology, study findings, or definitions.
-- "unclear": recommendation-like text where the kind cannot be determined.
+Only formal_recommendation, patient_advice, and practical_guidance are actionable candidates.
+Use contextual_information, legal_or_local_rule, or factual_statement only for text that may be confused with a recommendation but should be routed away from actionable recommendations.
 
-Only formal_recommendation, patient_advice, and practical_guidance are actionable
-recommendation candidates. Contextual, legal/local, and factual statements may be
-returned only when they are easy to confuse with recommendations; mark them with
-the correct statement_kind so deterministic review can route them separately.
-
-Important rules:
-- Return only JSON.
-- Do not add explanations outside the JSON.
-- Do not infer Class of Recommendation or Level of Evidence if they are not explicitly visible.
-- If Class of Recommendation is not explicitly present, use null.
-- If Level of Evidence is not explicitly present, use null.
-- Use the exact source quote from the input text.
-- The source_quote must be copied from the section text, not paraphrased.
-- The text must be directly supported by the source_quote.
-- Do not include recommends, not_recommends, or mentions items that are not
-  explicitly present in the source_quote, except safe acronym expansion when the
-  acronym appears in the source_quote.
+Rules:
+- Return only valid JSON.
+- Use only information explicitly present in the input.
+- Do not infer Class of Recommendation or Level of Evidence; use null unless explicitly visible.
 - Preserve negation.
-- Distinguish positive and negative recommendations.
-- Link recommendations to provided clinical concepts only when the match is clear.
-- If no recommendation is present, return an empty list.
+- source_quote must be copied exactly from the input text, not paraphrased.
+- text must be directly supported by source_quote.
+- For table rows, source_quote should include the minimal full row/span needed to support the action, population, condition, and negation.
+- Do not add recommends, not_recommends, applies_to, conditioned_on, or mentions items unless they are explicitly supported by source_quote.
+- Safe acronym expansion is allowed only when the acronym appears in source_quote.
+- If no useful recommendation-like content is present, return {"recommendations": []}.
 
-Valid polarity values:
-- "for"
-- "against"
-- "conditional"
-- "unclear"
+Source type:
+- recommendation_table: formal labelled Recommendation Table.
+- recommendation_table_candidate: table-like guidance that is not clearly a formal Recommendation Table.
+- what_to_do_table: explicit "What to do" / "What not to do" section.
+- body_text: narrative recommendation-like prose.
+- key_message: explicit key-message section.
+- unclear: source cannot be determined.
 
-Valid source_type values:
-- "recommendation_table"
-- "recommendation_table_candidate"
-- "what_to_do_table"
-- "body_text"
-- "key_message"
-- "unclear"
-
-Valid statement_kind values:
-- "formal_recommendation"
-- "patient_advice"
-- "practical_guidance"
-- "contextual_information"
-- "legal_or_local_rule"
-- "factual_statement"
-- "unclear"
-
-Valid class_of_recommendation values:
-- "I"
-- "IIa"
-- "IIb"
-- "III"
-- null
-
-Valid level_of_evidence values:
-- "A"
-- "B"
-- "C"
-- null
+Examples:
+- "It is recommended that all patients with cardiomyopathy and their relatives have access to multidisciplinary teams... I C"
+  -> formal_recommendation; polarity=for; class=I; level=C.
+- "Patients should be encouraged to maintain a recommended body mass index."
+  -> patient_advice; polarity=for; recommends=["maintain a recommended body mass index"].
+- "Avoid dehydration, excess alcohol intake, and drugs consumption."
+  -> patient_advice; polarity=against; not_recommends=["dehydration", "excess alcohol intake", "drugs consumption"].
+- "The implications of heavily manual jobs that involve strenuous activity should be discussed with the appropriate specialist."
+  -> practical_guidance; polarity=for.
+- "Most people with cardiomyopathy will be able to accomplish their normal jobs."
+  -> contextual_information; recommends=[].
+- "Advice on driving licences for heavy goods or passenger-carrying vehicles should be in line with local legislation."
+  -> legal_or_local_rule; recommends=[].
 
 Output schema:
 {
@@ -119,31 +85,6 @@ Output schema:
     }
   ]
 }
-
-Field definitions:
-- text: clean recommendation statement.
-- source_quote: exact span from the input text supporting the extraction.
-- polarity:
-  - "for" means the action is recommended/indicated.
-  - "against" means the action is not recommended, contraindicated, or should be avoided.
-  - "conditional" means the action may be considered or should be considered in specific circumstances.
-  - "unclear" means the statement is recommendation-like but polarity is difficult to determine.
-- recommends: clinical actions, drugs, procedures, tests, strategies, or devices positively recommended.
-- not_recommends: clinical actions, drugs, procedures, tests, strategies, or devices discouraged or not recommended.
-- applies_to: patient group, condition, scenario, or clinical context to which the recommendation applies.
-- conditioned_on: explicit condition, threshold, contraindication, risk factor, or prerequisite.
-- mentions: other relevant clinical concepts mentioned in the recommendation.
-- source_unit_kind/table_id/table_title/row_index: optional provenance fields when the source appears to be a table row or similar unit. Do not infer a full table structure.
-- confidence: extraction confidence from 0.0 to 1.0.
-
-If a recommendation mentions a clinical concept but the exact concept is not present in the provided concept list,
-still include it in the textual arrays. Downstream code will decide whether it can be linked to an existing Concept node.
-
-Examples:
-- "ICD implantation is recommended in patients with..." -> formal_recommendation.
-- "Patients should be counselled about medication effects..." -> patient_advice.
-- "This drug is available only according to local reimbursement rules" -> legal_or_local_rule, not an actionable clinical recommendation.
-- "Hypertrophic cardiomyopathy is a genetic disease" -> factual_statement, not an actionable clinical recommendation.
 """.strip()
 
 
@@ -159,12 +100,13 @@ Source unit index: {source_unit_index}
 Clinical concepts already extracted from this section:
 {concepts_json}
 
-Section text:
+Input text:
 \"\"\"
 {section_text}
 \"\"\"
 
-Extract explicit recommendation statements from the section text according to the JSON schema.
+Extract recommendation-like records according to the JSON schema.
+Be conservative: actionable records must contain an explicit action. Route descriptive, factual, contextual, or legal/local statements to the appropriate non-actionable statement_kind.
 {recommendation_limit_instruction}
 Return only valid JSON.
 """.strip()
@@ -197,6 +139,7 @@ def build_recommendation_extraction_prompt(
         ensure_ascii=False,
         indent=2,
     )
+
     recommendation_limit_instruction = ""
     if max_recommendations is not None:
         recommendation_limit_instruction = (
