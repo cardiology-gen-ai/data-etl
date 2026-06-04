@@ -15,7 +15,7 @@
         },
         "preprocessing": {
             "storage": {
-                "parent_folder": "test_data",
+                "parent_folder": "first_prototype",
                 "input_folder": "pdfdocs",
                 "output_folder": "mddocs",
                 "allowed_extensions": [
@@ -40,9 +40,17 @@
         },
         "knowledge_graph": {
             "pipeline": {
-                "phase": "graph",
-                "pdf_dir": "test_data/smoke/pdfdocs",
-                "work_root": "test_data/smoke"
+                "phase": "normalization",
+                "pdf_dir": "first_prototype/pdfdocs",
+                "work_root": "first_prototype",
+                "force_toc": true,
+                "force_markdown": false,
+                "force_anchors": false,
+                "force_chunks": true
+            },
+            "logging": {
+                "enabled": true,
+                "dir": null
             },
             "providers": {
                 "chat_provider": "openai",
@@ -61,11 +69,32 @@
                 "min_text_chars_to_embed": 20
             },
             "entities": {
-                "max_sections": 2,
+                "max_sections": null,
                 "max_sections_per_batch": 2,
                 "max_batch_chars": 30000,
                 "emergency_max_single_chars": 12000,
                 "skip_processed": true
+            },
+            "entity_normalization": {
+                "enabled": false,
+                "doc_id": null,
+                "backend": "umls_api",
+                "model_name": "en_core_sci_sm",
+                "linker_name": "umls",
+                "threshold": 0.85,
+                "max_candidates": 3,
+                "use_acronyms": true,
+                "acronym_dir": null,
+                "force": false,
+                "dry_run": false,
+                "export_review": true,
+                "review_output_dir": null,
+                "fuzzy_threshold": 90,
+                "api_cache_dir": null,
+                "api_timeout": 30,
+                "api_rate_limit_per_second": 2,
+                "local_files_only": false,
+                "min_available_memory_gb": 8.0
             },
             "section_embeddings": {
                 "max_sections": 2,

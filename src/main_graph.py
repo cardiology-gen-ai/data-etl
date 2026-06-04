@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any
 
@@ -13,6 +14,11 @@ from knowledge_graph.neo4j_utils import get_neo4j_driver, close_driver
 
 
 logger = logging.getLogger(__name__)
+
+
+LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+_RUN_LOG_HANDLER_NAME = "kg_run_file"
+_CURRENT_RUN_LOG_CONTEXT: Optional[tuple[Path, str, Path]] = None
 
 
 @dataclass
@@ -356,6 +362,89 @@ def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
         )
 
     return mapping[phase]
+
+
+def _find_run_log_handler() -> Optional[logging.FileHandler]:
+    root_logger = logging.getLogger()
+
+    for handler in root_logger.handlers:
+        if (
+            isinstance(handler, logging.FileHandler)
+            and getattr(handler, "name", "") == _RUN_LOG_HANDLER_NAME
+        ):
+            return handler
+
+    return None
+
+
+def configure_run_logging(
+    work_root: Path,
+    phase: str,
+    project_root: Path,
+    log_to_file: Optional[bool] = None,
+    configured_log_dir: Optional[Path] = None,
+) -> Optional[Path]:
+    """
+    Add per-run file logging under ``<work_root>/logs`` unless overridden.
+
+    This preserves existing console logging and avoids duplicate file handlers
+    when the module is imported or ``main()`` is called multiple times in the
+    same Python process.
+    """
+    enabled = (
+        log_to_file
+        if log_to_file is not None
+        else _get_env_bool("KG_LOG_TO_FILE", True)
+    )
+
+    global _CURRENT_RUN_LOG_CONTEXT
+
+    if not enabled:
+        existing_handler = _find_run_log_handler()
+        if existing_handler is not None:
+            logging.getLogger().removeHandler(existing_handler)
+            existing_handler.close()
+        _CURRENT_RUN_LOG_CONTEXT = None
+        return None
+
+    configured_dir_value = _get_optional_env("KG_LOG_DIR")
+    if configured_dir_value is not None:
+        log_dir = _resolve_project_path(
+            configured_dir_value,
+            work_root / "logs",
+            project_root,
+        )
+    elif configured_log_dir is not None:
+        log_dir = Path(configured_log_dir).expanduser().resolve()
+    else:
+        log_dir = (work_root / "logs").resolve()
+
+    safe_phase = (phase or "run").strip().lower() or "run"
+    run_context = (work_root.resolve(), safe_phase, log_dir.resolve())
+
+    existing_handler = _find_run_log_handler()
+    if existing_handler is not None:
+        if _CURRENT_RUN_LOG_CONTEXT == run_context:
+            return Path(existing_handler.baseFilename).resolve()
+        logging.getLogger().removeHandler(existing_handler)
+        existing_handler.close()
+
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path = log_dir / f"{safe_phase}_{timestamp}.log"
+
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    file_handler.set_name(_RUN_LOG_HANDLER_NAME)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+
+    root_logger = logging.getLogger()
+    root_logger.addHandler(file_handler)
+    _CURRENT_RUN_LOG_CONTEXT = run_context
+
+    logger.info("Writing run log to: %s", log_path)
+    return log_path
 
 
 def clear_graph_data() -> None:
@@ -712,6 +801,9 @@ def main(
     kg_embedding_model_path: Optional[str] = None,
     kg_local_files_only: Optional[bool] = None,
     kg_chat_max_new_tokens: Optional[int] = None,
+    log_to_file: Optional[bool] = None,
+    log_dir: Optional[Path] = None,
+    pipeline_phase: Optional[str] = None,
 ):
     """
     Run the KG pipeline.
@@ -734,6 +826,18 @@ def main(
 
     if run_sanity_checks and sanity_mode is None:
         raise ValueError("sanity_mode must be set when run_sanity_checks=True")
+
+    configure_run_logging(
+        work_root=work_root.resolve(),
+        phase=(
+            (pipeline_phase or _get_optional_env("KG_PIPELINE_PHASE") or "manual")
+            .strip()
+            .lower()
+        ),
+        project_root=Path(__file__).resolve().parent.parent,
+        log_to_file=log_to_file,
+        configured_log_dir=log_dir,
+    )
 
     inject_kg_runtime_env(
         kg_chat_provider=kg_chat_provider,
@@ -860,20 +964,17 @@ def main(
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        format=LOG_FORMAT,
     )
 
     project_root = Path(__file__).resolve().parent.parent
     env_path = project_root / ".env"
     loaded = load_dotenv(env_path)
-    logger.info("Loading .env from: %s", env_path)
-    logger.info(".env loaded: %s", loaded)
 
     app_config, config_path, app_id = load_app_config_from_env()
-    logger.info("Using config path: %s", config_path)
-    logger.info("Using app id: %s", app_id)
 
     kg_config = app_config.get("knowledge_graph", {})
+    kg_logging_config = kg_config.get("logging", {})
 
     pdf_dir = _resolve_project_path(
         _get_optional_env("KG_PDF_DIR")
@@ -899,6 +1000,37 @@ if __name__ == "__main__":
     ).strip().lower()  # preprocess, graph, entities, embeddings, normalization, full
 
     SANITY_MODE = _resolve_sanity_mode_from_phase(PIPELINE_PHASE)
+    KG_LOG_TO_FILE = _get_env_or_config_bool(
+        "KG_LOG_TO_FILE",
+        _get_config_value(kg_logging_config, "enabled"),
+        True,
+    )
+    kg_log_dir_value = (
+        _get_optional_env("KG_LOG_DIR")
+        or _get_config_value(kg_logging_config, "dir")
+    )
+    KG_LOG_DIR = (
+        _resolve_project_path(
+            kg_log_dir_value,
+            work_root / "logs",
+            project_root,
+        )
+        if kg_log_dir_value not in (None, "")
+        else None
+    )
+
+    configure_run_logging(
+        work_root=work_root,
+        phase=PIPELINE_PHASE,
+        project_root=project_root,
+        log_to_file=KG_LOG_TO_FILE,
+        configured_log_dir=KG_LOG_DIR,
+    )
+
+    logger.info("Loading .env from: %s", env_path)
+    logger.info(".env loaded: %s", loaded)
+    logger.info("Using config path: %s", config_path)
+    logger.info("Using app id: %s", app_id)
 
     # Runtime model settings come from config.json by default. .env can still
     # override them for local/emergency runs without changing tracked config.
@@ -1197,6 +1329,7 @@ if __name__ == "__main__":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
+            pipeline_phase=PIPELINE_PHASE,
             clear_neo4j_before_run=False,
             run_preprocessing=True,
             run_acronym_extraction=True,
@@ -1221,6 +1354,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
+            log_to_file=KG_LOG_TO_FILE,
+            log_dir=KG_LOG_DIR,
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
@@ -1231,6 +1366,7 @@ if __name__ == "__main__":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
+            pipeline_phase=PIPELINE_PHASE,
             clear_neo4j_before_run=True,
             run_preprocessing=False,
             run_acronym_extraction=False,
@@ -1253,6 +1389,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
+            log_to_file=KG_LOG_TO_FILE,
+            log_dir=KG_LOG_DIR,
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
@@ -1263,6 +1401,7 @@ if __name__ == "__main__":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
+            pipeline_phase=PIPELINE_PHASE,
             clear_neo4j_before_run=False,
             run_preprocessing=False,
             run_acronym_extraction=False,
@@ -1284,6 +1423,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
+            log_to_file=KG_LOG_TO_FILE,
+            log_dir=KG_LOG_DIR,
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
@@ -1294,6 +1435,7 @@ if __name__ == "__main__":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
+            pipeline_phase=PIPELINE_PHASE,
             clear_neo4j_before_run=False,
             run_preprocessing=False,
             run_acronym_extraction=False,
@@ -1315,6 +1457,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
+            log_to_file=KG_LOG_TO_FILE,
+            log_dir=KG_LOG_DIR,
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
@@ -1325,6 +1469,7 @@ if __name__ == "__main__":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
+            pipeline_phase=PIPELINE_PHASE,
             clear_neo4j_before_run=False,
             run_preprocessing=False,
             run_acronym_extraction=False,
@@ -1346,6 +1491,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
+            log_to_file=KG_LOG_TO_FILE,
+            log_dir=KG_LOG_DIR,
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
@@ -1356,6 +1503,7 @@ if __name__ == "__main__":
         main(
             pdf_dir=pdf_dir,
             work_root=work_root,
+            pipeline_phase=PIPELINE_PHASE,
             clear_neo4j_before_run=True,
             run_preprocessing=True,
             run_acronym_extraction=True,
@@ -1381,6 +1529,8 @@ if __name__ == "__main__":
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
             sanity_mode=SANITY_MODE,
+            log_to_file=KG_LOG_TO_FILE,
+            log_dir=KG_LOG_DIR,
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
