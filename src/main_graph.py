@@ -331,6 +331,44 @@ def _resolve_project_path_from_env(
     return _resolve_project_path(_get_optional_env(name), default, project_root)
 
 
+def resolve_entity_review_settings(
+    kg_config: dict,
+    work_root: Path,
+    project_root: Path,
+) -> dict:
+    """
+    Resolve compact entity review artifact settings for KG pipeline runs.
+    """
+    entity_config = kg_config.get("entities", {})
+    review_dir_value = (
+        _get_optional_env("KG_ENTITY_REVIEW_OUTPUT_DIR")
+        or _get_config_value(entity_config, "review_output_dir")
+    )
+
+    return {
+        "entity_export_review": _get_env_or_config_bool(
+            "KG_ENTITY_EXPORT_REVIEW",
+            _get_config_value(entity_config, "export_review"),
+            True,
+        ),
+        "entity_review_output_dir": _resolve_project_path(
+            review_dir_value,
+            work_root / "entity_review",
+            project_root,
+        ),
+        "entity_clear_previous_review": _get_env_or_config_bool(
+            "KG_ENTITY_CLEAR_PREVIOUS_REVIEW",
+            _get_config_value(entity_config, "clear_previous_review"),
+            True,
+        ),
+        "entity_include_source_preview_in_review": _get_env_or_config_bool(
+            "KG_ENTITY_INCLUDE_SOURCE_PREVIEW_IN_REVIEW",
+            _get_config_value(entity_config, "include_source_preview_in_review"),
+            False,
+        ),
+    }
+
+
 def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
     """
     Map pipeline phase to sanity-check mode.
@@ -565,7 +603,7 @@ def make_graph_pipeline_config(
     resolved_entity_review_output_dir = (
         entity_review_output_dir.resolve()
         if entity_review_output_dir is not None
-        else None
+        else (work_root / "entity_review").resolve()
     )
 
     resolved_entity_normalization_acronym_dir = (
@@ -1193,6 +1231,11 @@ if __name__ == "__main__":
             False,
         ),
     }
+    entity_review_kwargs = resolve_entity_review_settings(
+        kg_config=kg_config,
+        work_root=work_root,
+        project_root=project_root,
+    )
 
     normalization_acronym_dir_value = (
         _get_optional_env("KG_ENTITY_NORMALIZATION_ACRONYM_DIR")
@@ -1346,10 +1389,6 @@ if __name__ == "__main__":
             entity_replace_section_mentions=True,
             entity_use_acronym_validation=True,
             entity_acronym_dir=None,
-            entity_export_review=True,
-            entity_review_output_dir=None,
-            entity_clear_previous_review=True,
-            entity_include_source_preview_in_review=False,
             embedding_allow_title_only=False,
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
@@ -1359,6 +1398,7 @@ if __name__ == "__main__":
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
+            **entity_review_kwargs,
             **normalization_kwargs,
         )
 
@@ -1381,10 +1421,6 @@ if __name__ == "__main__":
             entity_replace_section_mentions=True,
             entity_use_acronym_validation=True,
             entity_acronym_dir=None,
-            entity_export_review=True,
-            entity_review_output_dir=None,
-            entity_clear_previous_review=True,
-            entity_include_source_preview_in_review=False,
             embedding_allow_title_only=False,
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
@@ -1394,6 +1430,7 @@ if __name__ == "__main__":
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
+            **entity_review_kwargs,
             **normalization_kwargs,
         )
 
@@ -1415,10 +1452,6 @@ if __name__ == "__main__":
             entity_replace_section_mentions=True,
             entity_use_acronym_validation=True,
             entity_acronym_dir=None,
-            entity_export_review=True,
-            entity_review_output_dir=None,
-            entity_clear_previous_review=True,
-            entity_include_source_preview_in_review=False,
             embedding_allow_title_only=False,
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
@@ -1428,6 +1461,7 @@ if __name__ == "__main__":
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
+            **entity_review_kwargs,
             **normalization_kwargs,
         )
 
@@ -1449,10 +1483,6 @@ if __name__ == "__main__":
             entity_replace_section_mentions=True,
             entity_use_acronym_validation=True,
             entity_acronym_dir=None,
-            entity_export_review=True,
-            entity_review_output_dir=None,
-            entity_clear_previous_review=True,
-            entity_include_source_preview_in_review=False,
             embedding_allow_title_only=False,
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
@@ -1462,6 +1492,7 @@ if __name__ == "__main__":
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
+            **entity_review_kwargs,
             **normalization_kwargs,
         )
 
@@ -1483,10 +1514,6 @@ if __name__ == "__main__":
             entity_replace_section_mentions=True,
             entity_use_acronym_validation=True,
             entity_acronym_dir=None,
-            entity_export_review=True,
-            entity_review_output_dir=None,
-            entity_clear_previous_review=True,
-            entity_include_source_preview_in_review=False,
             embedding_allow_title_only=False,
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
@@ -1496,6 +1523,7 @@ if __name__ == "__main__":
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
+            **entity_review_kwargs,
             **normalization_kwargs,
         )
 
@@ -1521,10 +1549,6 @@ if __name__ == "__main__":
             entity_replace_section_mentions=True,
             entity_use_acronym_validation=True,
             entity_acronym_dir=None,
-            entity_export_review=True,
-            entity_review_output_dir=None,
-            entity_clear_previous_review=True,
-            entity_include_source_preview_in_review=False,
             embedding_allow_title_only=False,
             clear_chat_cache_before_embeddings=True,
             disambiguation_delete_orphans=True,
@@ -1534,6 +1558,7 @@ if __name__ == "__main__":
             **runtime_kwargs,
             **limit_kwargs,
             **cache_kwargs,
+            **entity_review_kwargs,
             **normalization_kwargs,
         )
 

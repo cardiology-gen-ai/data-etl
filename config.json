@@ -73,7 +73,11 @@
                 "max_sections_per_batch": 2,
                 "max_batch_chars": 30000,
                 "emergency_max_single_chars": 12000,
-                "skip_processed": true
+                "skip_processed": true,
+                "export_review": true,
+                "review_output_dir": null,
+                "clear_previous_review": true,
+                "include_source_preview_in_review": false
             },
             "entity_normalization": {
                 "enabled": false,
