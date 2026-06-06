@@ -1,0 +1,372 @@
+{
+  "_template": {
+    "_comment": "Template for data-etl/config.json. Keys beginning with '_' are documentation helpers; remove them if you want the smallest runtime config.",
+    "_usage": "Set CONFIG_PATH to the config file path and, optionally, KG_APP_ID to choose the top-level app id. Relative paths are resolved from the data-etl project root in the knowledge graph CLI.",
+    "_common_types": {
+      "boolean": "true or false",
+      "integer": "Whole number, normally >= 0 unless noted otherwise.",
+      "number": "Integer or decimal number.",
+      "path": "Relative path from data-etl project root, absolute path, empty string, or null where documented.",
+      "null": "Use null to mean not limited, disabled, or default path depending on the field description."
+    }
+  },
+  "cardiology_protocols": {
+    "_comment": "Application id. The CLI uses KG_APP_ID or defaults to cardiology_protocols.",
+    "indexing": {
+      "_comment": "Vector index settings for the classic ETL/retrieval path.",
+      "_fields": {
+        "name": "Index or collection name. For FAISS this is also used as the persisted file stem.",
+        "description": "Human-readable description of the document collection.",
+        "type": "Vector store backend.",
+        "distance": "Distance metric used by the vector store.",
+        "alias": "Friendly alias for the active index. Used by project metadata/conventions.",
+        "retrieval_mode": "Optional. Retrieval strategy for Qdrant-capable retrieval; defaults to dense when omitted."
+      },
+      "_allowed_values": {
+        "type": [
+          "faiss",
+          "qdrant"
+        ],
+        "distance": [
+          "cosine",
+          "euclidean"
+        ],
+        "retrieval_mode": [
+          "dense",
+          "sparse",
+          "hybrid"
+        ]
+      },
+      "name": "all_mini_cardiology_protocols",
+      "description": "Documents containing medical protocols for cardiologic patients.",
+      "type": "faiss",
+      "distance": "cosine",
+      "alias": "faiss_cardio_current"
+    },
+    "embeddings": {
+      "_comment": "Embedding model for the classic ETL chunk index. Knowledge graph section embeddings are configured separately under knowledge_graph.models.",
+      "_fields": {
+        "deployment": "Hugging Face sentence-transformers model id or local model path.",
+        "kwargs": "Arguments forwarded to HuggingFaceEmbeddings. Recognized keys are device, normalize_embeddings, and prompt_name.",
+        "kwargs.device": "Device for local embedding inference."
+      },
+      "_allowed_values": {
+        "kwargs.device": [
+          "cpu",
+          "cuda",
+          "cuda:0",
+          "mps"
+        ]
+      },
+      "deployment": "sentence-transformers/all-MiniLM-L6-v2",
+      "kwargs": {
+        "device": "cpu"
+      }
+    },
+    "preprocessing": {
+      "_comment": "PDF to Markdown conversion, image extraction, and chunking settings.",
+      "storage": {
+        "_fields": {
+          "parent_folder": "Base working folder for input and output document folders.",
+          "input_folder": "Folder under parent_folder containing source PDFs.",
+          "output_folder": "Folder under parent_folder where converted Markdown is written.",
+          "allowed_extensions": "Input file extensions to process, without or with leading dots."
+        },
+        "_allowed_values": {
+          "allowed_extensions": [
+            "pdf"
+          ]
+        },
+        "parent_folder": "testing_graph",
+        "input_folder": "pdfdocs",
+        "output_folder": "mddocs",
+        "allowed_extensions": [
+          "pdf"
+        ]
+      },
+      "images": {
+        "_fields": {
+          "dpi": "Render resolution for extracted PDF images.",
+          "tol": "Tolerance in PDF points used to merge nearby image rectangles.",
+          "pad": "Padding in PDF points added around detected image boxes before rendering.",
+          "caption_keywords": "Case-sensitive words used to identify figure captions."
+        },
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {
+        "_fields": {
+          "markdown_first": "When true, split Markdown by headers before applying the selected splitter.",
+          "header_levels": "Number of Markdown header levels to preserve when markdown_first is true or splitter is markdown.",
+          "splitter": "Chunking strategy.",
+          "chunk_size": "Preferred chunk size. Interpreted as characters for recursive splitting; tokens for sentence splitting.",
+          "chunk_overlap": "Overlap between adjacent chunks, in the same unit as chunk_size."
+        },
+        "_allowed_values": {
+          "splitter": [
+            "markdown",
+            "recursive",
+            "semantic",
+            "sentence"
+          ]
+        },
+        "markdown_first": true,
+        "header_levels": 4,
+        "splitter": "recursive",
+        "chunk_size": 1000,
+        "chunk_overlap": 200
+      }
+    },
+    "knowledge_graph": {
+      "_comment": "Knowledge graph pipeline settings used by data-etl/src/main_graph.py.",
+      "pipeline": {
+        "_fields": {
+          "phase": "Named phase to run. Each phase enables a fixed subset of pipeline steps.",
+          "pdf_dir": "Directory containing source PDFs. Overrides preprocessing.storage input path for KG runs.",
+          "work_root": "Working directory for generated TOC, Markdown, images, anchors, chunks, acronyms, logs, and reviews.",
+          "clear_neo4j_before_run": "Delete all existing Neo4j graph data before phases that load graph data. Use carefully.",
+          "force_toc": "Regenerate cached table-of-contents files even if present.",
+          "force_markdown": "Regenerate Markdown conversion even if present.",
+          "force_anchors": "Regenerate page anchor files even if present.",
+          "force_chunks": "Regenerate chunk files even if present.",
+          "force_acronyms": "Regenerate acronym extraction outputs even if present."
+        },
+        "_allowed_values": {
+          "phase": [
+            "preprocess",
+            "graph",
+            "entities",
+            "embeddings",
+            "normalization",
+            "full"
+          ]
+        },
+        "_phase_behavior": {
+          "preprocess": "Converts PDFs, extracts TOC/images/anchors/chunks, and optionally extracts acronyms. Does not run sanity checks.",
+          "graph": "Loads document/chunk structure into Neo4j and runs structure sanity checks.",
+          "entities": "Runs entity extraction, entity disambiguation, optional normalization, and entity sanity checks.",
+          "embeddings": "Embeds graph sections and runs embedding sanity checks.",
+          "normalization": "Runs entity normalization only and then entity sanity checks.",
+          "full": "Runs preprocessing, graph loading, entity extraction, embeddings, disambiguation, optional normalization, and full sanity checks."
+        },
+        "phase": "graph",
+        "pdf_dir": "testing_graph/pdfdocs",
+        "work_root": "testing_graph",
+        "clear_neo4j_before_run": false,
+        "force_toc": true,
+        "force_markdown": true,
+        "force_anchors": true,
+        "force_chunks": true,
+        "force_acronyms": false
+      },
+      "logging": {
+        "_fields": {
+          "enabled": "Write a timestamped run log file.",
+          "dir": "Directory for logs. Use null for work_root/logs."
+        },
+        "enabled": true,
+        "dir": null
+      },
+      "providers": {
+        "_fields": {
+          "chat_provider": "Provider used for entity extraction and other chat/model calls.",
+          "embedding_provider": "Provider used for KG section embeddings.",
+          "local_files_only": "For local Hugging Face models, avoid network/model downloads. For OpenAI runs this is usually false."
+        },
+        "_allowed_values": {
+          "chat_provider": [
+            "openai",
+            "local_hf",
+            "hf",
+            "huggingface",
+            "local"
+          ],
+          "embedding_provider": [
+            "openai",
+            "local_hf",
+            "hf",
+            "huggingface",
+            "local"
+          ]
+        },
+        "chat_provider": "openai",
+        "embedding_provider": "openai",
+        "local_files_only": false
+      },
+      "models": {
+        "_fields": {
+          "chat_model": "OpenAI model id or Hugging Face chat/instruct model id.",
+          "chat_model_path": "Optional local path for local_hf chat model. Use empty string to load chat_model.",
+          "embedding_model": "OpenAI embedding model id or local Hugging Face SentenceTransformer id/path.",
+          "embedding_dimensions": "Optional output dimensions for OpenAI embedding models that support dimension shortening. Use null for model default.",
+          "embedding_model_path": "Optional local path for local_hf embedding model. Use empty string to load embedding_model.",
+          "chat_max_new_tokens": "Maximum generated tokens for chat model responses."
+        },
+        "chat_model": "gpt-4.1-mini",
+        "chat_model_path": "",
+        "embedding_model": "text-embedding-3-small",
+        "embedding_dimensions": null,
+        "embedding_model_path": "",
+        "chat_max_new_tokens": 1024
+      },
+      "runtime": {
+        "_fields": {
+          "clear_chat_cache_before_embeddings": "When entity extraction and embeddings run in one process, release cached chat model/client before embedding generation."
+        },
+        "clear_chat_cache_before_embeddings": true
+      },
+      "acronyms": {
+        "_fields": {
+          "enabled": "Run acronym extraction during preprocess/full phases.",
+          "sample_size": "Number of acronym candidates to sample for inspection. Use 0 for all/default behavior.",
+          "print_all": "Print all acronym extraction results to logs/stdout."
+        },
+        "enabled": true,
+        "sample_size": 0,
+        "print_all": false
+      },
+      "graph_loader": {
+        "_fields": {
+          "batch_size": "Number of graph records loaded per Neo4j transaction batch.",
+          "min_text_chars_to_embed": "Minimum section/chunk text length considered worth embedding.",
+          "replace_existing_document": "Replace existing graph data for the same document id when loading."
+        },
+        "batch_size": 200,
+        "min_text_chars_to_embed": 20,
+        "replace_existing_document": true
+      },
+      "entities": {
+        "_fields": {
+          "use_section_text": "Use section-level text for entity extraction.",
+          "max_sections": "Limit number of sections processed. Use null for no limit.",
+          "max_sections_per_batch": "Number of sections sent to the chat model per extraction request.",
+          "max_batch_chars": "Maximum characters per normal extraction batch.",
+          "emergency_max_single_chars": "Fallback maximum characters for a single oversized section.",
+          "skip_processed": "Skip sections that already have processed entity mentions.",
+          "replace_section_mentions": "Replace existing section mentions with newly extracted mentions.",
+          "use_acronym_validation": "Use acronym extraction outputs to validate/expand entity mentions.",
+          "acronym_dir": "Override acronym directory for entity validation. Use null for work_root/acronyms.",
+          "export_review": "Write JSONL/CSV review artifacts for extracted entities.",
+          "review_output_dir": "Directory for entity review artifacts. Use null for work_root/entity_review.",
+          "clear_previous_review": "Clear previous review artifacts before writing new ones.",
+          "include_source_preview_in_review": "Include source text previews in review exports. Useful for auditing, larger output files."
+        },
+        "use_section_text": true,
+        "max_sections": null,
+        "max_sections_per_batch": 2,
+        "max_batch_chars": 30000,
+        "emergency_max_single_chars": 12000,
+        "skip_processed": true,
+        "replace_section_mentions": true,
+        "use_acronym_validation": true,
+        "acronym_dir": null,
+        "export_review": true,
+        "review_output_dir": null,
+        "clear_previous_review": true,
+        "include_source_preview_in_review": false
+      },
+      "entity_disambiguation": {
+        "_fields": {
+          "delete_orphans": "Delete orphaned concept/entity nodes after disambiguation cleanup."
+        },
+        "delete_orphans": true
+      },
+      "entity_normalization": {
+        "_comment": "Optional post-processing that enriches existing Concept nodes with UMLS metadata and duplicate evidence.",
+        "_fields": {
+          "enabled": "Run normalization when phase behavior allows it. The normalization phase always runs normalization.",
+          "doc_id": "Limit normalization to one document id. Use null for all documents.",
+          "backend": "Normalization backend.",
+          "model_name": "scispaCy model name for backend=scispacy.",
+          "linker_name": "scispaCy linker name for backend=scispacy.",
+          "threshold": "Minimum UMLS confidence score for automatic normalization, from 0.0 to 1.0.",
+          "max_candidates": "Maximum UMLS candidates per mention. Must be >= 1.",
+          "use_acronyms": "Use acronym expansions while matching concepts.",
+          "acronym_dir": "Override acronym directory. Use null for work_root/acronyms.",
+          "force": "Reprocess concepts that already have normalization metadata.",
+          "dry_run": "Compute and export decisions without writing normalization updates to Neo4j.",
+          "export_review": "Write JSONL review artifacts for normalization decisions.",
+          "review_output_dir": "Directory for normalization review artifacts. Use null for the default entity review location.",
+          "fuzzy_threshold": "Name-similarity threshold for duplicate evidence, from 0 to 100.",
+          "api_cache_dir": "Cache directory for UMLS API responses. Use null for the default cache location.",
+          "api_timeout": "HTTP timeout in seconds for backend=umls_api.",
+          "api_rate_limit_per_second": "Maximum UMLS API requests per second.",
+          "local_files_only": "For backend=scispacy, restrict model/linker loading to local files.",
+          "min_available_memory_gb": "For backend=scispacy, require at least this much available memory before loading. Use 0 to disable the guard."
+        },
+        "_allowed_values": {
+          "backend": [
+            "umls_api",
+            "scispacy",
+            "fuzzy_only"
+          ],
+          "threshold": "number from 0.0 to 1.0",
+          "fuzzy_threshold": "integer from 0 to 100"
+        },
+        "enabled": false,
+        "doc_id": null,
+        "backend": "umls_api",
+        "model_name": "en_core_sci_sm",
+        "linker_name": "umls",
+        "threshold": 0.9,
+        "max_candidates": 3,
+        "use_acronyms": true,
+        "acronym_dir": null,
+        "force": false,
+        "dry_run": false,
+        "export_review": true,
+        "review_output_dir": "testing_graph/entity_normalization_review",
+        "fuzzy_threshold": 90,
+        "api_cache_dir": null,
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+        "local_files_only": false,
+        "min_available_memory_gb": 8.0
+      },
+      "section_embeddings": {
+        "_fields": {
+          "max_sections": "Limit number of sections embedded. Use null for all eligible sections.",
+          "batch_size": "Embedding request/inference batch size. Must be >= 1.",
+          "force_reembed": "Recompute embeddings even if existing embeddings are present.",
+          "include_title": "Include section title in the text sent to the embedding model.",
+          "include_body": "Include section body in the text sent to the embedding model.",
+          "max_chars_per_section": "Maximum characters from each section used for embedding.",
+          "allow_title_only": "Allow embedding sections that have a title but no body."
+        },
+        "max_sections": 2,
+        "batch_size": 8,
+        "force_reembed": false,
+        "include_title": true,
+        "include_body": true,
+        "max_chars_per_section": 8000,
+        "allow_title_only": false
+      },
+      "sanity_checks": {
+        "_fields": {
+          "sample_limit": "Maximum sample records logged per sanity check.",
+          "log_samples": "Log example records for sanity check findings."
+        },
+        "_derived_modes_by_phase": {
+          "preprocess": null,
+          "graph": "structure",
+          "entities": "entities",
+          "embeddings": "embeddings",
+          "normalization": "entities",
+          "full": "full"
+        },
+        "sample_limit": 10,
+        "log_samples": true
+      },
+      "quality": {
+        "_fields": {
+          "max_chunk_chars": "Maximum allowed chunk size before quality checks flag it."
+        },
+        "max_chunk_chars": 50000
+      }
+    }
+  }
+}
