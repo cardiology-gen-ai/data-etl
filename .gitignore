@@ -102,3 +102,4 @@ tools/
 night_run/
 
 .env.first.prototype
+testing_graph/
