@@ -17,6 +17,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -110,6 +111,106 @@ UMLS_VALUE_FIELDS = {
 }
 
 
+UMLS_API_SEARCH_TYPES = ("exact", "normalizedString", "words")
+
+# Conservative compatibility map between the local controlled entity types and
+# UMLS semantic types. Unknown local types remain unfiltered. Known types fail
+# closed when the API returns an explicitly incompatible semantic type.
+CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
+    "disease": {
+        "Acquired Abnormality",
+        "Congenital Abnormality",
+        "Disease or Syndrome",
+        "Mental or Behavioral Dysfunction",
+        "Neoplastic Process",
+        "Pathologic Function",
+    },
+    "complication_or_comorbidity": {
+        "Acquired Abnormality",
+        "Congenital Abnormality",
+        "Disease or Syndrome",
+        "Finding",
+        "Mental or Behavioral Dysfunction",
+        "Pathologic Function",
+        "Sign or Symptom",
+    },
+    "clinical_finding": {
+        "Disease or Syndrome",
+        "Finding",
+        "Laboratory or Test Result",
+        "Mental or Behavioral Dysfunction",
+        "Pathologic Function",
+        "Sign or Symptom",
+    },
+    "device": {
+        "Drug Delivery Device",
+        "Medical Device",
+        "Research Device",
+    },
+    "biomarker": {
+        "Amino Acid, Peptide, or Protein",
+        "Biologically Active Substance",
+        "Clinical Attribute",
+        "Enzyme",
+        "Gene or Genome",
+        "Hormone",
+        "Laboratory or Test Result",
+        "Nucleic Acid, Nucleoside, or Nucleotide",
+    },
+    "genetic_factor": {
+        "Gene or Genome",
+        "Genetic Function",
+        "Molecular Sequence",
+        "Nucleotide Sequence",
+        "Organism Attribute",
+    },
+    "risk_factor": {
+        "Clinical Attribute",
+        "Environmental Effect of Humans",
+        "Finding",
+        "Individual Behavior",
+        "Organism Attribute",
+        "Population Group",
+        "Sign or Symptom",
+        "Social Behavior",
+    },
+    "diagnostic_test": {
+        "Clinical Attribute",
+        "Diagnostic Procedure",
+        "Laboratory or Test Result",
+        "Laboratory Procedure",
+    },
+    "procedure": {
+        "Diagnostic Procedure",
+        "Health Care Activity",
+        "Laboratory Procedure",
+        "Therapeutic or Preventive Procedure",
+    },
+    "treatment": {
+        "Clinical Drug",
+        "Medical Device",
+        "Pharmacologic Substance",
+        "Therapeutic or Preventive Procedure",
+    },
+    "drug": {
+        "Antibiotic",
+        "Biomedical or Dental Material",
+        "Clinical Drug",
+        "Pharmacologic Substance",
+    },
+    "anatomy": {
+        "Body Location or Region",
+        "Body Part, Organ, or Organ Component",
+        "Body Space or Junction",
+        "Cell",
+        "Cell Component",
+        "Embryonic Structure",
+        "Fully Formed Anatomical Structure",
+        "Tissue",
+    },
+}
+
+
 @dataclass
 class ConceptRecord:
     concept_id: str
@@ -135,6 +236,8 @@ class UMLSMatch:
     aliases: List[str]
     score: float
     semantic_types: List[str] = field(default_factory=list)
+    search_type: Optional[str] = None
+    type_compatible: Optional[bool] = None
 
 
 def utc_now_iso() -> str:
@@ -379,6 +482,7 @@ def fetch_concepts_for_normalization(tx, doc_id: Optional[str]) -> List[ConceptR
         WHERE $doc_id IS NULL OR s.doc_id = $doc_id
         WITH
             c,
+            properties(c) AS concept_props,
             collect(DISTINCT s.doc_id) AS doc_ids,
             collect(DISTINCT {
                 short: r.acronym_short,
@@ -388,17 +492,17 @@ def fetch_concepts_for_normalization(tx, doc_id: Optional[str]) -> List[ConceptR
             elementId(c) AS concept_id,
             c.name AS name,
             c.canonical_type AS canonical_type,
-            c.umls_cui AS umls_cui,
-            c.umls_canonical_name AS umls_canonical_name,
-            c.umls_definition AS umls_definition,
-            c.umls_aliases AS umls_aliases,
-            c.umls_score AS umls_score,
-            c.umls_semantic_types AS umls_semantic_types,
-            c.umls_linker_name AS umls_linker_name,
-            c.umls_model_name AS umls_model_name,
-            c.normalized_name AS normalized_name,
-            c.normalization_status AS normalization_status,
-            c.normalization_method AS normalization_method,
+            concept_props['umls_cui'] AS umls_cui,
+            concept_props['umls_canonical_name'] AS umls_canonical_name,
+            concept_props['umls_definition'] AS umls_definition,
+            concept_props['umls_aliases'] AS umls_aliases,
+            concept_props['umls_score'] AS umls_score,
+            concept_props['umls_semantic_types'] AS umls_semantic_types,
+            concept_props['umls_linker_name'] AS umls_linker_name,
+            concept_props['umls_model_name'] AS umls_model_name,
+            concept_props['normalized_name'] AS normalized_name,
+            concept_props['normalization_status'] AS normalization_status,
+            concept_props['normalization_method'] AS normalization_method,
             doc_ids,
             acronym_rows
         ORDER BY c.name
@@ -483,17 +587,33 @@ def build_aliases_for_concept(
     concept: ConceptRecord,
     acronyms_by_doc_id: Dict[str, Dict[str, str]],
 ) -> List[str]:
-    aliases: List[str] = []
-    append_unique(aliases, concept.name)
+    """
+    Build ordered aliases for UMLS lookup.
+
+    When a concept is an acronym, its supported long form is placed before the
+    short form. This prevents ambiguous strings such as "ICD" from winning over
+    an available expansion such as "implantable cardioverter defibrillator".
+    """
+    preferred_expansions: List[str] = []
+    secondary_aliases: List[str] = []
+    normalized_concept_name = normalize_name(concept.name)
 
     for row in concept.relationship_acronyms:
+        short = clean_acronym_short(row.get("short"))
         definition = clean_acronym_definition(row.get("definition"))
-        if definition:
-            append_unique(aliases, definition)
-            append_unique(
-                aliases,
-                canonicalize_acronym_definition_for_concept_name(definition),
-            )
+        if not definition:
+            continue
+
+        target = (
+            preferred_expansions
+            if short and normalize_name(short) == normalized_concept_name
+            else secondary_aliases
+        )
+        append_unique(target, definition)
+        append_unique(
+            target,
+            canonicalize_acronym_definition_for_concept_name(definition),
+        )
 
     for doc_id in concept.doc_ids:
         for raw_short, raw_definition in sorted(
@@ -507,16 +627,25 @@ def build_aliases_for_concept(
 
             normalized_short = normalize_name(short)
 
-            if normalized_short == concept.name:
-                append_unique(aliases, definition)
+            if normalized_short == normalized_concept_name:
+                append_unique(preferred_expansions, definition)
                 append_unique(
-                    aliases,
+                    preferred_expansions,
                     canonicalize_acronym_definition_for_concept_name(definition),
                 )
                 continue
 
             if long_form_matches_concept(concept.name, definition):
-                append_unique(aliases, definition)
+                append_unique(secondary_aliases, definition)
+
+    aliases: List[str] = []
+    for alias in preferred_expansions:
+        append_unique(aliases, alias)
+
+    append_unique(aliases, concept.name)
+
+    for alias in secondary_aliases:
+        append_unique(aliases, alias)
 
     return aliases[:DEFAULT_ALIAS_LIMIT]
 
@@ -594,6 +723,116 @@ def normalize_api_alias(value: str) -> str:
     return normalize_name(value)
 
 
+def _normalize_match_token(token: str) -> str:
+    token = str(token or "").casefold()
+    if len(token) > 4 and token.endswith("ies"):
+        return token[:-3] + "y"
+    if len(token) > 4 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
+def _matching_tokens(value: str) -> List[str]:
+    normalized = normalize_api_alias(value)
+    return [
+        _normalize_match_token(token)
+        for token in re.findall(r"[a-z0-9]+", normalized)
+        if token
+    ]
+
+
+def semantic_types_are_compatible(
+    canonical_type: Optional[str],
+    semantic_types: Sequence[str],
+) -> Optional[bool]:
+    """
+    Return True/False for known local types, or None when no rule applies.
+
+    A known local type with missing UMLS semantic types remains undecided rather
+    than being rejected.
+    """
+    normalized_type = normalize_name(canonical_type or "").replace(" ", "_")
+    allowed = CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES.get(normalized_type)
+    if not allowed:
+        return None
+
+    observed = {
+        str(value).strip().casefold()
+        for value in semantic_types
+        if str(value).strip()
+    }
+    if not observed:
+        return None
+
+    allowed_normalized = {value.casefold() for value in allowed}
+    return bool(observed & allowed_normalized)
+
+
+def compute_umls_candidate_score(
+    alias: str,
+    candidate_name: str,
+    search_type: str,
+) -> float:
+    """
+    Compute a conservative lexical score for a UMLS API candidate.
+
+    Unlike the old fixed 0.95/0.85 pseudo-scores, this penalizes candidates that
+    add unsupported qualifiers, long operational phrases, or numeric subtypes.
+    """
+    normalized_alias = normalize_api_alias(alias)
+    normalized_name = normalize_api_alias(candidate_name)
+
+    if not normalized_alias or not normalized_name:
+        return 0.0
+    if normalized_alias == normalized_name:
+        return 1.0
+
+    alias_tokens = _matching_tokens(alias)
+    name_tokens = _matching_tokens(candidate_name)
+    alias_set = set(alias_tokens)
+    name_set = set(name_tokens)
+
+    if alias_set and alias_set == name_set:
+        return 0.98
+
+    overlap = alias_set & name_set
+    recall = len(overlap) / len(alias_set) if alias_set else 0.0
+    precision = len(overlap) / len(name_set) if name_set else 0.0
+
+    raw_similarity = SequenceMatcher(
+        None,
+        normalized_alias,
+        normalized_name,
+    ).ratio()
+    token_sort_similarity = SequenceMatcher(
+        None,
+        " ".join(sorted(alias_tokens)),
+        " ".join(sorted(name_tokens)),
+    ).ratio()
+    character_similarity = max(raw_similarity, token_sort_similarity)
+
+    score = (
+        0.50 * character_similarity
+        + 0.30 * recall
+        + 0.20 * precision
+    )
+
+    if search_type == "exact":
+        score += 0.03
+    elif search_type == "normalizedString":
+        score += 0.01
+
+    alias_numeric = {token for token in alias_tokens if token.isdigit()}
+    name_numeric = {token for token in name_tokens if token.isdigit()}
+    if name_numeric - alias_numeric:
+        score -= 0.12
+
+    if precision < 0.75:
+        score -= min(0.20, (0.75 - precision) * 0.35)
+
+    return round(max(0.0, min(score, 1.0)), 4)
+
+
 def api_cache_key(
     alias: str,
     search_type: str,
@@ -624,9 +863,8 @@ class UMLSAPIClient:
     """
     Conservative UMLS REST search client with local JSON-file caching.
 
-    The API does not expose scispaCy-style similarity scores. We therefore
-    assign deterministic pseudo-scores: 1.0 for exact normalized name matches,
-    0.95 for top normalizedString hits, and 0.85 for top words-search hits.
+    Search results are re-ranked locally using lexical specificity and
+    compatibility with the controlled local entity type.
     """
 
     base_url = "https://uts-ws.nlm.nih.gov/rest"
@@ -790,6 +1028,7 @@ class UMLSAPIClient:
         self,
         alias: str,
         search_type: str,
+        canonical_type: Optional[str] = None,
     ) -> Optional[UMLSMatch]:
         payload = self.request_search(alias=alias, search_type=search_type)
         result = payload.get("result") if isinstance(payload, dict) else None
@@ -797,42 +1036,64 @@ class UMLSAPIClient:
         if not isinstance(results, list):
             raise UMLSAPIError("Malformed UMLS API response")
 
-        for item in results:
+        candidates: List[Tuple[float, int, UMLSMatch]] = []
+
+        for rank, item in enumerate(results):
             if not isinstance(item, dict):
                 continue
+
             cui = str(item.get("ui") or "").strip()
             name = str(item.get("name") or "").strip()
             if not cui or cui.upper() == "NONE" or not name:
                 continue
-
-            normalized_alias = normalize_api_alias(alias)
-            normalized_name = normalize_api_alias(name)
-            if normalized_name == normalized_alias:
-                score = 1.0
-            elif search_type == "normalizedString":
-                score = 0.95
-            elif search_type == "words":
-                score = 0.85
-            else:
-                score = 0.75
 
             semantic_types = item.get("semanticTypes") or item.get("semanticType") or []
             if isinstance(semantic_types, str):
                 semantic_types = [semantic_types]
             if not isinstance(semantic_types, list):
                 semantic_types = []
+            semantic_types = [
+                str(value).strip()
+                for value in semantic_types
+                if str(value).strip()
+            ]
 
-            return UMLSMatch(
+            type_compatible = semantic_types_are_compatible(
+                canonical_type=canonical_type,
+                semantic_types=semantic_types,
+            )
+            if type_compatible is False:
+                continue
+
+            score = compute_umls_candidate_score(
+                alias=alias,
+                candidate_name=name,
+                search_type=search_type,
+            )
+
+            # Known local types with absent semantic metadata remain possible but
+            # rank below equally similar candidates with confirmed compatibility.
+            if type_compatible is None and canonical_type:
+                score = max(0.0, score - 0.02)
+
+            match = UMLSMatch(
                 alias=alias,
                 cui=cui,
                 canonical_name=name,
                 definition=None,
                 aliases=[],
                 score=round(score, 4),
-                semantic_types=[str(value) for value in semantic_types if value],
+                semantic_types=semantic_types,
+                search_type=search_type,
+                type_compatible=type_compatible,
             )
+            candidates.append((match.score, -rank, match))
 
-        return None
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return candidates[0][2]
 
 
 def get_default_api_cache_dir(
@@ -849,25 +1110,51 @@ def get_default_api_cache_dir(
 def select_best_umls_api_match(
     aliases: Sequence[str],
     client: UMLSAPIClient,
+    canonical_type: Optional[str] = None,
 ) -> Optional[UMLSMatch]:
-    matches: List[UMLSMatch] = []
+    """
+    Select the best type-compatible UMLS candidate across ordered aliases.
 
-    for alias in aliases:
+    Exact search is attempted first. Acronym expansions are expected to appear
+    before their short forms in `aliases`, so ties prefer the supported long
+    form without requiring an LLM.
+    """
+    matches: List[Tuple[float, int, int, UMLSMatch]] = []
+
+    for alias_index, alias in enumerate(aliases):
         alias = str(alias or "").strip()
         if not alias:
             continue
 
-        match = client.search_alias(alias=alias, search_type="normalizedString")
-        if match is None:
-            match = client.search_alias(alias=alias, search_type="words")
-        if match is not None:
-            matches.append(match)
+        for search_index, search_type in enumerate(UMLS_API_SEARCH_TYPES):
+            match = client.search_alias(
+                alias=alias,
+                search_type=search_type,
+                canonical_type=canonical_type,
+            )
+            if match is None:
+                continue
+
+            matches.append(
+                (
+                    match.score,
+                    -alias_index,
+                    -search_index,
+                    match,
+                )
+            )
+
+            if match.score >= 0.98:
+                break
 
     if not matches:
         return None
 
-    matches.sort(key=lambda item: item.score, reverse=True)
-    return matches[0]
+    matches.sort(
+        key=lambda item: (item[0], item[1], item[2]),
+        reverse=True,
+    )
+    return matches[0][3]
 
 
 def build_existing_umls_match(concept: ConceptRecord) -> Optional[UMLSMatch]:
@@ -948,21 +1235,64 @@ def write_concept_normalization_status(
     status: str,
     method: str,
     normalized_at: str,
+    normalized_name: Optional[str] = None,
 ) -> None:
+    """
+    Write a non-matched normalization status and clear stale UMLS metadata.
+
+    This is required when force-reprocessing a concept that previously had an
+    incorrect UMLS match.
+    """
     tx.run(
         """
         MATCH (c:Concept)
         WHERE elementId(c) = $concept_id
         SET c.normalization_status = $status,
             c.normalization_method = $method,
+            c.normalized_name = coalesce($normalized_name, c.normalized_name),
             c.normalized_at = datetime($normalized_at),
             c.updated_at = datetime()
+        REMOVE c.umls_cui,
+               c.umls_canonical_name,
+               c.umls_definition,
+               c.umls_aliases,
+               c.umls_score,
+               c.umls_semantic_types,
+               c.umls_linker_name,
+               c.umls_model_name
         """,
         concept_id=concept_id,
         status=status,
         method=method,
+        normalized_name=normalized_name,
         normalized_at=normalized_at,
     )
+
+
+def is_confident_umls_match(
+    match: Optional[UMLSMatch],
+    threshold: float,
+) -> bool:
+    """
+    Decide whether a UMLS candidate is safe to write automatically.
+
+    Policy:
+    - candidates obtained through the permissive ``words`` search are always
+      routed to low-confidence review;
+    - type-compatible ``exact`` matches are accepted even when the preferred
+      UMLS name differs lexically from the searched synonym;
+    - all other candidates must meet the configured score threshold.
+    """
+    if match is None:
+        return False
+
+    if match.search_type == "words":
+        return False
+
+    if match.search_type == "exact" and match.type_compatible is True:
+        return True
+
+    return match.score >= threshold
 
 
 def update_concept_from_result(
@@ -985,7 +1315,7 @@ def update_concept_from_result(
 
     match = concept.best_match
 
-    if match is not None and match.score >= threshold:
+    if is_confident_umls_match(match, threshold):
         concept.normalization_status = "umls_matched"
         concept.normalization_method = match_method
         concept.reason = "best_candidate_above_threshold"
@@ -1010,6 +1340,7 @@ def update_concept_from_result(
             status=concept.normalization_status,
             method=concept.normalization_method,
             normalized_at=normalized_at,
+            normalized_name=normalize_name(concept.name),
         )
         return
 
@@ -1112,10 +1443,12 @@ def compute_same_cui_pairs(
 
 
 def is_short_or_acronym_like_name(name: str) -> bool:
-    compact = re.sub(r"[^a-z0-9]", "", normalize_name(name))
-    if len(compact) <= 3:
+    raw_compact = re.sub(r"[^A-Za-z0-9]", "", str(name or ""))
+    normalized_compact = raw_compact.casefold()
+
+    if len(normalized_compact) <= 3:
         return True
-    if compact.isupper() and len(compact) <= 12:
+    if raw_compact.isupper() and len(raw_compact) <= 12:
         return True
     return False
 
@@ -1332,6 +1665,8 @@ def build_review_record(
         "umls_semantic_types": match.semantic_types if match else [],
         "umls_score": match.score if match else None,
         "umls_matched_alias": match.alias if match else None,
+        "umls_search_type": match.search_type if match else None,
+        "umls_type_compatible": match.type_compatible if match else None,
         "backend": backend,
         "model_name": model_name,
         "linker_name": linker_name,
@@ -1547,13 +1882,14 @@ def normalize_concepts_with_umls(
                     concept.best_match = select_best_umls_api_match(
                         aliases=concept.aliases_considered,
                         client=api_client,
+                        canonical_type=concept.canonical_type,
                     )
                 else:
                     concept.best_match = None
 
                 if dry_run:
                     match = concept.best_match
-                    if match is not None and match.score >= threshold:
+                    if is_confident_umls_match(match, threshold):
                         concept.normalization_status = "umls_matched"
                         concept.normalization_method = method_for_match
                         concept.reason = "dry_run_best_candidate_above_threshold"
@@ -1603,6 +1939,7 @@ def normalize_concepts_with_umls(
                         "failed",
                         method_for_match,
                         normalized_at,
+                        normalize_name(concept.name),
                     )
 
             update_stats_for_concept(stats, concept)
@@ -1659,7 +1996,11 @@ __all__ = [
     "setup_normalization_schema",
     "fetch_concepts_for_normalization",
     "build_aliases_for_concept",
+    "compute_umls_candidate_score",
+    "semantic_types_are_compatible",
+    "select_best_umls_api_match",
     "compute_fuzzy_pairs",
     "compute_same_cui_pairs",
     "normalize_backend_name",
+    "is_confident_umls_match",
 ]
