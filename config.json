@@ -15,7 +15,7 @@
         },
         "preprocessing": {
             "storage": {
-                "parent_folder": "first_prototype",
+                "parent_folder": "data_fix",
                 "input_folder": "pdfdocs",
                 "output_folder": "mddocs",
                 "allowed_extensions": [
@@ -39,13 +39,14 @@
             }
         },
         "knowledge_graph": {
+    
             "pipeline": {
-                "phase": "normalization",
-                "pdf_dir": "first_prototype/pdfdocs",
-                "work_root": "first_prototype",
+                "phase": "preprocess",
+                "pdf_dir": "data_fix/pdfdocs",
+                "work_root": "data_fix",
                 "force_toc": true,
-                "force_markdown": false,
-                "force_anchors": false,
+                "force_markdown": true,
+                "force_anchors": true,
                 "force_chunks": true
             },
             "logging": {
@@ -61,6 +62,7 @@
                 "chat_model": "gpt-4.1-mini",
                 "chat_model_path": "",
                 "embedding_model": "text-embedding-3-small",
+                "embedding_dimensions": null,
                 "embedding_model_path": "",
                 "chat_max_new_tokens": 1024
             },

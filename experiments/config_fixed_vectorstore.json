@@ -62,6 +62,7 @@
                 "chat_model": "gpt-4.1-mini",
                 "chat_model_path": "",
                 "embedding_model": "text-embedding-3-small",
+                "embedding_dimensions": null,
                 "embedding_model_path": "",
                 "chat_max_new_tokens": 1024
             },
