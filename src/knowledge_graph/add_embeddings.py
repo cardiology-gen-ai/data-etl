@@ -206,9 +206,12 @@ def fetch_sections_to_embed(
 def request_embeddings(
     texts: List[str],
     batch_size: int,
+    embedding_provider: Optional[str] = None,
+    embedding_model: Optional[str] = None,
+    embedding_dimensions: Optional[int] = None,
 ) -> Optional[List[List[float]]]:
     """
-    Request embeddings for a batch of texts from the local embedding backend.
+    Request embeddings for a batch of texts from the configured embedding backend.
 
     Returns:
         list of embedding vectors on success
@@ -218,9 +221,15 @@ def request_embeddings(
         return []
 
     try:
-        vectors = embed_texts(texts=texts, batch_size=batch_size)
+        vectors = embed_texts(
+            texts=texts,
+            batch_size=batch_size,
+            provider=embedding_provider,
+            model_name=embedding_model,
+            dimensions=embedding_dimensions,
+        )
     except Exception as e:
-        logger.exception("Local embedding request failed: %s", e)
+        logger.exception("Embedding request failed: %s", e)
         return None
 
     if len(vectors) != len(texts):
@@ -267,6 +276,9 @@ def write_embeddings_batch(
 def add_embeddings_to_sections(
     driver: Driver,
     doc_id: Optional[str] = None,
+    embedding_provider: Optional[str] = None,
+    embedding_model: Optional[str] = None,
+    embedding_dimensions: Optional[int] = None,
     max_sections: Optional[int] = None,
     batch_size: int = 8,
     force_reembed: bool = False,
@@ -281,8 +293,11 @@ def add_embeddings_to_sections(
     Parameters:
         driver: Neo4j driver
         doc_id: if provided, only embed sections from one document
+        embedding_provider: configured embedding backend provider
+        embedding_model: configured model name stored in section metadata
+        embedding_dimensions: optional requested embedding dimensions
         max_sections: optional cap on number of sections
-        batch_size: number of sections per local embedding call
+        batch_size: number of sections per embedding call
         force_reembed: if True, embed even sections that already have embeddings
         include_title: whether to include the title in the embedding text
         include_body: whether to include body text in the embedding text
@@ -314,13 +329,15 @@ def add_embeddings_to_sections(
         max_chars_per_section=max_chars_per_section,
     )
 
-    embedding_model = get_embedding_model_name()
+    embedding_model = embedding_model or get_embedding_model_name()
 
     logger.info(
-        "Preparing embeddings for %d sections%s | model=%s | batch_size=%d",
+        "Preparing embeddings for %d sections%s | provider=%s | model=%s | dimensions=%s | batch_size=%d",
         len(rows),
         f" in document {doc_id}" if doc_id else "",
+        embedding_provider,
         embedding_model,
+        embedding_dimensions,
         batch_size,
     )
 
@@ -343,6 +360,9 @@ def add_embeddings_to_sections(
             vectors = request_embeddings(
                 texts=texts,
                 batch_size=len(batch),
+                embedding_provider=embedding_provider,
+                embedding_model=embedding_model,
+                embedding_dimensions=embedding_dimensions,
             )
 
             stats["processed_sections"] += len(batch)

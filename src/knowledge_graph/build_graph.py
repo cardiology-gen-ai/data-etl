@@ -651,6 +651,9 @@ def process_document_embeddings(
     return add_embeddings_to_sections(
         driver=driver,
         doc_id=doc_id,
+        embedding_provider=getattr(config, "embedding_provider", None),
+        embedding_model=getattr(config, "embedding_model", None),
+        embedding_dimensions=getattr(config, "embedding_dimensions", None),
         max_sections=getattr(config, "embedding_max_sections", None),
         batch_size=getattr(config, "embedding_batch_size", 8),
         force_reembed=getattr(config, "embedding_force_reembed", False),

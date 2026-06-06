@@ -92,6 +92,9 @@ class GraphPipelineConfig:
     entity_include_source_preview_in_review: bool = False
 
     # Embeddings
+    embedding_provider: str = "local_hf"
+    embedding_model: str = "Qwen/Qwen3-Embedding-8B"
+    embedding_dimensions: Optional[int] = None
     embedding_max_sections: Optional[int] = None
     embedding_batch_size: int = 8
     embedding_force_reembed: bool = False
@@ -269,6 +272,12 @@ def _get_env_or_config_optional_int(
     if config_value in (None, ""):
         return None
     return _coerce_int(config_value, env_name)
+
+
+def _get_config_optional_int(config_value: Any, name: str) -> Optional[int]:
+    if config_value in (None, ""):
+        return None
+    return _coerce_int(config_value, name)
 
 
 def _resolve_config_path_from_env() -> Path:
@@ -557,6 +566,9 @@ def make_graph_pipeline_config(
     entity_review_output_dir: Optional[Path] = None,
     entity_clear_previous_review: bool = True,
     entity_include_source_preview_in_review: bool = False,
+    embedding_provider: str = "local_hf",
+    embedding_model: str = "Qwen/Qwen3-Embedding-8B",
+    embedding_dimensions: Optional[int] = None,
     embedding_max_sections: Optional[int] = None,
     embedding_batch_size: int = 8,
     embedding_force_reembed: bool = False,
@@ -672,6 +684,9 @@ def make_graph_pipeline_config(
         entity_clear_previous_review=entity_clear_previous_review,
         entity_include_source_preview_in_review=entity_include_source_preview_in_review,
 
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+        embedding_dimensions=embedding_dimensions,
         embedding_max_sections=embedding_max_sections,
         embedding_batch_size=embedding_batch_size,
         embedding_force_reembed=embedding_force_reembed,
@@ -831,6 +846,9 @@ def main(
     entity_normalization_min_available_memory_gb: float = 8.0,
     sanity_mode: Optional[str] = "full",
     quality_max_chunk_chars: int = 50000,
+    embedding_provider: Optional[str] = None,
+    embedding_model: Optional[str] = None,
+    embedding_dimensions: Optional[int] = None,
     kg_chat_provider: Optional[str] = None,
     kg_embedding_provider: Optional[str] = None,
     kg_chat_model: Optional[str] = None,
@@ -879,13 +897,25 @@ def main(
 
     inject_kg_runtime_env(
         kg_chat_provider=kg_chat_provider,
-        kg_embedding_provider=kg_embedding_provider,
         kg_chat_model=kg_chat_model,
         kg_chat_model_path=kg_chat_model_path,
-        kg_embedding_model=kg_embedding_model,
-        kg_embedding_model_path=kg_embedding_model_path,
         kg_local_files_only=kg_local_files_only,
         kg_chat_max_new_tokens=kg_chat_max_new_tokens,
+    )
+
+    resolved_embedding_provider = (
+        embedding_provider
+        or kg_embedding_provider
+        or "local_hf"
+    )
+    resolved_embedding_model = (
+        embedding_model
+        or kg_embedding_model
+        or (
+            "text-embedding-3-small"
+            if resolved_embedding_provider.strip().lower().replace("-", "_") == "openai"
+            else "Qwen/Qwen3-Embedding-8B"
+        )
     )
 
     app_config, config_path, app_id = load_app_config_from_env()
@@ -938,6 +968,9 @@ def main(
         entity_review_output_dir=entity_review_output_dir,
         entity_clear_previous_review=entity_clear_previous_review,
         entity_include_source_preview_in_review=entity_include_source_preview_in_review,
+        embedding_provider=resolved_embedding_provider,
+        embedding_model=resolved_embedding_model,
+        embedding_dimensions=embedding_dimensions,
         embedding_max_sections=embedding_max_sections,
         embedding_batch_size=embedding_batch_size,
         embedding_force_reembed=embedding_force_reembed,
@@ -1070,8 +1103,8 @@ if __name__ == "__main__":
     logger.info("Using config path: %s", config_path)
     logger.info("Using app id: %s", app_id)
 
-    # Runtime model settings come from config.json by default. .env can still
-    # override them for local/emergency runs without changing tracked config.
+    # Chat runtime settings still support the existing environment bridge.
+    # Section embedding runtime settings below come from config.json.
     KG_CHAT_PROVIDER = (
         _get_optional_env("KG_CHAT_PROVIDER")
         or _get_optional_env("KG_MODEL_PROVIDER")
@@ -1079,9 +1112,7 @@ if __name__ == "__main__":
         or "local_hf"
     )
     KG_EMBEDDING_PROVIDER = (
-        _get_optional_env("KG_EMBEDDING_PROVIDER")
-        or _get_optional_env("KG_MODEL_PROVIDER")
-        or _get_config_value(kg_config, "providers", "embedding_provider")
+        _get_config_value(kg_config, "providers", "embedding_provider")
         or "local_hf"
     )
     KG_CHAT_MODEL = _get_env_or_config_str(
@@ -1097,18 +1128,17 @@ if __name__ == "__main__":
         _get_config_value(kg_config, "models", "chat_model_path"),
         "",
     )
-    KG_EMBEDDING_MODEL = _get_env_or_config_str(
-        "KG_EMBEDDING_MODEL",
-        _get_config_value(kg_config, "models", "embedding_model"),
-    ) or (
+    KG_EMBEDDING_MODEL = (
+        _get_config_value(kg_config, "models", "embedding_model")
+    )
+    KG_EMBEDDING_MODEL = str(KG_EMBEDDING_MODEL) if KG_EMBEDDING_MODEL else (
         "text-embedding-3-small"
         if KG_EMBEDDING_PROVIDER.strip().lower().replace("-", "_") == "openai"
         else "Qwen/Qwen3-Embedding-8B"
     )
-    KG_EMBEDDING_MODEL_PATH = _get_env_or_config_str(
-        "KG_EMBEDDING_MODEL_PATH",
-        _get_config_value(kg_config, "models", "embedding_model_path"),
-        "",
+    KG_EMBEDDING_DIMENSIONS = _get_config_optional_int(
+        _get_config_value(kg_config, "models", "embedding_dimensions"),
+        "knowledge_graph.models.embedding_dimensions",
     )
     KG_LOCAL_FILES_ONLY = _get_env_or_config_bool(
         "KG_LOCAL_FILES_ONLY",
@@ -1126,13 +1156,13 @@ if __name__ == "__main__":
 
     runtime_kwargs = {
         "kg_chat_provider": KG_CHAT_PROVIDER,
-        "kg_embedding_provider": KG_EMBEDDING_PROVIDER,
         "kg_chat_model": KG_CHAT_MODEL,
         "kg_chat_model_path": KG_CHAT_MODEL_PATH,
-        "kg_embedding_model": KG_EMBEDDING_MODEL,
-        "kg_embedding_model_path": KG_EMBEDDING_MODEL_PATH,
         "kg_local_files_only": KG_LOCAL_FILES_ONLY,
         "kg_chat_max_new_tokens": KG_CHAT_MAX_NEW_TOKENS,
+        "embedding_provider": KG_EMBEDDING_PROVIDER,
+        "embedding_model": KG_EMBEDDING_MODEL,
+        "embedding_dimensions": KG_EMBEDDING_DIMENSIONS,
     }
 
     limit_kwargs = {

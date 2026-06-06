@@ -148,6 +148,18 @@ def get_embedding_provider() -> str:
     )
 
 
+def resolve_embedding_provider(provider: Optional[str] = None) -> str:
+    """
+    Resolve an explicit embedding provider, falling back to legacy env settings.
+    """
+    return _normalize_provider(
+        provider
+        or _get_optional_env("KG_EMBEDDING_PROVIDER")
+        or _get_optional_env("KG_MODEL_PROVIDER"),
+        "embedding_provider",
+    )
+
+
 def get_chat_model_ref() -> str:
     """
     Return the reference used to load the chat model.
@@ -161,18 +173,24 @@ def get_chat_model_ref() -> str:
     return _get_optional_env("KG_CHAT_MODEL_PATH") or _get_required_env("KG_CHAT_MODEL")
 
 
-def get_embedding_model_ref() -> str:
+def get_embedding_model_ref(
+    provider: Optional[str] = None,
+    model_name: Optional[str] = None,
+    model_path: Optional[str] = None,
+) -> str:
     """
     Return the reference used to load the embedding model.
 
     If KG_EMBEDDING_MODEL_PATH is set, loading uses that local/custom path.
     Otherwise KG_EMBEDDING_MODEL is used.
     """
-    if get_embedding_provider() != LOCAL_HF_PROVIDER:
-        return _get_required_env("KG_EMBEDDING_MODEL")
+    if resolve_embedding_provider(provider) != LOCAL_HF_PROVIDER:
+        return get_embedding_model_name(model_name)
 
-    return _get_optional_env("KG_EMBEDDING_MODEL_PATH") or _get_required_env(
-        "KG_EMBEDDING_MODEL"
+    return (
+        model_path
+        or _get_optional_env("KG_EMBEDDING_MODEL_PATH")
+        or get_embedding_model_name(model_name)
     )
 
 
@@ -183,10 +201,12 @@ def get_chat_model_name() -> str:
     return _get_required_env("KG_CHAT_MODEL")
 
 
-def get_embedding_model_name() -> str:
+def get_embedding_model_name(model_name: Optional[str] = None) -> str:
     """
     Return the canonical embedding model name to be logged/stored in metadata.
     """
+    if model_name:
+        return model_name
     return _get_required_env("KG_EMBEDDING_MODEL")
 
 
@@ -232,16 +252,26 @@ def get_chat_tokenizer_and_model() -> Tuple[AutoTokenizer, AutoModelForCausalLM]
     return tokenizer, model
 
 
-@lru_cache(maxsize=1)
-def get_embedding_model() -> SentenceTransformer:
-    if get_embedding_provider() != LOCAL_HF_PROVIDER:
+@lru_cache(maxsize=4)
+def get_embedding_model(
+    provider: Optional[str] = None,
+    model_name: Optional[str] = None,
+    model_path: Optional[str] = None,
+    local_files_only: Optional[bool] = None,
+) -> SentenceTransformer:
+    if resolve_embedding_provider(provider) != LOCAL_HF_PROVIDER:
         raise RuntimeError(
-            "get_embedding_model() is only available for KG_EMBEDDING_PROVIDER=local_hf"
+            "get_embedding_model() is only available for embedding provider local_hf"
         )
 
-    model_ref = get_embedding_model_ref()
+    model_ref = get_embedding_model_ref(
+        provider=provider,
+        model_name=model_name,
+        model_path=model_path,
+    )
     hf_token = _get_optional_env("HF_TOKEN")
-    local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
+    if local_files_only is None:
+        local_files_only = _get_env_bool("KG_LOCAL_FILES_ONLY", True)
 
     # Optional override is useful on clusters, but defaults to CUDA when present.
     device = _get_optional_env("KG_EMBEDDING_DEVICE")
@@ -251,7 +281,7 @@ def get_embedding_model() -> SentenceTransformer:
     logger.info(
         "Loading embedding model | model_ref=%s | model_name=%s | local_files_only=%s | device=%s",
         model_ref,
-        get_embedding_model_name(),
+        get_embedding_model_name(model_name),
         local_files_only,
         device,
     )
@@ -520,34 +550,52 @@ def _l2_normalize(vector: List[float]) -> List[float]:
 def _embed_texts_openai(
     texts: List[str],
     batch_size: int,
+    model_name: str,
+    dimensions: Optional[int] = None,
 ) -> List[List[float]]:
     client = get_openai_client()
-    model_name = get_embedding_model_name()
     vectors: List[List[float]] = []
 
     for batch in _iter_batches(texts, batch_size):
         logger.info(
-            "Calling OpenAI embedding model | model=%s | batch_size=%d",
+            "Calling OpenAI embedding model | model=%s | dimensions=%s | batch_size=%d",
             model_name,
+            dimensions,
             len(batch),
         )
 
-        response = client.embeddings.create(
-            model=model_name,
-            input=batch,
-        )
+        request_kwargs: Dict[str, Any] = {
+            "model": model_name,
+            "input": batch,
+        }
+        if dimensions is not None:
+            request_kwargs["dimensions"] = dimensions
+
+        response = client.embeddings.create(**request_kwargs)
         _log_openai_usage(response, operation="embedding", model_name=model_name)
+
+        response_data = list(response.data)
+        if len(response_data) != len(batch):
+            raise RuntimeError(
+                "OpenAI embedding response size mismatch | "
+                f"expected={len(batch)} | received={len(response_data)}"
+            )
+
+        indexes = [getattr(item, "index", None) for item in response_data]
+        if not all(type(index) is int for index in indexes):
+            raise RuntimeError("OpenAI embedding response contained a non-integer index")
+
+        expected_indexes = list(range(len(batch)))
+        if sorted(indexes) != expected_indexes:
+            raise RuntimeError(
+                "OpenAI embedding response indexes were not unique and contiguous | "
+                f"expected={expected_indexes} | received={indexes}"
+            )
 
         batch_vectors = [
             _l2_normalize(item.embedding)
-            for item in sorted(response.data, key=lambda item: item.index)
+            for item in sorted(response_data, key=lambda item: item.index)
         ]
-
-        if len(batch_vectors) != len(batch):
-            raise RuntimeError(
-                "OpenAI embedding response size mismatch | "
-                f"expected={len(batch)} | received={len(batch_vectors)}"
-            )
 
         vectors.extend(batch_vectors)
 
@@ -557,14 +605,28 @@ def _embed_texts_openai(
 def embed_texts(
     texts: List[str],
     batch_size: int = 8,
+    provider: Optional[str] = None,
+    model_name: Optional[str] = None,
+    dimensions: Optional[int] = None,
 ) -> List[List[float]]:
     if not texts:
         return []
 
-    if get_embedding_provider() == OPENAI_PROVIDER:
-        return _embed_texts_openai(texts=texts, batch_size=batch_size)
+    resolved_provider = resolve_embedding_provider(provider)
+    resolved_model_name = get_embedding_model_name(model_name)
 
-    model = get_embedding_model()
+    if resolved_provider == OPENAI_PROVIDER:
+        return _embed_texts_openai(
+            texts=texts,
+            batch_size=batch_size,
+            model_name=resolved_model_name,
+            dimensions=dimensions,
+        )
+
+    model = get_embedding_model(
+        provider=resolved_provider,
+        model_name=resolved_model_name,
+    )
 
     vectors = model.encode(
         texts,
