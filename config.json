@@ -1,140 +1,146 @@
 {
-"cardiology_protocols": {
+  "cardiology_protocols": {
     "indexing": {
-        "name": "all_mini_cardiology_protocols",
-        "description": "Documents containing medical protocols for cardiologic patients.",
-        "type": "faiss",
-        "distance": "cosine",
-        "alias": "faiss_cardiology_current"
+      "name": "all_mini_cardiology_protocols",
+      "description": "Documents containing medical protocols for cardiologic patients.",
+      "type": "faiss",
+      "distance": "cosine",
+      "alias": "faiss_cardiology_current"
     },
     "embeddings": {
-        "deployment": "sentence-transformers/all-MiniLM-L6-v2",
-        "kwargs": {
-            "device": "cpu"
-        }
+      "deployment": "sentence-transformers/all-MiniLM-L6-v2",
+      "kwargs": {
+        "device": "cpu"
+      }
     },
     "preprocessing": {
-        "storage": {
-            "parent_folder": "data",
-            "input_folder": "pdfdocs",
-            "output_folder": "mddocs",
-            "allowed_extensions": [
-                "pdf"
-            ]
-        },
-        "images": {
-            "dpi": 200,
-            "tol": 40.0,
-            "pad": 16.0,
-            "caption_keywords": [
-                "Figure"
-            ]
-        },
-        "chunking": {
-            "markdown_first": true,
-            "header_levels": 4,
-            "splitter": "recursive",
-            "chunk_size": 1000,
-            "chunk_overlap": 200
-        }
+      "storage": {
+        "parent_folder": "first_prototype",
+        "input_folder": "pdfdocs",
+        "output_folder": "mddocs",
+        "allowed_extensions": [
+          "pdf"
+        ]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {
+        "markdown_first": true,
+        "header_levels": 4,
+        "splitter": "recursive",
+        "chunk_size": 1000,
+        "chunk_overlap": 200
+      }
     },
     "knowledge_graph": {
-        "pipeline": {
-            "phase": "preprocess",
-            "pdf_dir": "data/pdfdocs",
-            "work_root": "data",
-            "clear_neo4j_before_run": false,
-            "force_toc": true,
-            "force_markdown": true,
-            "force_anchors": true,
-            "force_chunks": true,
-            "force_acronyms": true
-        },
-        "logging": {
-            "enabled": true,
-            "dir": null
-        },
-        "providers": {
-            "chat_provider": "openai",
-            "embedding_provider": "openai",
-            "local_files_only": false
-        },
-        "models": {
-            "chat_model": "gpt-4.1-mini",
-            "chat_model_path": "",
-            "embedding_model": "text-embedding-3-small",
-            "embedding_dimensions": null,
-            "embedding_model_path": "",
-            "chat_max_new_tokens": 1024
-        },
-        "acronyms": {
-            "enabled": true,
-            "sample_size": 0,
-            "print_all": false
-        },
-        "graph_loader": {
-            "batch_size": 200,
-            "min_text_chars_to_embed": 20,
-            "replace_existing_document": true
-        },
-        "entities": {
-            "use_section_text": true,
-            "max_sections": 5,
-            "max_sections_per_batch": 2,
-            "max_batch_chars": 30000,
-            "emergency_max_single_chars": 12000,
-            "skip_processed": true,
-            "replace_section_mentions": true,
-            "use_acronym_validation": true,
-            "acronym_dir": null,
-            "export_review": true,
-            "review_output_dir": null,
-            "clear_previous_review": true,
-            "include_source_preview_in_review": false
-        },
-        "entity_disambiguation": {
-            "delete_orphans": true
-        },
-        "entity_normalization": {
-            "enabled": true,
-            "doc_id": "Cardiomyopathies_2023",
-            "backend": "umls_api",
-            "model_name": "en_core_sci_sm",
-            "linker_name": "umls",
-            "threshold": 0.90,
-            "max_candidates": 3,
-            "use_acronyms": true,
-            "acronym_dir": null,
-            "force": true,
-            "dry_run": false,
-            "export_review": true,
-            "review_output_dir": "testing_graph/entity_normalization_review",
-            "fuzzy_threshold": 90,
-            "api_cache_dir": null,
-            "api_timeout": 30,
-            "api_rate_limit_per_second": 2,
-            "local_files_only": false,
-            "min_available_memory_gb": 8.0
-        },
-        "section_embeddings": {
-            "max_sections": 5,
-            "batch_size": 8,
-            "force_reembed": false,
-            "include_title": true,
-            "include_body": true,
-            "max_chars_per_section": 8000,
-            "allow_title_only": false
-        },
-        "runtime": {
-            "clear_chat_cache_before_embeddings": true
-        },
-        "sanity_checks": {
-            "sample_limit": 10,
-            "log_samples": true
-        },
-        "quality": {
-            "max_chunk_chars": 50000
-        }
+      "pipeline": {
+        "phase": "embeddings",
+        "pdf_dir": "first_prototype/pdfdocs",
+        "work_root": "first_prototype",
+        "clear_neo4j_before_run": false,
+        "force_toc": false,
+        "force_markdown": false,
+        "force_anchors": false,
+        "force_chunks": false,
+        "force_acronyms": false
+      },
+      "logging": {
+        "enabled": true,
+        "dir": null
+      },
+      "providers": {
+        "chat_provider": "openai",
+        "embedding_provider": "openai",
+        "local_files_only": false
+      },
+      "models": {
+        "chat_model": "gpt-4.1-mini",
+        "chat_model_path": "",
+        "embedding_model": "text-embedding-3-small",
+        "embedding_dimensions": null,
+        "embedding_model_path": "",
+        "chat_max_new_tokens": 1024
+      },
+      "acronyms": {
+        "enabled": true,
+        "sample_size": 0,
+        "print_all": false
+      },
+      "graph_loader": {
+        "batch_size": 200,
+        "min_text_chars_to_embed": 20,
+        "replace_existing_document": true
+      },
+      "entities": {
+        "use_section_text": true,
+        "max_sections": null,
+        "max_sections_per_batch": 2,
+        "max_batch_chars": 30000,
+        "emergency_max_single_chars": 12000,
+        "skip_processed": true,
+        "replace_section_mentions": true,
+        "use_acronym_validation": true,
+        "acronym_dir": null,
+        "export_review": true,
+        "review_output_dir": null,
+        "clear_previous_review": true,
+        "include_source_preview_in_review": false
+      },
+      "entity_disambiguation": {
+        "delete_orphans": true
+      },
+      "entity_normalization": {
+        "enabled": false,
+        "doc_id": null,
+        "backend": "umls_api",
+        "model_name": "en_core_sci_sm",
+        "linker_name": "umls",
+        "threshold": 0.9,
+        "max_candidates": 3,
+        "use_acronyms": true,
+        "acronym_dir": null,
+        "force": false,
+        "dry_run": false,
+        "export_review": true,
+        "review_output_dir": "first_prototype/entity_normalization_review",
+        "fuzzy_threshold": 90,
+        "api_cache_dir": null,
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+        "local_files_only": false,
+        "min_available_memory_gb": 8.0
+      },
+      "section_embeddings": {
+        "max_sections": null,
+        "batch_size": 8,
+        "force_reembed": false,
+        "include_title": true,
+        "include_body": true,
+        "max_chars_per_section": 8000,
+        "allow_title_only": false
+      },
+      "section_vector_index": {
+        "enabled": true,
+        "name": "section_embedding_index",
+        "similarity": "cosine",
+        "recreate_if_mismatch": false
+      },
+      "runtime": {
+        "clear_chat_cache_before_embeddings": true
+      },
+      "sanity_checks": {
+        "sample_limit": 10,
+        "log_samples": true
+      },
+      "quality": {
+        "max_chunk_chars": 50000
+      }
     }
-}
+  }
 }

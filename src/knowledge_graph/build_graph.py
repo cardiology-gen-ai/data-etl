@@ -33,6 +33,7 @@ from knowledge_graph.graph_loader import build_graph_from_chunks
 from knowledge_graph.add_entities import add_entities_from_sections
 from knowledge_graph.entity_disambiguation import disambiguate_concepts
 from knowledge_graph.add_embeddings import add_embeddings_to_sections
+from knowledge_graph.embedding_schema import setup_section_vector_index
 from knowledge_graph.sanity_checks import run_sanity_checks
 from knowledge_graph.llm_utils import clear_chat_model_cache
 
@@ -938,9 +939,10 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     3. extract entities for all documents
     4. clear chat model cache before embeddings, if needed
     5. compute embeddings for all documents
-    6. run global concept disambiguation
-    7. optionally run UMLS normalization
-    8. run sanity checks
+    6. optionally create or validate the Section vector index
+    7. run global concept disambiguation
+    8. optionally run UMLS normalization
+    9. run sanity checks
     """
     ensure_pipeline_dirs(config)
 
@@ -962,6 +964,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     document_results: List[Dict[str, Any]] = []
     disambiguation_stats = None
     normalization_stats = None
+    section_vector_index_stats = None
     sanity_summary = None
 
     try:
@@ -1130,6 +1133,42 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                         )
                         record_stage_error(result, "embeddings", e)
 
+                # The vector index is a global Neo4j schema object, so it is
+                # created or validated once after all document embeddings have
+                # been processed.
+                if getattr(
+                    config,
+                    "section_vector_index_enabled",
+                    False,
+                ):
+                    logger.info(
+                        "Setting up Neo4j vector index for Section embeddings"
+                    )
+
+                    section_vector_index_stats = setup_section_vector_index(
+                        driver=driver,
+                        index_name=getattr(
+                            config,
+                            "section_vector_index_name",
+                            "section_embedding_index",
+                        ),
+                        similarity=getattr(
+                            config,
+                            "section_vector_index_similarity",
+                            "cosine",
+                        ),
+                        recreate_if_mismatch=getattr(
+                            config,
+                            "section_vector_index_recreate_if_mismatch",
+                            False,
+                        ),
+                    )
+
+                    logger.info(
+                        "Section vector index setup completed: %s",
+                        section_vector_index_stats,
+                    )
+
             document_results.extend(document_results_by_doc.values())
 
         if need_neo4j and getattr(config, "run_entity_disambiguation", False):
@@ -1172,6 +1211,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
         "document_results": document_results,
         "disambiguation_stats": disambiguation_stats,
         "normalization_stats": normalization_stats,
+        "section_vector_index_stats": section_vector_index_stats,
         "sanity_summary": sanity_summary,
     }
 

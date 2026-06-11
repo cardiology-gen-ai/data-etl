@@ -92,6 +92,12 @@ class GraphPipelineConfig:
     embedding_max_chars_per_section: int = 8000
     embedding_allow_title_only: bool = False
 
+    # Neo4j Section vector index
+    section_vector_index_enabled: bool = False
+    section_vector_index_name: str = "section_embedding_index"
+    section_vector_index_similarity: str = "cosine"
+    section_vector_index_recreate_if_mismatch: bool = False
+
     # Runtime / memory behavior
     clear_chat_cache_before_embeddings: bool = True
 
@@ -511,6 +517,10 @@ def make_graph_pipeline_config(
     embedding_include_body: bool = True,
     embedding_max_chars_per_section: int = 8000,
     embedding_allow_title_only: bool = False,
+    section_vector_index_enabled: bool = False,
+    section_vector_index_name: str = "section_embedding_index",
+    section_vector_index_similarity: str = "cosine",
+    section_vector_index_recreate_if_mismatch: bool = False,
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     run_entity_normalization: bool = False,
@@ -596,6 +606,12 @@ def make_graph_pipeline_config(
         embedding_include_body=embedding_include_body,
         embedding_max_chars_per_section=embedding_max_chars_per_section,
         embedding_allow_title_only=embedding_allow_title_only,
+        section_vector_index_enabled=section_vector_index_enabled,
+        section_vector_index_name=section_vector_index_name,
+        section_vector_index_similarity=section_vector_index_similarity,
+        section_vector_index_recreate_if_mismatch=(
+            section_vector_index_recreate_if_mismatch
+        ),
         clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
         disambiguation_delete_orphans=disambiguation_delete_orphans,
         entity_normalization_doc_id=entity_normalization_doc_id,
@@ -742,6 +758,10 @@ def main(
     embedding_include_body: bool = True,
     embedding_max_chars_per_section: int = 8000,
     embedding_allow_title_only: bool = False,
+    section_vector_index_enabled: bool = False,
+    section_vector_index_name: str = "section_embedding_index",
+    section_vector_index_similarity: str = "cosine",
+    section_vector_index_recreate_if_mismatch: bool = False,
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     run_entity_normalization: bool = False,
@@ -880,6 +900,12 @@ def main(
         embedding_include_body=embedding_include_body,
         embedding_max_chars_per_section=embedding_max_chars_per_section,
         embedding_allow_title_only=embedding_allow_title_only,
+        section_vector_index_enabled=section_vector_index_enabled,
+        section_vector_index_name=section_vector_index_name,
+        section_vector_index_similarity=section_vector_index_similarity,
+        section_vector_index_recreate_if_mismatch=(
+            section_vector_index_recreate_if_mismatch
+        ),
         clear_chat_cache_before_embeddings=clear_chat_cache_before_embeddings,
         disambiguation_delete_orphans=disambiguation_delete_orphans,
         entity_normalization_doc_id=entity_normalization_doc_id,
@@ -922,6 +948,11 @@ def main(
         logger.info("Disambiguation stats: %s", summary["disambiguation_stats"])
     if summary.get("normalization_stats") is not None:
         logger.info("UMLS normalization stats: %s", summary["normalization_stats"])
+    if summary.get("section_vector_index_stats") is not None:
+        logger.info(
+            "Section vector index stats: %s",
+            summary["section_vector_index_stats"],
+        )
     if summary.get("sanity_summary") is not None:
         sanity = summary["sanity_summary"]
         logger.info(
@@ -1119,6 +1150,7 @@ def run_cli() -> Any:
     graph_loader_config = kg_config.get("graph_loader", {})
     entity_config = kg_config.get("entities", {})
     embedding_config = kg_config.get("section_embeddings", {})
+    section_vector_index_config = kg_config.get("section_vector_index", {})
     acronym_config = kg_config.get("acronyms", {})
     disambiguation_config = kg_config.get("entity_disambiguation", {})
     runtime_config = kg_config.get("runtime", {})
@@ -1307,6 +1339,34 @@ def run_cli() -> Any:
             "KG_EMBEDDING_ALLOW_TITLE_ONLY",
             embedding_config.get("allow_title_only"),
             False,
+        ),
+        "section_vector_index_enabled": _get_env_or_config_bool(
+            "KG_SECTION_VECTOR_INDEX_ENABLED",
+            section_vector_index_config.get("enabled"),
+            False,
+        ),
+        "section_vector_index_name": (
+            _get_env_or_config_str(
+                "KG_SECTION_VECTOR_INDEX_NAME",
+                section_vector_index_config.get("name"),
+                "section_embedding_index",
+            )
+            or "section_embedding_index"
+        ),
+        "section_vector_index_similarity": (
+            _get_env_or_config_str(
+                "KG_SECTION_VECTOR_INDEX_SIMILARITY",
+                section_vector_index_config.get("similarity"),
+                "cosine",
+            )
+            or "cosine"
+        ),
+        "section_vector_index_recreate_if_mismatch": (
+            _get_env_or_config_bool(
+                "KG_SECTION_VECTOR_INDEX_RECREATE_IF_MISMATCH",
+                section_vector_index_config.get("recreate_if_mismatch"),
+                False,
+            )
         ),
         "clear_chat_cache_before_embeddings": _get_env_or_config_bool(
             "KG_CLEAR_CHAT_CACHE_BEFORE_EMBEDDINGS",

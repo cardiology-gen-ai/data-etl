@@ -77,7 +77,7 @@
             "pdf"
           ]
         },
-        "parent_folder": "testing_graph",
+        "parent_folder": "first_prototype",
         "input_folder": "pdfdocs",
         "output_folder": "mddocs",
         "allowed_extensions": [
@@ -149,18 +149,18 @@
           "preprocess": "Converts PDFs, extracts TOC/images/anchors/chunks, and optionally extracts acronyms. Does not run sanity checks.",
           "graph": "Loads document/chunk structure into Neo4j and runs structure sanity checks.",
           "entities": "Runs entity extraction, entity disambiguation, optional normalization, and entity sanity checks.",
-          "embeddings": "Embeds graph sections and runs embedding sanity checks.",
+          "embeddings": "Embeds all eligible Section nodes already present in the connected Neo4j database, optionally creates or validates the Section vector index, and runs embedding sanity checks. Local pdf_dir/work_root paths do not filter which Neo4j documents are processed.",
           "normalization": "Runs entity normalization only and then entity sanity checks.",
           "full": "Runs preprocessing, graph loading, entity extraction, embeddings, disambiguation, optional normalization, and full sanity checks."
         },
-        "phase": "graph",
-        "pdf_dir": "testing_graph/pdfdocs",
-        "work_root": "testing_graph",
+        "phase": "embeddings",
+        "pdf_dir": "first_prototype/pdfdocs",
+        "work_root": "first_prototype",
         "clear_neo4j_before_run": false,
-        "force_toc": true,
-        "force_markdown": true,
-        "force_anchors": true,
-        "force_chunks": true,
+        "force_toc": false,
+        "force_markdown": false,
+        "force_anchors": false,
+        "force_chunks": false,
         "force_acronyms": false
       },
       "logging": {
@@ -337,13 +337,32 @@
           "max_chars_per_section": "Maximum characters from each section used for embedding.",
           "allow_title_only": "Allow embedding sections that have a title but no body."
         },
-        "max_sections": 2,
+        "max_sections": null,
         "batch_size": 8,
         "force_reembed": false,
         "include_title": true,
         "include_body": true,
         "max_chars_per_section": 8000,
         "allow_title_only": false
+      },
+      "section_vector_index": {
+        "_comment": "Optional Neo4j vector index over Section.embedding. This is separate from the classic FAISS/Qdrant index configured at the application root.",
+        "_fields": {
+          "enabled": "Create or validate the Neo4j vector index after all Section embeddings have been processed in the embeddings/full phase.",
+          "name": "Neo4j schema index name. Use letters, numbers, and underscores; the name must not start with a number.",
+          "similarity": "Similarity function configured for the Neo4j vector index. It must match the query-time retrieval configuration.",
+          "recreate_if_mismatch": "When true, drop and recreate an incompatible existing index. Keep false by default to avoid destructive schema changes."
+        },
+        "_allowed_values": {
+          "similarity": [
+            "cosine",
+            "euclidean"
+          ]
+        },
+        "enabled": true,
+        "name": "section_embedding_index",
+        "similarity": "cosine",
+        "recreate_if_mismatch": false
       },
       "sanity_checks": {
         "_fields": {
