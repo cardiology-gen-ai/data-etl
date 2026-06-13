@@ -16,8 +16,10 @@ if [ ! -f "$CONFIG_PATH" ]; then
     exit 4
 fi
 
-INDEXING_TYPE=$(jq -r '.cardiology_protocols.indexing.type' "$CONFIG_PATH")
-EMBEDDING_TYPE=$(jq -r '.cardiology_protocols.embeddings.ollama' "$CONFIG_PATH")
+# INDEXING_TYPE=$(jq -r '.cardiology_protocols.indexing.type' "$CONFIG_PATH")
+# EMBEDDING_TYPE=$(jq -r '.cardiology_protocols.embeddings.ollama' "$CONFIG_PATH")
+INDEXING_TYPE=$(jq -r '.hepatology_protocols.indexing.type' "$CONFIG_PATH")
+EMBEDDING_TYPE=$(jq -r '.hepatology_protocols.embeddings.ollama' "$CONFIG_PATH")
 
 PROFILES=()
 
@@ -26,13 +28,24 @@ if [ "$INDEXING_TYPE" = "qdrant" ]; then
 fi
 
 if [ "$EMBEDDING_TYPE" = "true" ]; then
-    PROFILES+=("ollama_embeddings")
+    PROFILES+=("ollama_models")
 fi
 
 if [[ ${#PROFILES[@]} -eq 0 ]]; then
     echo "No active profile"
-    docker compose up -d
+    docker compose --profile "default" up -d
 else
     echo "Active profiles: ${PROFILES[*]}"
-    docker compose --profile "${PROFILES[@]}" up -d
+    CMD=(docker compose -f docker-compose.yaml)
+    CMD_GENERAL=(docker compose -f ../cardiology-gen-ai/docker-compose.yaml)
+    for p in "${PROFILES[@]}"; do
+      CMD+=(--profile "$p")
+      CMD_GENERAL+=(--profile "$p")
+    done
+    CMD+=(up -d)
+    CMD_GENERAL+=(up -d)
+    echo ${CMD[@]}
+    echo ${CMD_GENERAL[@]}
+    "${CMD_GENERAL[@]}"
+    "${CMD[@]}"
 fi

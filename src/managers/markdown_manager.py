@@ -3,8 +3,15 @@ import re
 import unicodedata
 from typing import List, Dict
 
+import json
 import fitz
 import pymupdf4llm
+from pydantic import BaseModel
+
+
+class FilePageAnchors(BaseModel):
+    filename: str
+    anchors: Dict[int, int]
 
 
 class MarkdownManager:
@@ -64,8 +71,7 @@ class MarkdownManager:
         markdown_text = re.sub(r"\n{%d,}" % (max_new_lines + 1), "\n" * max_new_lines, markdown_text)
         # fix hyphenation
         markdown_text = markdown_text.replace("\u00AD", "")  # remove soft hyphen
-        markdown_text = re.sub(r"(\w)[-\u2010\u2011\u2212]\n(\w)", r"\1\2",
-                               markdown_text)  # unify segmented words at the enf line
+        markdown_text = re.sub(r"(\w)[-\u2010\u2011\u2212]\n(\w)", r"\1\2", markdown_text)  # unify segmented words at the enf line
         return markdown_text.strip()
 
     @staticmethod
@@ -141,7 +147,7 @@ class MarkdownManager:
         """Build a loose regex to locate a textual snippet in the full Markdown.
 
         The pattern is composed by the first ``max_tokens`` alphanumeric tokens of
-        ``snippet`` joined by ``\W+``. This allows matching across whitespace and
+        ``snippet`` joined by ``\\W+``. This allows matching across whitespace and
         punctuation variations.
 
         Parameters
@@ -161,6 +167,7 @@ class MarkdownManager:
             return None
         words = words[:max_tokens]
         pattern = r"\b" + r"\W+".join(re.escape(w) for w in words) + r"\b"
+
         return re.compile(pattern)
 
     def get_keywords_matches_in_slice(self, start: int, end: int, keywords: List[str]) -> List[int]:
@@ -247,4 +254,25 @@ class MarkdownManager:
             if anchors.get(page_n) < prev:
                 anchors[page_n] = prev
             prev = anchors[page_n]
+        return anchors
+
+    def get_page_anchors(self, anchors_folder: pathlib.Path | None = None) -> Dict[int, int]:
+        """
+        Load cached page anchors if available, otherwise compute and cache them.
+        """
+        filename = self.filepath.stem
+        anchors_file = anchors_folder / (filename + ".json") if anchors_folder else None
+        if anchors_folder is not None:
+            assert anchors_file
+            if anchors_file.is_file():
+                data = json.loads(anchors_file.read_text(encoding="utf-8"))
+                anchors_dict = FilePageAnchors(**data)
+                return anchors_dict.anchors
+        anchors = self.find_page_anchors_in_markdown()
+        if anchors_folder:
+            assert anchors_file
+            anchors_schema = FilePageAnchors(filename=filename, anchors=anchors)
+            anchors_folder.mkdir(parents=True, exist_ok=True)
+            with open(anchors_file, "w", encoding="utf-8") as f:
+                f.write(anchors_schema.model_dump_json(indent=2))
         return anchors

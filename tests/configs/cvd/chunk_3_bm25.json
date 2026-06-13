@@ -1,0 +1,54 @@
+{
+    "cardiology_protocols": {
+        "indexing": {
+            "name": "cvd_chunk_3",
+            "description": "Documents containing medical protocols for cardiologic patients.",
+            "folder": "/Users/giai/Desktop/repos/cardiology-gen-ai/data-etl/index/chunk_3",
+            "type": "bm25",
+            "distance": "cosine",
+            "alias": "",
+            "embeddings": {
+                "deployment": "text-embedding-3-small",
+                "ollama": false,
+                "kwargs": {}
+            }
+        },
+        "preprocessing": {
+            "storage": {
+                "parent_folder": "data/cvd",
+                "input_folder": "pdfdocs",
+                "output_folder": "mddocs",
+                "anchors_folder": "anchors",
+                "cache_folder": "cache",
+                "tocs_folder": "tocs",
+                "chunks_folder": "chunks",
+                "allowed_extensions": [
+                    "pdf"
+                ]
+            },
+            "images": {
+                "dpi": 200,
+                "tol": 40.0,
+                "pad": 16.0,
+                "caption_keywords": [
+                    "Figure"
+                ]
+            },
+            "parsing": {
+                "backend": "mineru",
+                "mineru_runtime": "artifacts",
+                "mineru_artifacts_root": "scratch",
+                "mineru_force_ocr": false,
+                "mineru_language": "en",
+                "mineru_backend": "pipeline",
+                "mineru_formula_enable": true,
+                "mineru_table_enable": true
+            },
+            "attribution": "semantic",
+            "chunking": {
+                "strategy": "hierarchical",
+                "header_levels": 3
+            }
+        }
+    }
+}

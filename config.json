@@ -1,9 +1,9 @@
 {
     "cardiology_protocols": {
         "indexing": {
-            "name": "cardiology_protocols_prova",
+            "name": "cardiology_protocols",
             "description": "Documents containing medical protocols for cardiologic patients.",
-            "type": "bm25",
+            "type": "faiss",
             "distance": "cosine",
             "alias": "",
             "embeddings": {
@@ -17,6 +17,9 @@
                 "parent_folder": "data",
                 "input_folder": "pdfdocs",
                 "output_folder": "mddocs",
+                "anchors_folder": "anchors",
+                "tocs_folder": "tocs",
+                "chunks_folder": "chunks",
                 "allowed_extensions": [
                     "pdf"
                 ]
@@ -30,11 +33,52 @@
                 ]
             },
             "chunking": {
-                "markdown_first": true,
-                "header_levels": 4,
+                "strategy": "flat",
+                "markdown_first": false,
+                "toc_first": true,
+                "header_levels": 2,
                 "splitter": "recursive",
                 "chunk_size": 1000,
                 "chunk_overlap": 200
+            }
+        }
+    },
+    "hepatology_protocols": {
+        "preprocessing": {
+            "storage": {
+                "parent_folder": "hepatology_data",
+                "input_folder": "pdfdocs",
+                "output_folder": "mddocs",
+                "anchors_folder": "anchors",
+                "tocs_folder": "tocs",
+                "chunks_folder": "chunks",
+                "allowed_extensions": [
+                    "pdf"
+                ]
+            },
+            "images": {
+                "dpi": 200,
+                "tol": 40.0,
+                "pad": 16.0,
+                "caption_keywords": [
+                    "Fig."
+                ]
+            },
+            "chunking": {
+                "strategy": "hierarchical",
+                "header_levels": 1
+            }
+        },
+        "indexing": {
+            "name": "cardiology_protocols",
+            "description": "Documents containing medical protocols for hepatology.",
+            "type": "faiss",
+            "distance": "cosine",
+            "alias": "",
+            "embeddings": {
+                "deployment": "qwen3-embedding:8b",
+                "ollama": true,
+                "kwargs": {}
             }
         }
     }

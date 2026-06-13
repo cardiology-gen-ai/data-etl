@@ -7,7 +7,7 @@ import re
 import fitz
 from pydantic import BaseModel, ValidationError
 
-from src.config.manager import ImageManagerConfig
+from config.manager import ImageManagerConfig
 
 
 class ImagesCatalogEntry(BaseModel):

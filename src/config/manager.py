@@ -1,11 +1,12 @@
 import os
 import pathlib
-from typing import Tuple, Dict, Any, Optional, List
+from enum import Enum
+from typing import Tuple, Dict, Any, Optional, List, Literal
 
 from langchain.embeddings import Embeddings
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from src.managers.chunking_manager import TextSplitterConfig, TextSplitterName
+from managers.chunking.chunking_manager import TextSplitterConfig, TextSplitterName
 from cardiology_gen_ai import IndexingConfig
 from cardiology_gen_ai.config.manager import ConfigManager
 
@@ -53,6 +54,11 @@ class FileStorageConfig(BaseModel):
         self.folder = pathlib.Path(os.getenv("DATA_ROOT")) / self.parent_folder / self.child_folder
 
 
+class ChunkingStrategy(Enum):
+    flat = "flat"
+    hierarchical = "hierarchical"
+
+
 class ChunkingManagerConfig(BaseModel):
     """Configure the text splitting pipeline used in preprocessing.
 
@@ -61,7 +67,8 @@ class ChunkingManagerConfig(BaseModel):
     splitter : list[:class:`~src.managers.chunking_manager.TextSplitterConfig`]
         Ordered list of splitter configurations. It is typically built via :meth:`~src.config.manager.ChunkingManagerConfig.from_config`.
     """
-    splitter: List[TextSplitterConfig]
+    strategy: ChunkingStrategy
+    splitter: List[TextSplitterConfig] = None
 
     @classmethod
     def from_config(cls, config_dict: Dict[str, Any], embeddings: Optional[Embeddings] = None) -> "ChunkingManagerConfig":
@@ -85,20 +92,69 @@ class ChunkingManagerConfig(BaseModel):
         :class:`~src.config.manager.ChunkingManagerConfig`
             Config with a populated ``splitter`` list.
         """
-        markdown_first = config_dict.get("markdown_first", False)
+        chunking_strategy = ChunkingStrategy(config_dict["strategy"])
         splitter_list = []
-        splitter = config_dict.get("splitter", None)
-        if markdown_first is True or splitter == "markdown":
-            splitter_list.append(TextSplitterConfig(
-                name=TextSplitterName.markdown_splitter,
-                header_levels=config_dict.get("header_levels", 2),
-            ))
-        if splitter is not None and (len(splitter_list) == 0 or splitter != "markdown"):
-                other_config_dict = {k: v for k, v in config_dict.items() if k != "splitter"}
+        if chunking_strategy == ChunkingStrategy.flat:
+            assert not (config_dict.get("markdown_first", False) and config_dict.get("toc_first", False))
+            markdown_first = config_dict.get("markdown_first", False)
+            splitter = config_dict.get("splitter", None)
+            if markdown_first is True or splitter == "markdown":
                 splitter_list.append(TextSplitterConfig(
-                    name=TextSplitterName(splitter), embeddings=embeddings, **other_config_dict,
+                    name=TextSplitterName.markdown_splitter,
+                    header_levels=config_dict.get("header_levels", 2),
                 ))
-        return cls(splitter=splitter_list)
+            elif config_dict.get("toc_first", False):
+                splitter_list.append(TextSplitterConfig(
+                    name=TextSplitterName.hierarchical_splitter, header_levels=config_dict.get("header_levels", 2))
+                )
+            if splitter is not None and (len(splitter_list) == 0 or splitter != "markdown"):
+                    other_config_dict = {k: v for k, v in config_dict.items() if k != "splitter"}
+                    splitter_list.append(TextSplitterConfig(
+                        name=TextSplitterName(splitter), embeddings=embeddings, **other_config_dict,
+                    ))
+        else:
+            splitter_list.append(TextSplitterConfig(
+                name=TextSplitterName.hierarchical_splitter, header_levels=config_dict.get("header_levels", 2))
+            )
+        return cls(strategy=chunking_strategy, splitter=splitter_list)
+
+
+class ParsingConfig(BaseModel):
+    backend: Literal["docling", "mineru"] = "docling"
+
+    # MinerU execution mode
+    mineru_runtime: Literal["local", "artifacts"] = "local"
+    mineru_artifacts_root: Optional[str] = None
+
+    # MinerU-only knobs
+    mineru_force_ocr: bool = False
+    mineru_language: str = "en"
+    mineru_backend: Literal[
+        "pipeline",
+        "vlm-transformers",
+        "vlm-sglang-engine",
+        "vlm-sglang-client",
+        "hybrid-auto-engine",
+    ] = "pipeline"
+    mineru_formula_enable: bool = True
+    mineru_table_enable: bool = True
+    mineru_server_url: Optional[str] = None
+
+    @classmethod
+    def from_config(cls, config_dict: Dict[str, Any]) -> "ParsingConfig":
+        """Build a :class:`ParsingConfig` from a plain dictionary.
+
+        Parameters
+        ----------
+        config_dict : Dict[str, Any]
+            Mapping with ``backend`` and optionally any of the ``mineru_*`` keys.
+
+        Returns
+        -------
+        :class:`~src.config.manager.ParsingConfig`
+            Validated parsing configuration.
+        """
+        return cls(**config_dict)
 
 
 class PreprocessingConfig(BaseModel):
@@ -106,7 +162,13 @@ class PreprocessingConfig(BaseModel):
     image_manager: ImageManagerConfig = ImageManagerConfig() #:  :class:`ImageManagerConfig`, default constructed : Parameters for image extraction and placement.
     input_folder: FileStorageConfig #: :class:`FileStorageConfig` : Where input PDFs are read from.
     output_folder: FileStorageConfig #: :class:`FileStorageConfig` : Where Markdown and extracted images are saved.
+    cache_folder: FileStorageConfig  # TODO: this is for docling cache, check consistency
+    anchors_folder: Optional[FileStorageConfig] = None
+    tocs_folder: Optional[FileStorageConfig] = None
+    chunks_folder: Optional[FileStorageConfig] = None
+    attributor: Literal["lexical", "semantic"] = "semantic"
     chunking_manager: ChunkingManagerConfig #: :class:`ChunkingManagerConfig` : How to split text into chunks.
+    parsing: ParsingConfig = Field(default_factory=ParsingConfig) #: :class:`ParsingConfig`, default constructed : PDF parsing backend selection (Docling vs MinerU) and backend-specific options.
 
     @classmethod
     def from_config(cls, config_dict: Dict[str, Any], embeddings: Optional[Embeddings] = None) -> "PreprocessingConfig":
@@ -119,6 +181,8 @@ class PreprocessingConfig(BaseModel):
         - ``storage``: ``{"parent_folder", "input_folder", "output_folder", "allowed_extensions"}``
         - ``images``: options for :class:`ImageManagerConfig`
         - ``chunking``: options for :class:`ChunkingManagerConfig`
+        - ``parsing`` (optional): options for :class:`ParsingConfig`. If omitted,
+          the default ``ParsingConfig`` (Docling backend) is used.
 
         The resulting instance has ``input_folder.folder`` and ``output_folder.folder``
         resolved by :class:`FileStorageConfig`.
@@ -147,14 +211,51 @@ class PreprocessingConfig(BaseModel):
             child_folder=preprocessing_storage_dict["output_folder"],
             allowed_extensions=["md"]
         )
+        cache_folder, anchors_folder, tocs_folder, chunks_folder = [None for _ in range(4)]
+        if preprocessing_storage_dict.get("cache_folder") is not None:
+            cache_folder = FileStorageConfig(
+                parent_folder=output_folder.parent_folder + "/" + output_folder.child_folder,
+                child_folder=preprocessing_storage_dict["cache_folder"],
+                allowed_extensions=["json"]
+            )
+        if preprocessing_storage_dict.get("anchors_folder") is not None:
+            anchors_folder = FileStorageConfig(
+                parent_folder=output_folder.parent_folder + "/" + output_folder.child_folder,
+                child_folder=preprocessing_storage_dict["anchors_folder"],
+                allowed_extensions=["json"]
+            )
+        if preprocessing_storage_dict.get("tocs_folder") is not None:
+            tocs_folder = FileStorageConfig(
+                parent_folder=output_folder.parent_folder + "/" + output_folder.child_folder,
+                child_folder=preprocessing_storage_dict["tocs_folder"],
+                allowed_extensions=["json"]
+            )
+            if preprocessing_storage_dict.get("chunks_folder") is not None:
+                chunks_folder = FileStorageConfig(
+                    parent_folder=tocs_folder.parent_folder + "/" + tocs_folder.child_folder,
+                    child_folder=preprocessing_storage_dict["chunks_folder"],
+                    allowed_extensions=["pkl"]
+                )
         image_manager_dict = config_dict["images"]
         image_manager = ImageManagerConfig.from_config(image_manager_dict)
         chunking_manager_dict = config_dict["chunking"]
         chunking_manager = ChunkingManagerConfig.from_config(chunking_manager_dict, embeddings=embeddings)
+        parsing_dict = config_dict.get("parsing")
+        parsing = ParsingConfig.from_config(parsing_dict) if parsing_dict else ParsingConfig()
+        if config_dict["parsing"].get("backend") == "mineru":
+            scratch_folder = FileStorageConfig(
+                parent_folder=preprocessing_storage_dict["parent_folder"],
+                child_folder=config_dict["parsing"].get("mineru_artifacts_root"),
+                allowed_extensions=["md", "json", "jpg"]
+            )
+            parsing.mineru_artifacts_root = scratch_folder.folder.as_posix()
         other_keys_dict = {k: v for k, v in config_dict.items() if k not in
-                           ["storage", "allowed_extensions", "parent_folder", "input_folder", "output_folder"]}
+                           ["storage", "allowed_extensions", "parent_folder", "input_folder", "output_folder",
+                            "cache_folder", "anchors_folder", "tocs_folder", "chunks_folder",
+                            "images", "chunking", "parsing"]}
         return cls(input_folder=input_folder, output_folder=output_folder, image_manager=image_manager,
-                   chunking_manager=chunking_manager, **other_keys_dict)
+                   chunking_manager=chunking_manager, anchors_folder=anchors_folder, tocs_folder=tocs_folder,
+                   cache_folder=cache_folder, chunks_folder=chunks_folder, parsing=parsing, **other_keys_dict)
 
 
 class ETLConfig(BaseModel):

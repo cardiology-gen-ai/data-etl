@@ -5,14 +5,20 @@ import os
 import pathlib
 from typing import Optional, Tuple, List
 
-from src.config.manager import ETLConfigManager, ETLConfig
-from src.managers.markdown_conversion_manager import MarkdownConverter, DocumentMetadata
-from src.document_processor import DocumentProcessor
-from src.managers.chunking_manager import ChunkingManager
-from src.managers.index_manager import IndexManager
+from managers.chunking.hierarchical_chunking_manager import HierarchicalChunkingManager
+from config.manager import ETLConfigManager, ETLConfig, ChunkingStrategy
+from managers.markdown_conversion_manager import MarkdownConverter, DocumentMetadata
+from document_processor import DocumentProcessor
+from managers.chunking.chunking_manager import ChunkingManager
+from managers.chunking.flat_chunking_manager import FlatChunkingManager
+from managers.index_manager import IndexManager, EditableBM25Vectorstore
 
 from cardiology_gen_ai.utils.singleton import Singleton
 from cardiology_gen_ai.utils.logger import get_logger
+
+from managers.tables.scorer import LexicalScorer, EmbeddingScorer
+from managers.tables.section_attribution import SectionAttributionManager
+from managers.toc_extraction.table_of_contents_manager import TOCExtractionManager
 
 
 class ETLProcessor(metaclass=Singleton):
@@ -29,16 +35,25 @@ class ETLProcessor(metaclass=Singleton):
     config: ETLConfig #: ETLConfig : Loaded and validated configuration.
     index_manager: IndexManager #: :class:`~src.managers.index_manager.IndexManager` : Backend-agnostic manager for vector indexes (Qdrant/FAISS).
     markdown_converter: MarkdownConverter #: :class:`~src.managers.markdown_conversion_manager.MarkdownConverter` : Component that converts PDFs to Markdown and places images.
-    chunking_manager: ChunkingManager #: :class:`~src.managers.chunking_manager.ChunkingManager` : Component that splits Markdown into :langchain_core:`Document <documents/langchain_core.documents.base.Document.html>` chunks.
+    chunking_manager: ChunkingManager #: :class:`~src.managers.chunking_manager.FlatChunkingManager` : Component that splits Markdown into :langchain_core:`Document <documents/langchain_core.documents.base.Document.html>` chunks.
 
-    def __init__(self, app_id: str):
+    def __init__(self, app_id: str, config_path: Optional[str]):
         self.logger = get_logger("ETL Processor based on LangChain and PyMuPDF")
         self.app_id = app_id
-        self.config = ETLConfigManager(app_id=app_id).config
+        self.config = ETLConfigManager(app_id=app_id, config_path=config_path).config
         self.index_manager = IndexManager(config=self.config.indexing)
         self._initialize_index()
-        self.markdown_converter = MarkdownConverter(config=self.config.preprocessing)
-        self.chunking_manager = ChunkingManager(self.config.preprocessing.chunking_manager.splitter)
+        self.markdown_converter = MarkdownConverter(config=self.config.preprocessing, app_id=app_id)
+        self.chunking_manager = self._init_chunking_manager()
+        self.toc_extractor = TOCExtractionManager(config=self.config.preprocessing, app_id=app_id)
+        scorer = LexicalScorer() if self.config.preprocessing.attributor == "lexical" else EmbeddingScorer()
+        self.section_attributor = SectionAttributionManager(config=self.config.preprocessing, scorer=scorer, app_id=app_id)
+
+    def _init_chunking_manager(self) -> ChunkingManager:
+        if self.config.preprocessing.chunking_manager.strategy == ChunkingStrategy.flat:
+            return FlatChunkingManager(config=self.config.preprocessing, app_id=self.app_id)
+        else:
+            return HierarchicalChunkingManager(config=self.config.preprocessing, app_id=self.app_id)
 
     def _initialize_index(self):
         """Create or load the target index, depending on its current state.
@@ -97,6 +112,8 @@ class ETLProcessor(metaclass=Singleton):
                 markdown_converter=self.markdown_converter,
                 chunking_manager=self.chunking_manager,
                 index_manager=self.index_manager,
+                toc_extractor=self.toc_extractor,
+                section_attributor=self.section_attributor,
                 filepath=filepath,
                 md_filepath=md_filepath
             )
@@ -108,6 +125,9 @@ class ETLProcessor(metaclass=Singleton):
             doc_metadata: DocumentMetadata = document_processor.process_document(
                 logger=self.logger, force_md_conv=force_md_conv, existing_metadata_path=existing_metadata_path
             )
+            if isinstance(
+                    self.index_manager.vectorstore, EditableBM25Vectorstore) and self.index_manager.vectorstore.needs_rebuild:
+                self.index_manager.vectorstore.rebuild_bm25_vectorstore()
             return True, doc_metadata
         except Exception as e:
             self.logger.info(f"Error processing {filename}: {e}")

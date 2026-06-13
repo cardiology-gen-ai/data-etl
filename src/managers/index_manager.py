@@ -240,14 +240,17 @@ class EditableFaissVectorstore(EditableVectorstore, FaissVectorstore):
 
 
 class EditableBM25Vectorstore(EditableVectorstore, BM25Vectorstore):
+    needs_rebuild: bool = False
+    build_after_every_doc: bool = False
 
     def _persist_bm25_vectorstore(self) -> None:
         with open(self.config.folder / (self.config.name + "_bm25.pkl"), "wb") as f:
             pickle.dump(self.vectorstore, f)
 
-    def _rebuild_bm25_vectorstore(self) -> None:
+    def rebuild_bm25_vectorstore(self) -> None:
         tokenized_corpus = [BM25Vectorstore.tokenize(doc.page_content) for doc in self.vectorstore.documents]
         self.vectorstore.bm25 = BM25Plus(tokenized_corpus)
+        self._persist_bm25_vectorstore()
 
     def create_vectorstore(self, **kwargs) -> BM25Dict:
         vectorstore = BM25Dict()
@@ -261,22 +264,25 @@ class EditableBM25Vectorstore(EditableVectorstore, BM25Vectorstore):
 
     def add_to_vectorstore(self, doc: Document | List[Document]) -> None:
         docs = doc if isinstance(doc, list) else [doc]
+        self.vectorstore.documents = self.vectorstore.documents or []
         for doc in docs:
             self.vectorstore.documents.append(doc)
-        self._rebuild_bm25_vectorstore()
+        self.needs_rebuild = True
+        if len(self.vectorstore.documents) % 10000 == 0 or self.build_after_every_doc:
+            self.rebuild_bm25_vectorstore()
+            self.needs_rebuild = False
 
     def delete_from_vectorstore(self, filename: pathlib.Path) -> int:
         filename = str(filename)
-        keep_docs = []
-        n_docs_removed = 0
-        for doc in self.vectorstore.documents:
-            if doc.metadata["filename"] == filename:
-                n_docs_removed += 1
-            else:
-                keep_docs.append(doc)
-        if len(keep_docs) > 0:
-            self._rebuild_bm25_vectorstore()
-            self._persist_bm25_vectorstore()
+        keep_docs, n_docs_removed = [], 0
+        if self.vectorstore.documents and len(self.vectorstore.documents) > 0:
+            for doc in self.vectorstore.documents:
+                if doc.metadata["filename"] == filename:
+                    n_docs_removed += 1
+                else:
+                    keep_docs.append(doc)
+            if len(keep_docs) > 0:
+                self.rebuild_bm25_vectorstore()
         return n_docs_removed
 
 
@@ -330,7 +336,11 @@ class IndexManager(metaclass=Singleton):
             existing_embedding = existing_config_json.get("embeddings")
             same_index = (
                     self.config.name == existing_indexing["name"]
-                    and self.config.distance.value == existing_indexing["distance"]
+                    and (
+                            self.config.distance is None
+                            or existing_indexing.get("distance") is None
+                            or self.config.distance.value == existing_indexing["distance"]
+                    )
             )
             incompatible_embedding = (
                     existing_embedding
@@ -342,9 +352,11 @@ class IndexManager(metaclass=Singleton):
                 existing_indexing["type"] = list(set(existing_indexing["type"]))
                 if isinstance(existing_indexing["retrieval_mode"], str):
                     existing_indexing["retrieval_mode"] = [existing_indexing["retrieval_mode"]]
+                if existing_indexing.get("distance", None) is None and self.config.distance is not None:
+                    existing_indexing["distance"] = self.config.distance.value
                 existing_indexing["retrieval_mode"].append(self.vectorstore.retrieval_mode.value)
                 existing_indexing["retrieval_mode"] = list(set(existing_indexing["retrieval_mode"]))
-                save_embeddings = self.embeddings.to_dict() if self.embeddings else existing_embedding
+                save_embeddings = self.embeddings.to_config() if self.embeddings else existing_embedding
                 with open(config_file, "w") as f:
                     json.dump({
                         "indexing": existing_indexing,
@@ -355,7 +367,7 @@ class IndexManager(metaclass=Singleton):
             with open(config_file, "w") as f:
                 json.dump({
                     "indexing": self.config.to_config(),
-                    "embeddings": self.embeddings.to_dict() if self.embeddings else {}
+                    "embeddings": self.embeddings.to_config() if self.embeddings else {}
                 }, f, indent=2)
 
     def create_index(self) -> None:

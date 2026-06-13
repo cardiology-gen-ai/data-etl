@@ -12,7 +12,7 @@ services:
       - ${CONFIG_PATH}:/app/config.json
       - ${ROOT_PATH}/src:/app/src
       - ${DATA_ROOT}:/app
-      - ${DATA_ROOT}/index:/app/data/index
+      - ${INDEX_ROOT}:/app/data/index
     working_dir: /app
     environment:
       CONFIG_PATH: /app/config.json

@@ -12,7 +12,8 @@ description = "Data ETL pipeline for cardiology protocols"
 requires-python = ">=3.11,<3.13"
 authors = [
     { name = "Christian Faccio", email = "christian.faccio@studenti.units.it" },
-    { name = "Gaia Saveri", email = "gaia.saveri@gmail.com" }
+    { name = "Gaia Saveri", email = "gaia.saveri@gmail.com" },
+    { name = "Marta Lucas", email = "marta.lucas@studenti.units.it"}
 ]
 
 dependencies = [
@@ -24,6 +25,7 @@ dependencies = [
     "langchain-qdrant>=1.0.0",
     "langchain-classic>=1.0.0",
     "langchain-core>=1.0.0",
+    "langchain-openai>=1.0.0",
     "langchain-experimental>=0.4.0",
     "huggingface-hub==0.34.4",
     "qdrant-client==1.15.1",
@@ -34,8 +36,15 @@ dependencies = [
     "fastembed==0.7.2",
     "faiss-cpu==1.12.0",
     "numpy==1.26.4",
-    "transformers==4.56.0",
+    "transformers==4.57.3",
     "rank-bm25==0.2.2",
+    "neo4j>=5.20.0",
+    "python-dotenv>=1.0.1",
+    "openai>=1.0.0",
+    "pytesseract >= 0.3.13",
+    "rapidfuzz>=3.14.5",
+    "spacy>=3.8.12",
+    "scispacy>=0.6.2",
     "cardiologygenai-coordo @ git+https://github.com/cardiology-gen-ai/cardiology-gen-ai.git@main"
 ]
 
