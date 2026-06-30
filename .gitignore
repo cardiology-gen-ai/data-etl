@@ -103,3 +103,8 @@ night_run/
 
 .env.first.prototype
 testing_graph/
+
+.env.testing.graph
+retrieval_prototype/
+inspect_recommendation_review.py
+run_recommendation_review_poc.py
