@@ -36,6 +36,7 @@ ALLOWED_TYPES = {
     "complication_or_comorbidity",
     "care_strategy",
     "anatomical_structure",
+    "clinical_outcome",
 }
 
 
@@ -102,6 +103,16 @@ _RAW_TYPE_ALIASES = {
     "anatomy": "anatomical_structure",
     "structure": "anatomical_structure",
     "anatomical structure": "anatomical_structure",
+
+    "outcome": "clinical_outcome",
+    "clinical outcome": "clinical_outcome",
+    "clinical_outcome": "clinical_outcome",
+    "endpoint": "clinical_outcome",
+    "clinical endpoint": "clinical_outcome",
+    "clinical_endpoint": "clinical_outcome",
+    "event": "clinical_outcome",
+    "clinical event": "clinical_outcome",
+    "clinical_event": "clinical_outcome",
 }
 
 

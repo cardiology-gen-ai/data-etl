@@ -17,6 +17,7 @@ ENTITY_TYPE_GUIDANCE = """Type guidance:
 - complication_or_comorbidity: a complication, consequence, associated condition, or coexisting disease.
 - care_strategy: a broader management, follow-up, screening, counselling, prevention, or surveillance strategy.
 - anatomical_structure: an anatomical body structure.
+-clinical_outcome: a clinically meaningful outcome, endpoint, event, or prognostic consequence, such as mortality, cardiovascular death, hospitalization, stroke, bleeding event, or symptom improvement.
 """
 
 
@@ -30,6 +31,7 @@ ENTITY_DISAMBIGUATION_GUIDANCE = """Disambiguation guidance:
 - Use anatomical_structure only for body structures such as left ventricle, mitral valve, interventricular septum, coronary artery, or aortic valve.
 - Do not label a finding as anatomical_structure when the full phrase expresses a pathological or clinical state. For example, left ventricular hypertrophy should be clinical_finding, not anatomical_structure.
 - Do not label a disease, finding, or procedure as care_strategy just because it appears in a management section.
+- Use clinical_outcome for named or specific outcomes/endpoints such as all-cause mortality, cardiovascular death, heart failure hospitalization, major bleeding, stroke, or symptom improvement. Do not extract generic words such as outcome, endpoint, event, or prognosis by themselves.
 """
 
 

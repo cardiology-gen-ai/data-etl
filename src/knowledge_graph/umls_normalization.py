@@ -34,7 +34,7 @@ from knowledge_graph.entity_review_exports import (
     DEFAULT_ENTITY_REVIEW_DIR,
     safe_filename_component,
 )
-from knowledge_graph.entity_schema import normalize_name
+from knowledge_graph.entity_schema import normalize_name, normalize_type
 
 try:
     import requests
@@ -180,6 +180,50 @@ CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
         "Laboratory or Test Result",
         "Laboratory Procedure",
     },
+    "imaging_modality": {
+        "Diagnostic Procedure",
+    },
+    "score_or_risk_model": {
+        "Clinical Attribute",
+        "Intellectual Product",
+        "Quantitative Concept",
+    },
+    "drug_or_drug_class": {
+        "Antibiotic",
+        "Biomedical or Dental Material",
+        "Clinical Drug",
+        "Pharmacologic Substance",
+    },
+    "procedure_or_intervention": {
+        "Diagnostic Procedure",
+        "Health Care Activity",
+        "Laboratory Procedure",
+        "Therapeutic or Preventive Procedure",
+    },
+    "care_strategy": {
+        "Health Care Activity",
+        "Therapeutic or Preventive Procedure",
+    },
+    "anatomical_structure": {
+        "Body Location or Region",
+        "Body Part, Organ, or Organ Component",
+        "Body Space or Junction",
+        "Cell",
+        "Cell Component",
+        "Embryonic Structure",
+        "Fully Formed Anatomical Structure",
+        "Tissue",
+    },
+    "clinical_outcome": {
+        "Clinical Attribute",
+        "Disease or Syndrome",
+        "Event",
+        "Finding",
+        "Laboratory or Test Result",
+        "Pathologic Function",
+        "Sign or Symptom",
+    },
+    # Backward-compatible aliases for older local type names.
     "procedure": {
         "Diagnostic Procedure",
         "Health Care Activity",
@@ -188,6 +232,7 @@ CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
     },
     "treatment": {
         "Clinical Drug",
+        "Health Care Activity",
         "Medical Device",
         "Pharmacologic Substance",
         "Therapeutic or Preventive Procedure",
@@ -751,7 +796,7 @@ def semantic_types_are_compatible(
     A known local type with missing UMLS semantic types remains undecided rather
     than being rejected.
     """
-    normalized_type = normalize_name(canonical_type or "").replace(" ", "_")
+    normalized_type = normalize_type(canonical_type or "")
     allowed = CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES.get(normalized_type)
     if not allowed:
         return None
