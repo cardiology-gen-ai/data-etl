@@ -17,7 +17,7 @@ ENTITY_TYPE_GUIDANCE = """Type guidance:
 - complication_or_comorbidity: a complication, consequence, associated condition, or coexisting disease.
 - care_strategy: a broader management, follow-up, screening, counselling, prevention, or surveillance strategy.
 - anatomical_structure: an anatomical body structure.
--clinical_outcome: a clinically meaningful outcome, endpoint, event, or prognostic consequence, such as mortality, cardiovascular death, hospitalization, stroke, bleeding event, or symptom improvement.
+- clinical_outcome: a clinically meaningful outcome, endpoint, event, or prognostic consequence, such as mortality, cardiovascular death, hospitalization, stroke, bleeding event, or symptom improvement.
 """
 
 
@@ -183,6 +183,36 @@ Reason:
 - left ventricular outflow tract obstruction is the full clinical finding; do not split it into anatomical fragments.
 - patient is generic.
 - TAVI should not be expanded unless the full form is explicit in the text.
+
+
+Example 5:
+Input text:
+\"\"\"
+Title: Prognosis
+
+Body:
+Late gadolinium enhancement is associated with increased risk of cardiovascular death, heart failure hospitalization, and major bleeding.
+\"\"\"
+
+Correct output:
+[
+  {"name": "late gadolinium enhancement", "type": "clinical_finding"},
+  {"name": "cardiovascular death", "type": "clinical_outcome"},
+  {"name": "heart failure hospitalization", "type": "clinical_outcome"},
+  {"name": "major bleeding", "type": "clinical_outcome"}
+]
+
+Do NOT output:
+[
+  {"name": "prognosis", "type": "clinical_outcome"},
+  {"name": "risk", "type": "risk_factor"},
+  {"name": "outcome", "type": "clinical_outcome"},
+  {"name": "event", "type": "clinical_outcome"}
+]
+
+Reason:
+- cardiovascular death, heart failure hospitalization, and major bleeding are specific clinical outcomes.
+- prognosis, risk, outcome, and event are generic words in this context.
 """
 
 
