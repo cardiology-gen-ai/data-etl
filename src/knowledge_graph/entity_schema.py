@@ -153,6 +153,18 @@ _GENERIC_MEDICAL_BLOCKLIST_NAMES = {
     "scores",
     "model",
     "models",
+    "outcome",
+    "outcomes",
+    "endpoint",
+    "endpoints",
+    "event",
+    "events",
+    "clinical outcome",
+    "clinical outcomes",
+    "clinical endpoint",
+    "clinical endpoints",
+    "prognosis",
+    "prognoses",
 }
 
 
