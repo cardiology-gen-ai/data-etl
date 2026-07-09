@@ -62,8 +62,6 @@ STRONG_RELATION_NAMES = {
     "associated_morphology_of",
     "has_procedure_site",
     "has_direct_procedure_site",
-    "procedure_site_of",
-    "direct_procedure_site_of",
 }
 
 CONNECTION_STATUS = "candidate"
