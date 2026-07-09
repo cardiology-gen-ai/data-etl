@@ -41,6 +41,16 @@ SPECIAL_CANONICAL_TYPES = {
 
 VALID_CANONICAL_TYPES = sorted(ALLOWED_TYPES | SPECIAL_CANONICAL_TYPES)
 VALID_ENTITY_TYPES = sorted(ALLOWED_TYPES)
+UMLS_CONNECTION_RELATION_TYPES = [
+    "UMLS_ISA",
+    "UMLS_INVERSE_ISA",
+    "UMLS_HAS_FINDING_SITE",
+    "UMLS_FINDING_SITE_OF",
+    "UMLS_HAS_ASSOCIATED_MORPHOLOGY",
+    "UMLS_ASSOCIATED_MORPHOLOGY_OF",
+    "UMLS_HAS_PROCEDURE_SITE",
+    "UMLS_HAS_DIRECT_PROCEDURE_SITE",
+]
 
 
 CHECKS: List[Dict[str, Any]] = [
@@ -627,6 +637,74 @@ CHECKS: List[Dict[str, Any]] = [
                    rel_props['status'] AS status,
                    rel_props['score'] AS score
             ORDER BY source_concept, target_concept
+        """,
+    },
+    {
+        "name": "umls_connection_counts_by_type",
+        "title": "Materialized UMLS connection counts by relationship type",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            RETURN type(r) AS relationship_type,
+                   count(r) AS n
+            ORDER BY relationship_type
+        """,
+    },
+    {
+        "name": "duplicate_umls_connection_edge_keys",
+        "title": "Duplicate materialized UMLS connection edge_keys",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            WITH r.edge_key AS edge_key,
+                 count(r) AS n,
+                 collect(DISTINCT type(r)) AS relationship_types
+            WHERE edge_key IS NULL OR trim(toString(edge_key)) = '' OR n > 1
+            RETURN edge_key,
+                   n,
+                   relationship_types
+            ORDER BY n DESC, edge_key
+        """,
+    },
+    {
+        "name": "umls_connection_cui_mismatches",
+        "title": "Materialized UMLS connections with inconsistent endpoint CUIs",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            WITH source, r, target,
+                 properties(source) AS source_props,
+                 properties(target) AS target_props,
+                 properties(r) AS rel_props
+            WHERE toUpper(coalesce(toString(source_props['umls_cui']), '')) <>
+                  toUpper(coalesce(toString(rel_props['source_cui']), ''))
+               OR toUpper(coalesce(toString(target_props['umls_cui']), '')) <>
+                  toUpper(coalesce(toString(rel_props['target_cui']), ''))
+            RETURN type(r) AS relationship_type,
+                   rel_props['edge_key'] AS edge_key,
+                   source.name AS source_concept,
+                   target.name AS target_concept,
+                   source_props['umls_cui'] AS source_node_cui,
+                   rel_props['source_cui'] AS relationship_source_cui,
+                   target_props['umls_cui'] AS target_node_cui,
+                   rel_props['target_cui'] AS relationship_target_cui
+            ORDER BY relationship_type, edge_key
         """,
     },
     {

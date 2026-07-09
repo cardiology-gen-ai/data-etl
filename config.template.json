@@ -142,6 +142,7 @@
             "entities",
             "embeddings",
             "normalization",
+            "umls_connections",
             "full"
           ]
         },
@@ -151,7 +152,8 @@
           "entities": "Runs entity extraction, entity disambiguation, optional normalization, and entity sanity checks.",
           "embeddings": "Embeds all eligible Section nodes already present in the connected Neo4j database, optionally creates or validates the Section vector index, and runs embedding sanity checks. Local pdf_dir/work_root paths do not filter which Neo4j documents are processed.",
           "normalization": "Runs entity normalization only and then entity sanity checks.",
-          "full": "Runs preprocessing, graph loading, entity extraction, embeddings, disambiguation, optional normalization, and full sanity checks."
+          "umls_connections": "Runs UMLS/SNOMED connection discovery against an already-normalized graph and then entity sanity checks.",
+          "full": "Runs preprocessing, graph loading, entity extraction, embeddings, disambiguation, optional normalization, optional UMLS/SNOMED connections, and full sanity checks."
         },
         "phase": "embeddings",
         "pdf_dir": "first_prototype/pdfdocs",
@@ -327,6 +329,68 @@
         "local_files_only": false,
         "min_available_memory_gb": 8.0
       },
+      "umls_connections": {
+        "_comment": "Optional UMLS/SNOMED relation discovery for already-normalized Concept nodes. Defaults to read-only review exports.",
+        "_fields": {
+          "enabled": "Run this stage when phase behavior allows it. The umls_connections phase always runs this stage.",
+          "doc_id": "Limit local Concept eligibility to concepts mentioned in one document id. Use null for all normalized concepts.",
+          "source_vocab": "UMLS source vocabulary for relation lookup.",
+          "output_dir": "Directory for raw candidate CSV, collapsed JSON, Markdown summary, and optional materialization report. Use null for work_root/umls_connections.",
+          "cache_dir": "Directory for cached UMLS relation responses and negative-cache markers. Use null for work_root/umls_api_cache/relations.",
+          "write_neo4j": "When true, materialize whitelisted collapsed candidate relations between representative Concept nodes. Defaults false.",
+          "umls_version": "UMLS API version.",
+          "api_timeout": "HTTP timeout in seconds.",
+          "api_rate_limit_per_second": "Maximum UMLS API requests per second.",
+          "api_page_size": "UMLS relations API page size.",
+          "max_cuis": "Process only the first N sorted local CUIs after skips. Use null for no limit.",
+          "skip_cuis": "CUI list to skip as relation sources.",
+          "max_relations_per_cui": "Maximum UMLS relation records to process for one source CUI.",
+          "max_source_ui_lookups_per_cui": "Maximum sourceUi target lookups to attempt for one source CUI.",
+          "write_partial_every": "Write partial CSV/summary every N processed CUIs. Use 0 to disable.",
+          "include_relation_names": "Optional normalized relation-name whitelist. Usually leave empty when strong_relations_only=true.",
+          "exclude_relation_names": "Optional normalized relation-name denylist.",
+          "strong_relations_only": "Restrict discovery to the supported strong relation names.",
+          "ignore_negative_cache": "Bypass cached UMLS relation 404-unavailable markers and try the API again."
+        },
+        "_allowed_values": {
+          "source_vocab": [
+            "SNOMEDCT_US"
+          ],
+          "write_neo4j": [
+            false,
+            true
+          ],
+          "relation_names": [
+            "isa",
+            "inverse_isa",
+            "has_finding_site",
+            "finding_site_of",
+            "has_associated_morphology",
+            "associated_morphology_of",
+            "has_procedure_site",
+            "has_direct_procedure_site"
+          ]
+        },
+        "enabled": false,
+        "doc_id": null,
+        "source_vocab": "SNOMEDCT_US",
+        "output_dir": null,
+        "cache_dir": null,
+        "write_neo4j": false,
+        "umls_version": "current",
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+        "api_page_size": 200,
+        "max_cuis": null,
+        "skip_cuis": [],
+        "max_relations_per_cui": 500,
+        "max_source_ui_lookups_per_cui": 100,
+        "write_partial_every": 25,
+        "include_relation_names": [],
+        "exclude_relation_names": [],
+        "strong_relations_only": true,
+        "ignore_negative_cache": false
+      },
       "section_embeddings": {
         "_fields": {
           "max_sections": "Limit number of sections embedded. Use null for all eligible sections.",
@@ -375,6 +439,7 @@
           "entities": "entities",
           "embeddings": "embeddings",
           "normalization": "entities",
+          "umls_connections": "entities",
           "full": "full"
         },
         "sample_limit": 10,

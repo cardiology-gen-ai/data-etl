@@ -54,6 +54,7 @@ class GraphPipelineConfig:
     run_embeddings: bool = True
     run_entity_disambiguation: bool = True
     run_entity_normalization: bool = False
+    run_umls_connections: bool = False
     run_sanity_checks: bool = True
 
     # Graph loader
@@ -123,6 +124,26 @@ class GraphPipelineConfig:
     entity_normalization_api_rate_limit_per_second: float = 5.0
     entity_normalization_local_files_only: bool = False
     entity_normalization_min_available_memory_gb: float = 8.0
+
+    # UMLS/SNOMED connection discovery and optional materialization
+    umls_connections_doc_id: Optional[str] = None
+    umls_connections_source_vocab: str = "SNOMEDCT_US"
+    umls_connections_output_dir: Optional[Path] = None
+    umls_connections_cache_dir: Optional[Path] = None
+    umls_connections_write_neo4j: bool = False
+    umls_connections_umls_version: str = "current"
+    umls_connections_api_timeout: float = 30.0
+    umls_connections_api_rate_limit_per_second: float = 5.0
+    umls_connections_api_page_size: int = 200
+    umls_connections_max_cuis: Optional[int] = None
+    umls_connections_skip_cuis: Optional[list[str]] = None
+    umls_connections_max_relations_per_cui: int = 500
+    umls_connections_max_source_ui_lookups_per_cui: int = 100
+    umls_connections_write_partial_every: int = 25
+    umls_connections_include_relation_names: Optional[list[str]] = None
+    umls_connections_exclude_relation_names: Optional[list[str]] = None
+    umls_connections_strong_relations_only: bool = True
+    umls_connections_ignore_negative_cache: bool = False
 
     # Sanity checks
     sanity_mode: Optional[str] = "full"
@@ -269,6 +290,31 @@ def _get_env_or_config_optional_int(
     return _coerce_int(config_value, env_name)
 
 
+def _coerce_string_list(value: Any, name: str) -> list[str]:
+    if value in (None, ""):
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    raise RuntimeError(
+        f"Configuration value {name} must be a string or list of strings, got: {value!r}"
+    )
+
+
+def _get_env_or_config_string_list(
+    env_name: str,
+    config_value: Any,
+    default: Optional[list[str]] = None,
+) -> list[str]:
+    env_value = _get_optional_env(env_name)
+    if env_value is not None:
+        return _coerce_string_list(env_value, env_name)
+    if config_value in (None, ""):
+        return list(default or [])
+    return _coerce_string_list(config_value, env_name)
+
+
 def _get_config_optional_int(config_value: Any, name: str) -> Optional[int]:
     if config_value in (None, ""):
         return None
@@ -370,13 +416,14 @@ def _resolve_sanity_mode_from_phase(phase: str) -> Optional[str]:
         "entities": "entities",
         "embeddings": "embeddings",
         "normalization": "entities",
+        "umls_connections": "entities",
         "full": "full",
     }
     if phase not in mapping:
         raise ValueError(
             f"Unsupported PIPELINE_PHASE='{phase}'. "
             "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', "
-            "'normalization', 'full'."
+            "'normalization', 'umls_connections', 'full'."
         )
     return mapping[phase]
 
@@ -524,6 +571,7 @@ def make_graph_pipeline_config(
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     run_entity_normalization: bool = False,
+    run_umls_connections: bool = False,
     entity_normalization_doc_id: Optional[str] = None,
     entity_normalization_backend: str = "umls_api",
     entity_normalization_model_name: str = "en_core_sci_sm",
@@ -542,6 +590,24 @@ def make_graph_pipeline_config(
     entity_normalization_api_rate_limit_per_second: float = 5.0,
     entity_normalization_local_files_only: bool = False,
     entity_normalization_min_available_memory_gb: float = 8.0,
+    umls_connections_doc_id: Optional[str] = None,
+    umls_connections_source_vocab: str = "SNOMEDCT_US",
+    umls_connections_output_dir: Optional[Path] = None,
+    umls_connections_cache_dir: Optional[Path] = None,
+    umls_connections_write_neo4j: bool = False,
+    umls_connections_umls_version: str = "current",
+    umls_connections_api_timeout: float = 30.0,
+    umls_connections_api_rate_limit_per_second: float = 5.0,
+    umls_connections_api_page_size: int = 200,
+    umls_connections_max_cuis: Optional[int] = None,
+    umls_connections_skip_cuis: Optional[list[str]] = None,
+    umls_connections_max_relations_per_cui: int = 500,
+    umls_connections_max_source_ui_lookups_per_cui: int = 100,
+    umls_connections_write_partial_every: int = 25,
+    umls_connections_include_relation_names: Optional[list[str]] = None,
+    umls_connections_exclude_relation_names: Optional[list[str]] = None,
+    umls_connections_strong_relations_only: bool = True,
+    umls_connections_ignore_negative_cache: bool = False,
     sanity_mode: Optional[str] = "full",
     sanity_sample_limit: int = 10,
     sanity_log_samples: bool = True,
@@ -579,6 +645,7 @@ def make_graph_pipeline_config(
         run_embeddings=run_embeddings,
         run_entity_disambiguation=run_entity_disambiguation,
         run_entity_normalization=run_entity_normalization,
+        run_umls_connections=run_umls_connections,
         run_sanity_checks=run_sanity_checks,
         graph_loader_batch_size=graph_loader_batch_size,
         graph_loader_min_text_chars_to_embed=graph_loader_min_text_chars_to_embed,
@@ -645,6 +712,36 @@ def make_graph_pipeline_config(
         entity_normalization_min_available_memory_gb=(
             entity_normalization_min_available_memory_gb
         ),
+        umls_connections_doc_id=umls_connections_doc_id,
+        umls_connections_source_vocab=umls_connections_source_vocab,
+        umls_connections_output_dir=(
+            umls_connections_output_dir.resolve()
+            if umls_connections_output_dir else None
+        ),
+        umls_connections_cache_dir=(
+            umls_connections_cache_dir.resolve()
+            if umls_connections_cache_dir else None
+        ),
+        umls_connections_write_neo4j=umls_connections_write_neo4j,
+        umls_connections_umls_version=umls_connections_umls_version,
+        umls_connections_api_timeout=umls_connections_api_timeout,
+        umls_connections_api_rate_limit_per_second=(
+            umls_connections_api_rate_limit_per_second
+        ),
+        umls_connections_api_page_size=umls_connections_api_page_size,
+        umls_connections_max_cuis=umls_connections_max_cuis,
+        umls_connections_skip_cuis=umls_connections_skip_cuis,
+        umls_connections_max_relations_per_cui=(
+            umls_connections_max_relations_per_cui
+        ),
+        umls_connections_max_source_ui_lookups_per_cui=(
+            umls_connections_max_source_ui_lookups_per_cui
+        ),
+        umls_connections_write_partial_every=umls_connections_write_partial_every,
+        umls_connections_include_relation_names=umls_connections_include_relation_names,
+        umls_connections_exclude_relation_names=umls_connections_exclude_relation_names,
+        umls_connections_strong_relations_only=umls_connections_strong_relations_only,
+        umls_connections_ignore_negative_cache=umls_connections_ignore_negative_cache,
         sanity_mode=sanity_mode,
         sanity_sample_limit=sanity_sample_limit,
         sanity_log_samples=sanity_log_samples,
@@ -765,6 +862,7 @@ def main(
     clear_chat_cache_before_embeddings: bool = True,
     disambiguation_delete_orphans: bool = True,
     run_entity_normalization: bool = False,
+    run_umls_connections: bool = False,
     entity_normalization_doc_id: Optional[str] = None,
     entity_normalization_backend: str = "umls_api",
     entity_normalization_model_name: str = "en_core_sci_sm",
@@ -783,6 +881,24 @@ def main(
     entity_normalization_api_rate_limit_per_second: float = 5.0,
     entity_normalization_local_files_only: bool = False,
     entity_normalization_min_available_memory_gb: float = 8.0,
+    umls_connections_doc_id: Optional[str] = None,
+    umls_connections_source_vocab: str = "SNOMEDCT_US",
+    umls_connections_output_dir: Optional[Path] = None,
+    umls_connections_cache_dir: Optional[Path] = None,
+    umls_connections_write_neo4j: bool = False,
+    umls_connections_umls_version: str = "current",
+    umls_connections_api_timeout: float = 30.0,
+    umls_connections_api_rate_limit_per_second: float = 5.0,
+    umls_connections_api_page_size: int = 200,
+    umls_connections_max_cuis: Optional[int] = None,
+    umls_connections_skip_cuis: Optional[list[str]] = None,
+    umls_connections_max_relations_per_cui: int = 500,
+    umls_connections_max_source_ui_lookups_per_cui: int = 100,
+    umls_connections_write_partial_every: int = 25,
+    umls_connections_include_relation_names: Optional[list[str]] = None,
+    umls_connections_exclude_relation_names: Optional[list[str]] = None,
+    umls_connections_strong_relations_only: bool = True,
+    umls_connections_ignore_negative_cache: bool = False,
     sanity_mode: Optional[str] = "full",
     sanity_sample_limit: int = 10,
     sanity_log_samples: bool = True,
@@ -871,6 +987,7 @@ def main(
         run_embeddings=run_embeddings,
         run_entity_disambiguation=run_entity_disambiguation,
         run_entity_normalization=run_entity_normalization,
+        run_umls_connections=run_umls_connections,
         run_sanity_checks=run_sanity_checks,
         graph_loader_batch_size=graph_loader_batch_size,
         graph_loader_min_text_chars_to_embed=graph_loader_min_text_chars_to_embed,
@@ -932,6 +1049,30 @@ def main(
         entity_normalization_min_available_memory_gb=(
             entity_normalization_min_available_memory_gb
         ),
+        umls_connections_doc_id=umls_connections_doc_id,
+        umls_connections_source_vocab=umls_connections_source_vocab,
+        umls_connections_output_dir=umls_connections_output_dir,
+        umls_connections_cache_dir=umls_connections_cache_dir,
+        umls_connections_write_neo4j=umls_connections_write_neo4j,
+        umls_connections_umls_version=umls_connections_umls_version,
+        umls_connections_api_timeout=umls_connections_api_timeout,
+        umls_connections_api_rate_limit_per_second=(
+            umls_connections_api_rate_limit_per_second
+        ),
+        umls_connections_api_page_size=umls_connections_api_page_size,
+        umls_connections_max_cuis=umls_connections_max_cuis,
+        umls_connections_skip_cuis=umls_connections_skip_cuis,
+        umls_connections_max_relations_per_cui=(
+            umls_connections_max_relations_per_cui
+        ),
+        umls_connections_max_source_ui_lookups_per_cui=(
+            umls_connections_max_source_ui_lookups_per_cui
+        ),
+        umls_connections_write_partial_every=umls_connections_write_partial_every,
+        umls_connections_include_relation_names=umls_connections_include_relation_names,
+        umls_connections_exclude_relation_names=umls_connections_exclude_relation_names,
+        umls_connections_strong_relations_only=umls_connections_strong_relations_only,
+        umls_connections_ignore_negative_cache=umls_connections_ignore_negative_cache,
         sanity_mode=sanity_mode,
         sanity_sample_limit=sanity_sample_limit,
         sanity_log_samples=sanity_log_samples,
@@ -948,6 +1089,8 @@ def main(
         logger.info("Disambiguation stats: %s", summary["disambiguation_stats"])
     if summary.get("normalization_stats") is not None:
         logger.info("UMLS normalization stats: %s", summary["normalization_stats"])
+    if summary.get("umls_connection_stats") is not None:
+        logger.info("UMLS connection stats: %s", summary["umls_connection_stats"])
     if summary.get("section_vector_index_stats") is not None:
         logger.info(
             "Section vector index stats: %s",
@@ -980,6 +1123,7 @@ def resolve_phase_kwargs(
     *,
     sanity_mode: Optional[str],
     run_entity_normalization: bool,
+    run_umls_connections: bool,
     clear_neo4j_before_run: bool,
     run_acronym_extraction: bool,
 ) -> dict[str, Any]:
@@ -993,6 +1137,7 @@ def resolve_phase_kwargs(
         "run_embeddings": False,
         "run_entity_disambiguation": False,
         "run_entity_normalization": False,
+        "run_umls_connections": False,
         "run_sanity_checks": True,
         "sanity_mode": sanity_mode,
     }
@@ -1017,6 +1162,10 @@ def resolve_phase_kwargs(
         },
         "normalization": {
             "run_entity_normalization": True,
+            "run_umls_connections": run_umls_connections,
+        },
+        "umls_connections": {
+            "run_umls_connections": True,
         },
         "full": {
             "clear_neo4j_before_run": clear_neo4j_before_run,
@@ -1027,6 +1176,7 @@ def resolve_phase_kwargs(
             "run_embeddings": True,
             "run_entity_disambiguation": True,
             "run_entity_normalization": run_entity_normalization,
+            "run_umls_connections": run_umls_connections,
         },
     }
 
@@ -1034,7 +1184,7 @@ def resolve_phase_kwargs(
         raise ValueError(
             f"Unsupported PIPELINE_PHASE='{phase}'. "
             "Use one of: 'preprocess', 'graph', 'entities', 'embeddings', "
-            "'normalization', 'full'."
+            "'normalization', 'umls_connections', 'full'."
         )
 
     return {**base, **overrides[phase]}
@@ -1136,6 +1286,113 @@ def _resolve_normalization_kwargs(
     }
 
 
+def _resolve_umls_connection_kwargs(
+    kg_config: dict,
+    *,
+    work_root: Path,
+    project_root: Path,
+) -> dict[str, Any]:
+    config = kg_config.get("umls_connections", {})
+
+    output_dir = _get_optional_env("KG_UMLS_CONNECTIONS_OUTPUT_DIR") or config.get(
+        "output_dir"
+    )
+    cache_dir = _get_optional_env("KG_UMLS_CONNECTIONS_CACHE_DIR") or config.get(
+        "cache_dir"
+    )
+
+    return {
+        "umls_connections_doc_id": _get_env_or_config_str(
+            "KG_UMLS_CONNECTIONS_DOC_ID",
+            config.get("doc_id"),
+        ),
+        "umls_connections_source_vocab": _get_env_or_config_str(
+            "KG_UMLS_CONNECTIONS_SOURCE_VOCAB",
+            config.get("source_vocab"),
+            "SNOMEDCT_US",
+        ) or "SNOMEDCT_US",
+        "umls_connections_output_dir": _resolve_optional_project_path(
+            output_dir,
+            work_root / "umls_connections",
+            project_root,
+        ) or (work_root / "umls_connections").resolve(),
+        "umls_connections_cache_dir": _resolve_optional_project_path(
+            cache_dir,
+            work_root / "umls_api_cache" / "relations",
+            project_root,
+        ) or (work_root / "umls_api_cache" / "relations").resolve(),
+        "umls_connections_write_neo4j": _get_env_or_config_bool(
+            "KG_UMLS_CONNECTIONS_WRITE_NEO4J",
+            config.get("write_neo4j"),
+            False,
+        ),
+        "umls_connections_umls_version": _get_env_or_config_str(
+            "KG_UMLS_CONNECTIONS_UMLS_VERSION",
+            config.get("umls_version"),
+            "current",
+        ) or "current",
+        "umls_connections_api_timeout": _get_env_or_config_float(
+            "KG_UMLS_CONNECTIONS_API_TIMEOUT",
+            config.get("api_timeout"),
+            30.0,
+        ),
+        "umls_connections_api_rate_limit_per_second": _get_env_or_config_float(
+            "KG_UMLS_CONNECTIONS_API_RATE_LIMIT_PER_SECOND",
+            config.get("api_rate_limit_per_second"),
+            5.0,
+        ),
+        "umls_connections_api_page_size": _get_env_or_config_int(
+            "KG_UMLS_CONNECTIONS_API_PAGE_SIZE",
+            config.get("api_page_size"),
+            200,
+        ),
+        "umls_connections_max_cuis": _get_env_or_config_optional_int(
+            "KG_UMLS_CONNECTIONS_MAX_CUIS",
+            config.get("max_cuis"),
+        ),
+        "umls_connections_skip_cuis": _get_env_or_config_string_list(
+            "KG_UMLS_CONNECTIONS_SKIP_CUIS",
+            config.get("skip_cuis"),
+            [],
+        ),
+        "umls_connections_max_relations_per_cui": _get_env_or_config_int(
+            "KG_UMLS_CONNECTIONS_MAX_RELATIONS_PER_CUI",
+            config.get("max_relations_per_cui"),
+            500,
+        ),
+        "umls_connections_max_source_ui_lookups_per_cui": _get_env_or_config_int(
+            "KG_UMLS_CONNECTIONS_MAX_SOURCE_UI_LOOKUPS_PER_CUI",
+            config.get("max_source_ui_lookups_per_cui"),
+            100,
+        ),
+        "umls_connections_write_partial_every": _get_env_or_config_int(
+            "KG_UMLS_CONNECTIONS_WRITE_PARTIAL_EVERY",
+            config.get("write_partial_every"),
+            25,
+        ),
+        "umls_connections_include_relation_names": _get_env_or_config_string_list(
+            "KG_UMLS_CONNECTIONS_INCLUDE_RELATION_NAMES",
+            config.get("include_relation_names"),
+            [],
+        ),
+        "umls_connections_exclude_relation_names": _get_env_or_config_string_list(
+            "KG_UMLS_CONNECTIONS_EXCLUDE_RELATION_NAMES",
+            config.get("exclude_relation_names"),
+            [],
+        ),
+        "umls_connections_strong_relations_only": _get_env_or_config_bool(
+            "KG_UMLS_CONNECTIONS_STRONG_RELATIONS_ONLY",
+            config.get("strong_relations_only"),
+            True,
+        ),
+        "umls_connections_ignore_negative_cache": _get_env_or_config_bool(
+            "KG_UMLS_CONNECTIONS_IGNORE_NEGATIVE_CACHE",
+            config.get("ignore_negative_cache"),
+            False,
+        ),
+    }
+
+
 def run_cli() -> Any:
     project_root = Path(__file__).resolve().parent.parent
     env_path = project_root / ".env"
@@ -1153,6 +1410,7 @@ def run_cli() -> Any:
     section_vector_index_config = kg_config.get("section_vector_index", {})
     acronym_config = kg_config.get("acronyms", {})
     disambiguation_config = kg_config.get("entity_disambiguation", {})
+    umls_connection_config = kg_config.get("umls_connections", {})
     runtime_config = kg_config.get("runtime", {})
     sanity_config = kg_config.get("sanity_checks", {})
 
@@ -1428,10 +1686,20 @@ def run_cli() -> Any:
         work_root=work_root,
         project_root=project_root,
     )
+    umls_connection_kwargs = _resolve_umls_connection_kwargs(
+        kg_config,
+        work_root=work_root,
+        project_root=project_root,
+    )
 
     run_entity_normalization = _get_env_or_config_bool(
         "KG_RUN_ENTITY_NORMALIZATION",
         _get_config_value(kg_config, "entity_normalization", "enabled"),
+        False,
+    )
+    run_umls_connections = _get_env_or_config_bool(
+        "KG_RUN_UMLS_CONNECTIONS",
+        umls_connection_config.get("enabled"),
         False,
     )
     acronyms_enabled = _get_env_or_config_bool(
@@ -1447,6 +1715,7 @@ def run_cli() -> Any:
         phase,
         sanity_mode=sanity_mode,
         run_entity_normalization=run_entity_normalization,
+        run_umls_connections=run_umls_connections,
         clear_neo4j_before_run=clear_neo4j,
         run_acronym_extraction=acronyms_enabled,
     )
@@ -1472,6 +1741,7 @@ def run_cli() -> Any:
         **acronym_kwargs,
         **entity_review_kwargs,
         **normalization_kwargs,
+        **umls_connection_kwargs,
         **phase_kwargs,
     )
 

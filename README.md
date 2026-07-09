@@ -43,8 +43,13 @@ with the Neo4j target you want, then run the graph pipeline directly:
 cd data-etl
 KG_PIPELINE_PHASE=graph ../.venv/bin/python src/main_graph.py
 KG_PIPELINE_PHASE=entities ../.venv/bin/python src/main_graph.py
+KG_PIPELINE_PHASE=umls_connections ../.venv/bin/python src/main_graph.py
 ../.venv/bin/python -m knowledge_graph.visualize_entities
 ```
+
+The `umls_connections` phase is read-only by default. Set
+`KG_UMLS_CONNECTIONS_WRITE_NEO4J=true` only when you want to materialize
+whitelisted collapsed UMLS/SNOMED candidate relationships in Neo4j.
 
 For Neo4j Aura, set `NEO4J_URI=neo4j+s://...`, `NEO4J_USERNAME`, and
 `NEO4J_PASSWORD` in `.env`. For a local Neo4j server, set
@@ -57,5 +62,4 @@ Singularity container on the compute node. This is the expected mode on the
 cluster because compute nodes do not have internet access. Use
 `KG_NEO4J_MODE=external` only when the cluster/network environment is explicitly
 allowed to reach an external Neo4j instance such as Aura.
-
 

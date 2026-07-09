@@ -84,7 +84,7 @@ case "$KG_PIPELINE_PHASE" in
   preprocess)
     NEEDS_NEO4J=false
     ;;
-  graph|entities|embeddings|full)
+  graph|entities|embeddings|normalization|umls_connections|full)
     NEEDS_NEO4J=true
     ;;
   *)

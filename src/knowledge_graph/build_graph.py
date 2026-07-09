@@ -12,6 +12,7 @@ Main responsibilities:
 - optionally run global concept disambiguation
 - optionally normalize Concept nodes against UMLS/scispaCy and record
   duplicate candidates
+- optionally discover and materialize collapsed UMLS/SNOMED Concept relations
 - optionally run sanity checks, using the phase-aware sanity_mode provided
   by the pipeline config (for example: structure, entities, embeddings, full)
 
@@ -163,6 +164,7 @@ def requires_neo4j(config) -> bool:
         getattr(config, "run_embeddings", False),
         getattr(config, "run_entity_disambiguation", False),
         getattr(config, "run_entity_normalization", False),
+        getattr(config, "run_umls_connections", False),
         getattr(config, "run_sanity_checks", False),
     ])
 
@@ -753,6 +755,76 @@ def process_entity_normalization(
     )
 
 
+def process_umls_connections(
+    driver,
+    config,
+) -> Dict[str, Any]:
+    """
+    Run optional UMLS/SNOMED relation discovery and materialization.
+
+    The underlying module remains read-only by default. Neo4j relationship
+    writes happen only when config.umls_connections_write_neo4j is true.
+    """
+    from knowledge_graph.umls_connections import run_umls_connections
+
+    write_neo4j = bool(getattr(config, "umls_connections_write_neo4j", False))
+    configured_output_dir = getattr(config, "umls_connections_output_dir", None)
+    configured_cache_dir = getattr(config, "umls_connections_cache_dir", None)
+    output_dir = (
+        Path(configured_output_dir)
+        if configured_output_dir is not None
+        else Path(config.chunk_dir).parent / "umls_connections"
+    )
+    cache_dir = (
+        Path(configured_cache_dir)
+        if configured_cache_dir is not None
+        else Path(config.chunk_dir).parent / "umls_api_cache" / "relations"
+    )
+
+    return run_umls_connections(
+        driver=driver,
+        doc_id=getattr(config, "umls_connections_doc_id", None),
+        source_vocab=getattr(config, "umls_connections_source_vocab", "SNOMEDCT_US"),
+        output_dir=output_dir,
+        cache_dir=cache_dir,
+        dry_run=not write_neo4j,
+        write_neo4j=write_neo4j,
+        api_timeout=float(getattr(config, "umls_connections_api_timeout", 30.0)),
+        api_rate_limit_per_second=float(
+            getattr(config, "umls_connections_api_rate_limit_per_second", 5.0)
+        ),
+        umls_version=getattr(config, "umls_connections_umls_version", "current"),
+        api_page_size=int(getattr(config, "umls_connections_api_page_size", 200)),
+        max_cuis=getattr(config, "umls_connections_max_cuis", None),
+        skip_cuis=getattr(config, "umls_connections_skip_cuis", None),
+        max_relations_per_cui=int(
+            getattr(config, "umls_connections_max_relations_per_cui", 500)
+        ),
+        max_source_ui_lookups_per_cui=int(
+            getattr(config, "umls_connections_max_source_ui_lookups_per_cui", 100)
+        ),
+        write_partial_every=int(
+            getattr(config, "umls_connections_write_partial_every", 25)
+        ),
+        include_relation_names=getattr(
+            config,
+            "umls_connections_include_relation_names",
+            None,
+        ),
+        exclude_relation_names=getattr(
+            config,
+            "umls_connections_exclude_relation_names",
+            None,
+        ),
+        strong_relations_only=bool(
+            getattr(config, "umls_connections_strong_relations_only", True)
+        ),
+        ignore_negative_cache=bool(
+            getattr(config, "umls_connections_ignore_negative_cache", False)
+        ),
+    )
+
+
 def process_document_graph_and_enrichment(
     driver,
     config,
@@ -942,7 +1014,8 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     6. optionally create or validate the Section vector index
     7. run global concept disambiguation
     8. optionally run UMLS normalization
-    9. run sanity checks
+    9. optionally discover/materialize UMLS/SNOMED Concept connections
+    10. run sanity checks
     """
     ensure_pipeline_dirs(config)
 
@@ -964,6 +1037,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
     document_results: List[Dict[str, Any]] = []
     disambiguation_stats = None
     normalization_stats = None
+    umls_connection_stats = None
     section_vector_index_stats = None
     sanity_summary = None
 
@@ -1189,6 +1263,13 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                 config=config,
             )
 
+        if need_neo4j and getattr(config, "run_umls_connections", False):
+            logger.info("Running optional UMLS/SNOMED connection discovery")
+            umls_connection_stats = process_umls_connections(
+                driver=driver,
+                config=config,
+            )
+
         if need_neo4j and getattr(config, "run_sanity_checks", False):
             sanity_mode = getattr(config, "sanity_mode", "full")
             logger.info(
@@ -1211,6 +1292,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
         "document_results": document_results,
         "disambiguation_stats": disambiguation_stats,
         "normalization_stats": normalization_stats,
+        "umls_connection_stats": umls_connection_stats,
         "section_vector_index_stats": section_vector_index_stats,
         "sanity_summary": sanity_summary,
     }
