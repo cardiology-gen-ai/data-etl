@@ -60,6 +60,10 @@ STRONG_RELATION_NAMES = {
     "finding_site_of",
     "has_associated_morphology",
     "associated_morphology_of",
+    "has_procedure_site",
+    "has_direct_procedure_site",
+    "procedure_site_of",
+    "direct_procedure_site_of",
 }
 
 CONNECTION_STATUS = "candidate"
@@ -82,6 +86,22 @@ CSV_COLUMNS = [
     "source_vocabulary",
     "relation_raw_id",
     "connection_status",
+    "source_umls_canonical_name",
+    "source_umls_semantic_types",
+    "source_umls_score",
+    "source_observed_types",
+    "source_type_support_pairs",
+    "source_type_resolution_status",
+    "target_umls_canonical_name",
+    "target_umls_semantic_types",
+    "target_umls_score",
+    "target_observed_types",
+    "target_type_support_pairs",
+    "target_type_resolution_status",
+    "relation_raw_related_id",
+    "relation_raw_related_id_name",
+    "relation_raw_related_from_id",
+    "relation_raw_related_from_id_name",
 ]
 
 EQUIVALENCE_RELATION_LABELS = {
@@ -107,6 +127,13 @@ class LocalConcept:
     name: str
     canonical_type: str
     umls_cui: str
+    umls_canonical_name: str
+    umls_semantic_types: tuple[str, ...]
+    umls_score: Optional[float]
+    observed_types: tuple[str, ...]
+    type_support_pairs: tuple[str, ...]
+    type_resolution_status: str
+    needs_type_review: bool
 
 
 @dataclass(frozen=True)
@@ -126,6 +153,44 @@ class RelationFetchResult:
 
 def clean_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def normalize_string_tuple(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+
+    if isinstance(value, (list, tuple, set)):
+        return tuple(
+            clean_text(item)
+            for item in value
+            if clean_text(item)
+        )
+
+    text = clean_text(value)
+    return (text,) if text else ()
+
+
+def serialize_string_tuple(value: Sequence[str]) -> str:
+    return "; ".join(clean_text(item) for item in value if clean_text(item))
+
+
+def normalize_optional_float(value: Any) -> Optional[float]:
+    if value is None or value == "":
+        return None
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_raw_relation_value(record: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = record.get(key)
+        text = clean_text(value)
+        if text:
+            return text
+    return ""
 
 
 def normalize_cui(value: Any) -> str:
@@ -245,7 +310,14 @@ def fetch_local_concepts_for_doc(tx, doc_id: Optional[str]) -> list[LocalConcept
             elementId(c) AS concept_id,
             c.name AS name,
             coalesce(c.canonical_type, '') AS canonical_type,
-            c.umls_cui AS umls_cui
+            c.umls_cui AS umls_cui,
+            c.umls_canonical_name AS umls_canonical_name,
+            c.umls_semantic_types AS umls_semantic_types,
+            c.umls_score AS umls_score,
+            c.observed_types AS observed_types,
+            c.type_support_pairs AS type_support_pairs,
+            c.type_resolution_status AS type_resolution_status,
+            coalesce(c.needs_type_review, false) AS needs_type_review
         ORDER BY c.name, concept_id
         """,
         doc_id=doc_id,
@@ -263,6 +335,13 @@ def fetch_local_concepts_for_doc(tx, doc_id: Optional[str]) -> list[LocalConcept
                 name=clean_text(row["name"]),
                 canonical_type=clean_text(row["canonical_type"]),
                 umls_cui=cui,
+                umls_canonical_name=clean_text(row["umls_canonical_name"]),
+                umls_semantic_types=normalize_string_tuple(row["umls_semantic_types"]),
+                umls_score=normalize_optional_float(row["umls_score"]),
+                observed_types=normalize_string_tuple(row["observed_types"]),
+                type_support_pairs=normalize_string_tuple(row["type_support_pairs"]),
+                type_resolution_status=clean_text(row["type_resolution_status"]),
+                needs_type_review=bool(row["needs_type_review"]),
             )
         )
 
@@ -863,6 +942,7 @@ def build_candidate_edges(
                     "cui": source_cui,
                     "local_concepts": local_concept_count,
                     "relation_records_fetched": 0,
+                    "relation_records_processed": 0,
                     "source_ui_lookups_attempted": 0,
                     "source_ui_lookups_skipped": 0,
                     "candidate_edges_retained": len(deduplicate_edges(edges)),
@@ -986,6 +1066,28 @@ def build_candidate_edges(
 
             relation_ui = clean_text(record.get("ui") or record.get("relationUi"))
             raw_id = relation_record_id(record)
+            relation_raw_related_id = get_raw_relation_value(
+                record,
+                "relatedId",
+                "relatedID",
+            )
+            relation_raw_related_id_name = get_raw_relation_value(
+                record,
+                "relatedIdName",
+                "relatedIDName",
+                "relatedName",
+            )
+            relation_raw_related_from_id = get_raw_relation_value(
+                record,
+                "relatedFromId",
+                "relatedFromID",
+            )
+            relation_raw_related_from_id_name = get_raw_relation_value(
+                record,
+                "relatedFromIdName",
+                "relatedFromIDName",
+                "relatedFromName",
+            )
 
             for target_cui in sorted(set(related_cuis)):
                 target_cui = normalize_cui(target_cui)
@@ -1016,6 +1118,24 @@ def build_candidate_edges(
                                 "source_vocabulary": source_vocab,
                                 "relation_raw_id": raw_id,
                                 "connection_status": CONNECTION_STATUS,
+                                "source_umls_canonical_name": source_concept.umls_canonical_name,
+                                "source_umls_semantic_types": serialize_string_tuple(source_concept.umls_semantic_types),
+                                "source_umls_score": source_concept.umls_score,
+                                "source_observed_types": serialize_string_tuple(source_concept.observed_types),
+                                "source_type_support_pairs": serialize_string_tuple(source_concept.type_support_pairs),
+                                "source_type_resolution_status": source_concept.type_resolution_status,
+                                "source_needs_type_review": source_concept.needs_type_review,
+                                "target_umls_canonical_name": target_concept.umls_canonical_name,
+                                "target_umls_semantic_types": serialize_string_tuple(target_concept.umls_semantic_types),
+                                "target_umls_score": target_concept.umls_score,
+                                "target_observed_types": serialize_string_tuple(target_concept.observed_types),
+                                "target_type_support_pairs": serialize_string_tuple(target_concept.type_support_pairs),
+                                "target_type_resolution_status": target_concept.type_resolution_status,
+                                "target_needs_type_review": target_concept.needs_type_review,
+                                "relation_raw_related_id": relation_raw_related_id,
+                                "relation_raw_related_id_name": relation_raw_related_id_name,
+                                "relation_raw_related_from_id": relation_raw_related_from_id,
+                                "relation_raw_related_from_id_name": relation_raw_related_from_id_name,
                             }
                         )
 
@@ -1278,6 +1398,25 @@ def build_summary_markdown(
     collapsed_connection_rows = build_collapsed_connection_rows(edges)
     collapsed_connection_count = len(collapsed_connection_rows)
     duplicate_raw_rows_collapsed = max(0, len(edges) - collapsed_connection_count)
+    cross_type_isa_edges = sum(
+        1
+        for edge in edges
+        if normalize_relation_term(edge.get("umls_additional_relation_label"))
+        in {"isa", "inverse_isa"}
+        and clean_text(edge.get("source_type")) != clean_text(edge.get("target_type"))
+    )
+    missing_umls_semantic_type_edges = sum(
+        1
+        for edge in edges
+        if not clean_text(edge.get("source_umls_semantic_types"))
+        or not clean_text(edge.get("target_umls_semantic_types"))
+    )
+    needs_type_review_edges = sum(
+        1
+        for edge in edges
+        if bool(edge.get("source_needs_type_review"))
+        or bool(edge.get("target_needs_type_review"))
+    )
 
     lines = [
         "# UMLS Connections Summary",
@@ -1308,6 +1447,12 @@ def build_summary_markdown(
         f"- same-CUI/equivalence relations skipped: {stats.get('same_cui_relations_skipped', 0) + stats.get('equivalence_relations_skipped', 0)}",
         f"- sourceUi target lookups attempted: {stats.get('source_ui_lookups_attempted', 0)}",
         f"- sourceUi target lookups skipped by per-CUI limit: {stats.get('source_ui_lookups_skipped_by_limit', 0)}",
+        "",
+        "## Review Notes",
+        "",
+        f"- retained candidate edges with cross-local-type isa/inverse_isa: {cross_type_isa_edges}",
+        f"- retained candidate edges missing source or target UMLS semantic types: {missing_umls_semantic_type_edges}",
+        f"- retained candidate edges with source or target needs_type_review=true: {needs_type_review_edges}",
         "",
         "## Safety Controls",
         "",
