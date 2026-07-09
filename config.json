@@ -65,7 +65,7 @@
         "embedding_model": "text-embedding-3-small",
         "embedding_dimensions": null,
         "embedding_model_path": "",
-        "chat_max_new_tokens": 1024
+        "chat_max_new_tokens": 2048
       },
       "acronyms": {
         "enabled": true,
