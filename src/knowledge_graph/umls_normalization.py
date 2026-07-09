@@ -1409,8 +1409,10 @@ def create_same_as_edge(
 ) -> None:
     tx.run(
         """
-        MATCH (a:Concept), (b:Concept)
-        WHERE elementId(a) = $source_id AND elementId(b) = $target_id
+        MATCH (a:Concept)
+        WHERE elementId(a) = $source_id
+        MATCH (b:Concept)
+        WHERE elementId(b) = $target_id
         MERGE (a)-[r:SAME_AS]->(b)
         ON CREATE SET r.created_at = datetime($normalized_at)
         SET r.method = $method,
@@ -1434,8 +1436,10 @@ def create_possibly_same_as_edge(
 ) -> None:
     tx.run(
         """
-        MATCH (a:Concept), (b:Concept)
-        WHERE elementId(a) = $source_id AND elementId(b) = $target_id
+        MATCH (a:Concept)
+        WHERE elementId(a) = $source_id
+        MATCH (b:Concept)
+        WHERE elementId(b) = $target_id
         MERGE (a)-[r:POSSIBLY_SAME_AS]->(b)
         ON CREATE SET r.created_at = datetime($normalized_at)
         SET r.method = $method,
@@ -1598,6 +1602,8 @@ def create_duplicate_evidence(
     fuzzy_threshold: int,
     normalized_at: str,
     dry_run: bool,
+    create_same_as_edges: bool = True,
+    create_fuzzy_candidate_edges: bool = False,
 ) -> Dict[str, int]:
     same_as_pairs = compute_same_cui_pairs(concepts)
     same_as_keys = {edge_key(left, right) for left, right in same_as_pairs}
@@ -1643,7 +1649,7 @@ def create_duplicate_evidence(
             status="candidate",
         )
 
-    if dry_run:
+    if dry_run or (not create_same_as_edges and not create_fuzzy_candidate_edges):
         return {
             "same_as_edges_created": 0,
             "possibly_same_as_edges_created": 0,
@@ -1653,26 +1659,28 @@ def create_duplicate_evidence(
     possibly_same_as_edges_created = 0
 
     with driver.session() as session:
-        for left, right in same_as_pairs:
-            source, target = ordered_edge_pair(left, right)
-            session.execute_write(
-                create_same_as_edge,
-                source.concept_id,
-                target.concept_id,
-                normalized_at,
-            )
-            same_as_edges_created += 1
+        if create_same_as_edges:
+            for left, right in same_as_pairs:
+                source, target = ordered_edge_pair(left, right)
+                session.execute_write(
+                    create_same_as_edge,
+                    source.concept_id,
+                    target.concept_id,
+                    normalized_at,
+                )
+                same_as_edges_created += 1
 
-        for left, right, score in fuzzy_pairs:
-            source, target = ordered_edge_pair(left, right)
-            session.execute_write(
-                create_possibly_same_as_edge,
-                source.concept_id,
-                target.concept_id,
-                score,
-                normalized_at,
-            )
-            possibly_same_as_edges_created += 1
+        if create_fuzzy_candidate_edges:
+            for left, right, score in fuzzy_pairs:
+                source, target = ordered_edge_pair(left, right)
+                session.execute_write(
+                    create_possibly_same_as_edge,
+                    source.concept_id,
+                    target.concept_id,
+                    score,
+                    normalized_at,
+                )
+                possibly_same_as_edges_created += 1
 
     return {
         "same_as_edges_created": same_as_edges_created,
@@ -1824,6 +1832,8 @@ def normalize_concepts_with_umls(
     api_cache_dir: Optional[Path] = None,
     api_timeout: float = DEFAULT_API_TIMEOUT,
     api_rate_limit_per_second: float = DEFAULT_API_RATE_LIMIT_PER_SECOND,
+    create_same_as_edges: bool = True,
+    create_fuzzy_candidate_edges: bool = False,
 ) -> Dict[str, int]:
     """
     Normalize existing Concept nodes with UMLS and add duplicate evidence.
@@ -1995,6 +2005,8 @@ def normalize_concepts_with_umls(
         fuzzy_threshold=fuzzy_threshold,
         normalized_at=normalized_at,
         dry_run=dry_run,
+        create_same_as_edges=create_same_as_edges,
+        create_fuzzy_candidate_edges=create_fuzzy_candidate_edges,
     )
     stats.update(duplicate_stats)
 
