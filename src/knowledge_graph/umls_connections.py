@@ -19,6 +19,7 @@ import re
 import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Sequence
 from urllib.parse import unquote, urlparse
@@ -53,6 +54,7 @@ DEFAULT_RELATION_PAGE_SIZE = 200
 DEFAULT_MAX_RELATIONS_PER_CUI = 500
 DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI = 100
 DEFAULT_WRITE_PARTIAL_EVERY = 25
+RELATIONS_404_NEGATIVE_CACHE_THRESHOLD = 3
 STRONG_RELATION_NAMES = {
     "isa",
     "inverse_isa",
@@ -147,10 +149,31 @@ class RelationFetchResult:
     skipped_by_limit: int = 0
     truncated_by_limit: bool = False
     page_count: Optional[int] = None
+    status: str = "processed"
+    http_status: Optional[int] = None
+    failure_count: int = 0
+    from_negative_cache: bool = False
+
+
+class UMLSAPIHTTPStatusError(UMLSAPIError):
+    def __init__(self, status_code: int) -> None:
+        self.status_code = int(status_code)
+        super().__init__(f"UMLS API request failed: HTTP {self.status_code}")
 
 
 def clean_text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def int_or_zero(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def normalize_string_tuple(value: Any) -> tuple[str, ...]:
@@ -360,6 +383,7 @@ class UMLSRelationsClient:
         rate_limit_per_second: float = DEFAULT_API_RATE_LIMIT_PER_SECOND,
         version: str = DEFAULT_UMLS_VERSION,
         page_size: int = DEFAULT_RELATION_PAGE_SIZE,
+        ignore_negative_cache: bool = False,
         session: Optional[Any] = None,
     ) -> None:
         ensure_requests_dependency_available()
@@ -378,6 +402,7 @@ class UMLSRelationsClient:
         self.rate_limit_per_second = max(float(rate_limit_per_second), 0.0)
         self.version = str(version or DEFAULT_UMLS_VERSION)
         self.page_size = int(page_size)
+        self.ignore_negative_cache = bool(ignore_negative_cache)
         self.session = session if session is not None else requests.Session()
         self._last_request_at = 0.0
         self._source_ui_cui_cache: dict[tuple[str, str], list[str]] = {}
@@ -387,6 +412,8 @@ class UMLSRelationsClient:
             "api_requests": 0,
             "api_retries": 0,
             "api_errors": 0,
+            "relation_negative_cache_hits": 0,
+            "relation_negative_cache_writes": 0,
         }
 
     def cache_path(self, namespace: str, payload: dict[str, Any]) -> Path:
@@ -396,6 +423,7 @@ class UMLSRelationsClient:
         self,
         namespace: str,
         payload: dict[str, Any],
+        count_hit: bool = True,
     ) -> Optional[dict[str, Any]]:
         path = self.cache_path(namespace, payload)
         if not path.exists():
@@ -406,7 +434,8 @@ class UMLSRelationsClient:
         except Exception:
             return None
 
-        self.stats["api_cache_hits"] += 1
+        if count_hit:
+            self.stats["api_cache_hits"] += 1
         return cached if isinstance(cached, dict) else None
 
     def write_cached_payload(
@@ -466,7 +495,7 @@ class UMLSRelationsClient:
                     self.stats["api_errors"] += 1
                 elif status_code >= 400:
                     self.stats["api_errors"] += 1
-                    raise UMLSAPIError(f"UMLS API request failed: HTTP {status_code}")
+                    raise UMLSAPIHTTPStatusError(status_code)
                 else:
                     try:
                         payload = response.json()
@@ -505,6 +534,122 @@ class UMLSRelationsClient:
             params["sabs"] = source_vocab
         return params
 
+    def relation_negative_cache_key(
+        self,
+        cui: str,
+        source_vocab: str,
+    ) -> dict[str, Any]:
+        return {
+            "endpoint": "relations",
+            "cui": normalize_cui(cui),
+            "source_vocab": clean_text(source_vocab),
+            "version": self.version,
+            "http_status": 404,
+        }
+
+    def relation_result_from_negative_cache(
+        self,
+        cached: dict[str, Any],
+        from_negative_cache: bool,
+    ) -> RelationFetchResult:
+        records = cached.get("records")
+        records = records if isinstance(records, list) else []
+        return RelationFetchResult(
+            records=records,
+            fetched_records=int_or_zero(cached.get("fetched_records")),
+            skipped_by_limit=int_or_zero(cached.get("skipped_by_limit")),
+            truncated_by_limit=bool(cached.get("truncated_by_limit")),
+            page_count=cached.get("page_count"),
+            status=clean_text(cached.get("status")) or "relations_unavailable",
+            http_status=int_or_zero(cached.get("http_status")) or None,
+            failure_count=int_or_zero(cached.get("failure_count")),
+            from_negative_cache=from_negative_cache,
+        )
+
+    def get_unavailable_relations_cache(
+        self,
+        cui: str,
+        source_vocab: str,
+        count_hit: bool = True,
+    ) -> Optional[dict[str, Any]]:
+        cached = self.get_cached_payload(
+            "relations_negative",
+            self.relation_negative_cache_key(cui, source_vocab),
+            count_hit=False,
+        )
+        if cached is None:
+            return None
+
+        if (
+            clean_text(cached.get("status")) == "relations_unavailable"
+            and int_or_zero(cached.get("http_status")) == 404
+        ):
+            if count_hit:
+                self.stats["api_cache_hits"] += 1
+                self.stats["relation_negative_cache_hits"] += 1
+            return cached
+
+        return None
+
+    def record_relations_404(
+        self,
+        cui: str,
+        source_vocab: str,
+    ) -> dict[str, Any]:
+        cache_key_payload = self.relation_negative_cache_key(cui, source_vocab)
+        previous = self.get_cached_payload(
+            "relations_negative",
+            cache_key_payload,
+            count_hit=False,
+        )
+        previous_failure_count = (
+            int_or_zero(previous.get("failure_count"))
+            if isinstance(previous, dict)
+            else 0
+        )
+        failure_count = previous_failure_count + 1
+        status = (
+            "relations_unavailable"
+            if failure_count >= RELATIONS_404_NEGATIVE_CACHE_THRESHOLD
+            else "relations_404_retryable"
+        )
+        negative_payload = {
+            "endpoint": "relations",
+            "status": status,
+            "cui": normalize_cui(cui),
+            "source_vocab": clean_text(source_vocab),
+            "version": self.version,
+            "http_status": 404,
+            "failure_count": failure_count,
+            "records": [],
+            "record_count": 0,
+            "fetched_records": 0,
+            "skipped_by_limit": 0,
+            "truncated_by_limit": False,
+            "last_attempted_at": utc_now_iso(),
+        }
+        self.write_cached_payload(
+            "relations_negative",
+            cache_key_payload,
+            negative_payload,
+        )
+        self.stats["relation_negative_cache_writes"] += 1
+        return negative_payload
+
+    def clear_relations_negative_cache(
+        self,
+        cui: str,
+        source_vocab: str,
+    ) -> None:
+        path = self.cache_path(
+            "relations_negative",
+            self.relation_negative_cache_key(cui, source_vocab),
+        )
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            return
+
     def get_relations(
         self,
         cui: str,
@@ -532,14 +677,27 @@ class UMLSRelationsClient:
             "include_suppressible": False,
         }
 
+        if not self.ignore_negative_cache:
+            unavailable_cache = self.get_unavailable_relations_cache(
+                cui=cui,
+                source_vocab=source_vocab,
+            )
+            if unavailable_cache is not None:
+                return self.relation_result_from_negative_cache(
+                    unavailable_cache,
+                    from_negative_cache=True,
+                )
+
         cached = self.get_cached_payload("relations", cache_payload)
         if cached is not None:
             records = cached.get("records")
             records = records if isinstance(records, list) else []
-            skipped_by_limit = int(cached.get("skipped_by_limit") or 0)
+            skipped_by_limit = int_or_zero(cached.get("skipped_by_limit"))
             return RelationFetchResult(
                 records=records,
-                fetched_records=int(cached.get("fetched_records") or len(records)),
+                fetched_records=(
+                    int_or_zero(cached.get("fetched_records")) or len(records)
+                ),
                 skipped_by_limit=skipped_by_limit,
                 truncated_by_limit=bool(cached.get("truncated_by_limit")),
                 page_count=cached.get("page_count"),
@@ -553,15 +711,36 @@ class UMLSRelationsClient:
         page_count: Optional[int] = None
 
         while True:
-            payload = self.request_uncached(
-                url=url,
-                params=self.relation_page_params(
+            try:
+                payload = self.request_uncached(
+                    url=url,
+                    params=self.relation_page_params(
+                        cui=cui,
+                        source_vocab=source_vocab,
+                        page_number=page_number,
+                        page_size=effective_page_size,
+                    ),
+                )
+            except UMLSAPIHTTPStatusError as e:
+                if e.status_code != 404:
+                    raise
+
+                negative_payload = self.record_relations_404(
                     cui=cui,
                     source_vocab=source_vocab,
-                    page_number=page_number,
-                    page_size=effective_page_size,
-                ),
-            )
+                )
+                if clean_text(negative_payload.get("status")) == "relations_unavailable":
+                    logger.info(
+                        "UMLS relations marked unavailable after repeated HTTP 404 | cui=%s | source_vocab=%s | failure_count=%d",
+                        cui,
+                        source_vocab or "ALL",
+                        int_or_zero(negative_payload.get("failure_count")),
+                    )
+                    return self.relation_result_from_negative_cache(
+                        negative_payload,
+                        from_negative_cache=False,
+                    )
+                raise
 
             records.extend(parse_relation_items(payload))
 
@@ -591,6 +770,7 @@ class UMLSRelationsClient:
             "truncated_by_limit": truncated_by_limit,
             "page_count": page_count,
         }
+        self.clear_relations_negative_cache(cui=cui, source_vocab=source_vocab)
         self.write_cached_payload("relations", cache_payload, response_payload)
         return RelationFetchResult(
             records=records,
@@ -802,6 +982,8 @@ def build_initial_relation_stats(
         "equivalence_relations_skipped": 0,
         "unresolved_target_relations_skipped": 0,
         "relation_fetch_failures": 0,
+        "relation_fetches_unavailable": 0,
+        "relation_fetches_skipped_by_negative_cache": 0,
         "source_vocab_mismatch_relations_skipped": 0,
         "source_ui_lookups_attempted": 0,
         "source_ui_lookups_skipped_by_limit": 0,
@@ -908,6 +1090,7 @@ def build_candidate_edges(
         exclude_relation_names=resolved_exclude_names,
         strong_relations_only=strong_relations_only,
     )
+    stats["ignore_negative_cache"] = bool(getattr(client, "ignore_negative_cache", False))
 
     total_cuis = len(source_cuis)
     logger.info(
@@ -993,6 +1176,21 @@ def build_candidate_edges(
 
         relation_records = relation_result.records
         relation_records_fetched = relation_result.fetched_records
+        relation_status = "processed"
+        if relation_result.status == "relations_unavailable":
+            if relation_result.from_negative_cache:
+                stats["relation_fetches_skipped_by_negative_cache"] += 1
+                relation_status = "negative_cache_skipped"
+                logger.info(
+                    "Skipping UMLS relations fetch from negative cache | cui=%s | source_vocab=%s | failure_count=%d",
+                    source_cui,
+                    source_vocab or "ALL",
+                    relation_result.failure_count,
+                )
+            else:
+                stats["relation_fetches_unavailable"] += 1
+                relation_status = "relations_unavailable"
+
         stats["umls_relation_records_fetched"] += relation_records_fetched
         stats["umls_relation_records_processed"] += len(relation_records)
         stats["relation_records_skipped_by_limit"] += relation_result.skipped_by_limit
@@ -1160,7 +1358,7 @@ def build_candidate_edges(
                 "source_ui_lookups_attempted": per_source_ui_lookups_attempted,
                 "source_ui_lookups_skipped": per_source_ui_lookups_skipped,
                 "candidate_edges_retained": len(deduped_so_far),
-                "status": "processed",
+                "status": relation_status,
             }
         )
         log_cui_progress(
@@ -1439,7 +1637,9 @@ def build_summary_markdown(
         f"- raw candidate edge rows: {len(edges)}",
         f"- collapsed candidate connections: {collapsed_connection_count}",
         f"- duplicate raw rows collapsed: {duplicate_raw_rows_collapsed}",
-        f"- relation fetch failures: {stats.get('relation_fetch_failures', 0)}",
+        f"- real relation fetch failures: {stats.get('relation_fetch_failures', 0)}",
+        f"- relation fetches unavailable after repeated 404: {stats.get('relation_fetches_unavailable', 0)}",
+        f"- relation fetches skipped by negative cache: {stats.get('relation_fetches_skipped_by_negative_cache', 0)}",
         f"- unresolved target relations skipped: {stats.get('unresolved_target_relations_skipped', 0)}",
         f"- external target relations skipped: {stats.get('external_target_relations_skipped', 0)}",
         f"- same-CUI/equivalence relations skipped: {stats.get('same_cui_relations_skipped', 0) + stats.get('equivalence_relations_skipped', 0)}",
@@ -1459,6 +1659,7 @@ def build_summary_markdown(
         f"- max_source_ui_lookups_per_cui: {stats.get('max_source_ui_lookups_per_cui')}",
         f"- write_partial_every: {stats.get('write_partial_every')}",
         f"- strong_relations_only: `{str(bool(stats.get('strong_relations_only'))).lower()}`",
+        f"- ignore_negative_cache: `{str(bool(stats.get('ignore_negative_cache'))).lower()}`",
         f"- included relation names: `{', '.join(stats.get('include_relation_names') or []) or '(none)'}`",
         f"- excluded relation names: `{', '.join(stats.get('exclude_relation_names') or []) or '(none)'}`",
         "",
@@ -1475,6 +1676,8 @@ def build_summary_markdown(
         f"- API requests: {client_stats.get('api_requests', 0)}",
         f"- API retries: {client_stats.get('api_retries', 0)}",
         f"- API errors: {client_stats.get('api_errors', 0)}",
+        f"- relation negative-cache hits: {client_stats.get('relation_negative_cache_hits', 0)}",
+        f"- relation negative-cache writes: {client_stats.get('relation_negative_cache_writes', 0)}",
         "",
         "## Processed CUIs",
         "",
@@ -1482,14 +1685,14 @@ def build_summary_markdown(
 
     processed_rows = [
         (
-            item.get("index"),
+            int_or_zero(item.get("index")),
             item.get("cui"),
-            item.get("local_concepts"),
-            item.get("relation_records_fetched"),
-            item.get("relation_records_processed"),
-            item.get("source_ui_lookups_attempted"),
-            item.get("source_ui_lookups_skipped"),
-            item.get("candidate_edges_retained"),
+            int_or_zero(item.get("local_concepts")),
+            int_or_zero(item.get("relation_records_fetched")),
+            int_or_zero(item.get("relation_records_processed")),
+            int_or_zero(item.get("source_ui_lookups_attempted")),
+            int_or_zero(item.get("source_ui_lookups_skipped")),
+            int_or_zero(item.get("candidate_edges_retained")),
             item.get("status"),
         )
         for item in (stats.get("processed_cuis") or [])
@@ -1680,6 +1883,7 @@ def run_umls_connections(
     include_relation_names: Optional[Sequence[str]] = None,
     exclude_relation_names: Optional[Sequence[str]] = None,
     strong_relations_only: bool = False,
+    ignore_negative_cache: bool = False,
 ) -> dict[str, Any]:
     if not dry_run:
         raise NotImplementedError("Only dry-run/read-only mode is implemented")
@@ -1725,6 +1929,7 @@ def run_umls_connections(
         "include_relation_names": sorted(resolved_include_names),
         "exclude_relation_names": sorted(resolved_exclude_names),
         "strong_relations_only": strong_relations_only,
+        "ignore_negative_cache": ignore_negative_cache,
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
         "final_export_written": False,
@@ -1737,6 +1942,8 @@ def run_umls_connections(
         "equivalence_relations_skipped": 0,
         "unresolved_target_relations_skipped": 0,
         "relation_fetch_failures": 0,
+        "relation_fetches_unavailable": 0,
+        "relation_fetches_skipped_by_negative_cache": 0,
         "source_vocab_mismatch_relations_skipped": 0,
         "internal_candidate_edges_retained": 0,
         "source_ui_lookups_attempted": 0,
@@ -1751,6 +1958,8 @@ def run_umls_connections(
         "api_requests": 0,
         "api_retries": 0,
         "api_errors": 0,
+        "relation_negative_cache_hits": 0,
+        "relation_negative_cache_writes": 0,
     }
 
     if concepts:
@@ -1760,6 +1969,7 @@ def run_umls_connections(
             rate_limit_per_second=api_rate_limit_per_second,
             version=umls_version,
             page_size=api_page_size,
+            ignore_negative_cache=ignore_negative_cache,
         )
         edges, relation_stats = build_candidate_edges(
             doc_id=doc_id,
@@ -1841,6 +2051,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_RELATION_CACHE_DIR,
         help=f"Directory for cached UMLS relation responses (default: {DEFAULT_RELATION_CACHE_DIR})",
+    )
+    parser.add_argument(
+        "--ignore-negative-cache",
+        action="store_true",
+        help=(
+            "Bypass cached UMLS relation 404-unavailable markers and attempt "
+            "the /relations API call anyway."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -1928,7 +2146,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Shorthand include filter for isa, inverse_isa, has_finding_site, "
             "finding_site_of, has_associated_morphology, and "
-            "associated_morphology_of."
+            "associated_morphology_of, has_procedure_site, and "
+            "has_direct_procedure_site."
         ),
     )
     parser.add_argument(
@@ -1976,6 +2195,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         include_relation_names=args.include_relation_name,
         exclude_relation_names=args.exclude_relation_name,
         strong_relations_only=args.strong_relations_only,
+        ignore_negative_cache=args.ignore_negative_cache,
     )
 
     logger.info(
