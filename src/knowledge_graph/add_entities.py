@@ -65,6 +65,7 @@ from knowledge_graph.prompts import (
     build_entity_extraction_single_user_prompt,
     build_entity_extraction_batch_user_prompt,
 )
+from knowledge_graph.relationship_metadata import build_mention_relationship_metadata
 from knowledge_graph.validate_entities import (
     validate_concepts_against_source,
     summarize_rejections,
@@ -702,9 +703,18 @@ def write_section_concepts(
             r.expanded_from_acronym = concept.expanded_from_acronym,
             r.raw_name = concept.raw_name,
             r.raw_type = concept.raw_type
+        WITH s, r
+        SET r += $relationship_metadata
+        FOREACH (_ IN CASE
+            WHEN s.doc_id IS NULL OR trim(toString(s.doc_id)) = '' THEN []
+            ELSE [1]
+        END |
+            SET r.doc_id = trim(toString(s.doc_id))
+        )
         """,
         uid=section_uid,
         concepts=concepts,
+        relationship_metadata=build_mention_relationship_metadata(),
     )
 
 

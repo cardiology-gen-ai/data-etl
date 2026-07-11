@@ -35,6 +35,9 @@ from knowledge_graph.entity_review_exports import (
     safe_filename_component,
 )
 from knowledge_graph.entity_schema import normalize_name, normalize_type
+from knowledge_graph.relationship_metadata import (
+    build_normalization_relationship_metadata,
+)
 
 try:
     import requests
@@ -1415,7 +1418,8 @@ def create_same_as_edge(
         WHERE elementId(b) = $target_id
         MERGE (a)-[r:SAME_AS]->(b)
         ON CREATE SET r.created_at = datetime($normalized_at)
-        SET r.method = $method,
+        SET r += $relationship_metadata,
+            r.method = $method,
             r.score = 1.0,
             r.status = 'auto',
             r.updated_at = datetime($normalized_at)
@@ -1424,6 +1428,7 @@ def create_same_as_edge(
         target_id=target_id,
         method=SAME_CUI_METHOD,
         normalized_at=normalized_at,
+        relationship_metadata=build_normalization_relationship_metadata("SAME_AS"),
     )
 
 
@@ -1442,7 +1447,8 @@ def create_possibly_same_as_edge(
         WHERE elementId(b) = $target_id
         MERGE (a)-[r:POSSIBLY_SAME_AS]->(b)
         ON CREATE SET r.created_at = datetime($normalized_at)
-        SET r.method = $method,
+        SET r += $relationship_metadata,
+            r.method = $method,
             r.score = $score,
             r.status = 'candidate',
             r.updated_at = datetime($normalized_at)
@@ -1452,6 +1458,9 @@ def create_possibly_same_as_edge(
         method=FUZZY_METHOD,
         score=score,
         normalized_at=normalized_at,
+        relationship_metadata=build_normalization_relationship_metadata(
+            "POSSIBLY_SAME_AS"
+        ),
     )
 
 

@@ -30,6 +30,7 @@ from neo4j import Driver
 
 from knowledge_graph.entity_review_exports import safe_filename_component
 from knowledge_graph.neo4j_utils import close_driver, get_neo4j_driver, load_project_dotenv_once
+from knowledge_graph.relationship_metadata import build_ontology_relationship_metadata
 from knowledge_graph.umls_normalization import (
     DEFAULT_API_RATE_LIMIT_PER_SECOND,
     DEFAULT_API_TIMEOUT,
@@ -1746,6 +1747,9 @@ def build_collapsed_connections(
         source_types = sorted(row["source_types"])
         target_types = sorted(row["target_types"])
         relation_name = row["relation_name"]
+        relationship_metadata = build_ontology_relationship_metadata(
+            row["source_vocabulary"]
+        )
         traversal_policy = traversal_policy_for_relation(
             relation_name=relation_name,
             source_types=source_types,
@@ -1779,7 +1783,7 @@ def build_collapsed_connections(
                 "source_types": source_types,
                 "target_types": target_types,
                 "status": CONNECTION_STATUS,
-                "provenance": "umls_connections",
+                **relationship_metadata,
                 "traversal_policy": traversal_policy,
                 "review_needed": review_needed_for_policy(traversal_policy),
                 "source_representative": concept_report(source_representative),
@@ -2207,6 +2211,10 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
     if not source_concept_id or not target_concept_id:
         return None
 
+    relationship_metadata = build_ontology_relationship_metadata(
+        clean_text(edge.get("source_vocabulary"))
+    )
+
     query = f"""
         MATCH (source:Concept)
         WHERE elementId(source) = $source_concept_id
@@ -2229,6 +2237,9 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
             r.target_types = $target_types,
             r.status = $status,
             r.provenance = $provenance,
+            r.relationship_family = $relationship_family,
+            r.provenance_source = $provenance_source,
+            r.provenance_method = $provenance_method,
             r.traversal_policy = $traversal_policy,
             r.review_needed = $review_needed,
             r.updated_at = datetime($now)
@@ -2251,7 +2262,10 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
         source_types=list(edge.get("source_types") or []),
         target_types=list(edge.get("target_types") or []),
         status=CONNECTION_STATUS,
-        provenance="umls_connections",
+        provenance=clean_text(relationship_metadata["provenance"]),
+        relationship_family=clean_text(relationship_metadata["relationship_family"]),
+        provenance_source=clean_text(relationship_metadata["provenance_source"]),
+        provenance_method=clean_text(relationship_metadata["provenance_method"]),
         traversal_policy=clean_text(edge.get("traversal_policy")),
         review_needed=bool(edge.get("review_needed")),
         now=now,

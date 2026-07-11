@@ -51,6 +51,25 @@ UMLS_CONNECTION_RELATION_TYPES = [
     "UMLS_HAS_PROCEDURE_SITE",
     "UMLS_HAS_DIRECT_PROCEDURE_SITE",
 ]
+COMMON_RELATIONSHIP_METADATA_FIELDS = [
+    "relationship_family",
+    "provenance",
+    "provenance_source",
+    "provenance_method",
+]
+MANAGED_RELATIONSHIP_TYPES = sorted(
+    set(
+        [
+            "HAS_SECTION",
+            "HAS_CHILD",
+            "NEXT",
+            "MENTIONS",
+            "SAME_AS",
+            "POSSIBLY_SAME_AS",
+        ]
+        + UMLS_CONNECTION_RELATION_TYPES
+    )
+)
 
 
 CHECKS: List[Dict[str, Any]] = [
@@ -289,6 +308,138 @@ CHECKS: List[Dict[str, Any]] = [
                    s.title AS title,
                    size(coalesce(s.text, '')) AS text_len
             ORDER BY text_len DESC, uid
+        """,
+    },
+
+    # ---------------------------------------------------------------------
+    # Relationship provenance metadata checks
+    # ---------------------------------------------------------------------
+    {
+        "name": "relationship_family_summary",
+        "title": "Relationship counts by relationship_family",
+        "group": "Relationship provenance",
+        "phases": {"structure", "entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH ()-[r]->()
+            RETURN coalesce(r.relationship_family, 'UNSET') AS relationship_family,
+                   count(r) AS n
+            ORDER BY n DESC, relationship_family ASC
+        """,
+    },
+    {
+        "name": "relationship_provenance_summary",
+        "title": "Relationship counts by provenance",
+        "group": "Relationship provenance",
+        "phases": {"structure", "entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH ()-[r]->()
+            RETURN coalesce(r.provenance, 'UNSET') AS provenance,
+                   count(r) AS n
+            ORDER BY n DESC, provenance ASC
+        """,
+    },
+    {
+        "name": "relationship_provenance_source_summary",
+        "title": "Relationship counts by provenance_source",
+        "group": "Relationship provenance",
+        "phases": {"structure", "entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH ()-[r]->()
+            RETURN coalesce(r.provenance_source, 'UNSET') AS provenance_source,
+                   count(r) AS n
+            ORDER BY n DESC, provenance_source ASC
+        """,
+    },
+    {
+        "name": "relationship_provenance_method_summary",
+        "title": "Relationship counts by provenance_method",
+        "group": "Relationship provenance",
+        "phases": {"structure", "entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH ()-[r]->()
+            RETURN coalesce(r.provenance_method, 'UNSET') AS provenance_method,
+                   count(r) AS n
+            ORDER BY n DESC, provenance_method ASC
+        """,
+    },
+    {
+        "name": "ontology_source_vocabulary_summary",
+        "title": "Ontology relationship counts by source_vocabulary",
+        "group": "Relationship provenance",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+            RETURN coalesce(r.source_vocabulary, 'UNSET') AS source_vocabulary,
+                   count(r) AS n
+            ORDER BY n DESC, source_vocabulary ASC
+        """,
+    },
+    {
+        "name": "relationship_type_family_summary",
+        "title": "Relationship type x relationship_family counts",
+        "group": "Relationship provenance",
+        "phases": {"structure", "entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH ()-[r]->()
+            RETURN type(r) AS relationship_type,
+                   coalesce(r.relationship_family, 'UNSET') AS relationship_family,
+                   count(r) AS n
+            ORDER BY relationship_type ASC, relationship_family ASC
+        """,
+    },
+    {
+        "name": "managed_relationships_missing_common_metadata",
+        "title": "Managed relationships missing common provenance metadata",
+        "group": "Relationship provenance",
+        "phases": {"structure", "entities"},
+        "level": "ERROR",
+        "params": {
+            "relationship_types": MANAGED_RELATIONSHIP_TYPES,
+            "common_metadata_fields": COMMON_RELATIONSHIP_METADATA_FIELDS,
+        },
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+              AND any(field IN $common_metadata_fields
+                      WHERE r[field] IS NULL OR trim(toString(r[field])) = '')
+            RETURN type(r) AS relationship_type,
+                   elementId(r) AS relationship_id,
+                   [field IN $common_metadata_fields
+                    WHERE r[field] IS NULL OR trim(toString(r[field])) = ''] AS missing_fields
+            ORDER BY relationship_type, relationship_id
+        """,
+    },
+    {
+        "name": "ontology_relationships_missing_source_vocabulary",
+        "title": "Ontology relationships missing source_vocabulary",
+        "group": "Relationship provenance",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+              AND (r.source_vocabulary IS NULL OR trim(toString(r.source_vocabulary)) = '')
+            RETURN type(r) AS relationship_type,
+                   elementId(r) AS relationship_id,
+                   r.edge_key AS edge_key,
+                   r.source_cui AS source_cui,
+                   r.target_cui AS target_cui
+            ORDER BY relationship_type, relationship_id
         """,
     },
 

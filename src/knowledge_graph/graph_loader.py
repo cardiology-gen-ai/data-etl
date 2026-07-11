@@ -6,6 +6,10 @@ from typing import Dict, List, Iterable, Any, Optional
 
 from neo4j import Driver
 
+from knowledge_graph.relationship_metadata import (
+    build_structural_relationship_metadata,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -212,10 +216,15 @@ def link_document_sections_batch(tx, doc_id: str, section_uids: List[str]) -> No
         MATCH (d:Document {doc_id: $doc_id})
         UNWIND $section_uids AS uid
         MATCH (s:Section {uid: uid})
-        MERGE (d)-[:HAS_SECTION]->(s)
+        MERGE (d)-[r:HAS_SECTION]->(s)
+        SET r += $relationship_metadata
         """,
         doc_id=doc_id,
         section_uids=section_uids,
+        relationship_metadata=build_structural_relationship_metadata(
+            "HAS_SECTION",
+            doc_id=doc_id,
+        ),
     )
 
 
@@ -232,9 +241,26 @@ def link_parent_child_batch(tx, pairs: List[Dict[str, str]]) -> None:
         UNWIND $pairs AS pair
         MATCH (p:Section {uid: pair.parent_uid})
         MATCH (c:Section {uid: pair.child_uid})
-        MERGE (p)-[:HAS_CHILD]->(c)
+        WITH p, c,
+             coalesce(trim(toString(p.doc_id)), '') AS parent_doc_id,
+             coalesce(trim(toString(c.doc_id)), '') AS child_doc_id
+        WITH p, c,
+             CASE
+                 WHEN parent_doc_id <> '' AND child_doc_id <> ''
+                      AND parent_doc_id <> child_doc_id
+                 THEN null
+                 WHEN parent_doc_id <> '' THEN parent_doc_id
+                 WHEN child_doc_id <> '' THEN child_doc_id
+                 ELSE null
+             END AS relationship_doc_id
+        MERGE (p)-[r:HAS_CHILD]->(c)
+        SET r += $relationship_metadata
+        FOREACH (_ IN CASE WHEN relationship_doc_id IS NULL THEN [] ELSE [1] END |
+            SET r.doc_id = relationship_doc_id
+        )
         """,
         pairs=pairs,
+        relationship_metadata=build_structural_relationship_metadata("HAS_CHILD"),
     )
 
 
@@ -251,9 +277,26 @@ def link_next_batch(tx, pairs: List[Dict[str, str]]) -> None:
         UNWIND $pairs AS pair
         MATCH (a:Section {uid: pair.prev_uid})
         MATCH (b:Section {uid: pair.next_uid})
-        MERGE (a)-[:NEXT]->(b)
+        WITH a, b,
+             coalesce(trim(toString(a.doc_id)), '') AS prev_doc_id,
+             coalesce(trim(toString(b.doc_id)), '') AS next_doc_id
+        WITH a, b,
+             CASE
+                 WHEN prev_doc_id <> '' AND next_doc_id <> ''
+                      AND prev_doc_id <> next_doc_id
+                 THEN null
+                 WHEN prev_doc_id <> '' THEN prev_doc_id
+                 WHEN next_doc_id <> '' THEN next_doc_id
+                 ELSE null
+             END AS relationship_doc_id
+        MERGE (a)-[r:NEXT]->(b)
+        SET r += $relationship_metadata
+        FOREACH (_ IN CASE WHEN relationship_doc_id IS NULL THEN [] ELSE [1] END |
+            SET r.doc_id = relationship_doc_id
+        )
         """,
         pairs=pairs,
+        relationship_metadata=build_structural_relationship_metadata("NEXT"),
     )
 
 
