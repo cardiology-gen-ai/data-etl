@@ -143,6 +143,7 @@ class GraphPipelineConfig:
     umls_connections_include_relation_names: Optional[list[str]] = None
     umls_connections_exclude_relation_names: Optional[list[str]] = None
     umls_connections_strong_relations_only: bool = True
+    umls_connections_relation_profile: Optional[str] = None
     umls_connections_ignore_negative_cache: bool = False
 
     # Sanity checks
@@ -607,6 +608,7 @@ def make_graph_pipeline_config(
     umls_connections_include_relation_names: Optional[list[str]] = None,
     umls_connections_exclude_relation_names: Optional[list[str]] = None,
     umls_connections_strong_relations_only: bool = True,
+    umls_connections_relation_profile: Optional[str] = None,
     umls_connections_ignore_negative_cache: bool = False,
     sanity_mode: Optional[str] = "full",
     sanity_sample_limit: int = 10,
@@ -741,6 +743,7 @@ def make_graph_pipeline_config(
         umls_connections_include_relation_names=umls_connections_include_relation_names,
         umls_connections_exclude_relation_names=umls_connections_exclude_relation_names,
         umls_connections_strong_relations_only=umls_connections_strong_relations_only,
+        umls_connections_relation_profile=umls_connections_relation_profile,
         umls_connections_ignore_negative_cache=umls_connections_ignore_negative_cache,
         sanity_mode=sanity_mode,
         sanity_sample_limit=sanity_sample_limit,
@@ -898,6 +901,7 @@ def main(
     umls_connections_include_relation_names: Optional[list[str]] = None,
     umls_connections_exclude_relation_names: Optional[list[str]] = None,
     umls_connections_strong_relations_only: bool = True,
+    umls_connections_relation_profile: Optional[str] = None,
     umls_connections_ignore_negative_cache: bool = False,
     sanity_mode: Optional[str] = "full",
     sanity_sample_limit: int = 10,
@@ -1072,6 +1076,7 @@ def main(
         umls_connections_include_relation_names=umls_connections_include_relation_names,
         umls_connections_exclude_relation_names=umls_connections_exclude_relation_names,
         umls_connections_strong_relations_only=umls_connections_strong_relations_only,
+        umls_connections_relation_profile=umls_connections_relation_profile,
         umls_connections_ignore_negative_cache=umls_connections_ignore_negative_cache,
         sanity_mode=sanity_mode,
         sanity_sample_limit=sanity_sample_limit,
@@ -1384,6 +1389,10 @@ def _resolve_umls_connection_kwargs(
             "KG_UMLS_CONNECTIONS_STRONG_RELATIONS_ONLY",
             config.get("strong_relations_only"),
             True,
+        ),
+        "umls_connections_relation_profile": _get_env_or_config_str(
+            "KG_UMLS_CONNECTIONS_RELATION_PROFILE",
+            config.get("relation_profile"),
         ),
         "umls_connections_ignore_negative_cache": _get_env_or_config_bool(
             "KG_UMLS_CONNECTIONS_IGNORE_NEGATIVE_CACHE",

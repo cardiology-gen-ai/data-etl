@@ -347,9 +347,10 @@
           "max_relations_per_cui": "Maximum UMLS relation records to process for one source CUI.",
           "max_source_ui_lookups_per_cui": "Maximum sourceUi target lookups to attempt for one source CUI.",
           "write_partial_every": "Write partial CSV/summary every N processed CUIs. Use 0 to disable.",
-          "include_relation_names": "Optional normalized relation-name whitelist. Usually leave empty when strong_relations_only=true.",
-          "exclude_relation_names": "Optional normalized relation-name denylist.",
-          "strong_relations_only": "Restrict discovery to the supported strong relation names.",
+          "relation_profile": "Optional initial relation include profile: core, first_extension, or expanded. Leave null for no profile seed.",
+          "include_relation_names": "Optional normalized relation-name whitelist additions. Added after relation_profile is applied.",
+          "exclude_relation_names": "Optional normalized relation-name denylist. Removed after profile/include additions.",
+          "strong_relations_only": "Backward-compatible alias for relation_profile=expanded. Set false when selecting core or first_extension explicitly.",
           "ignore_negative_cache": "Bypass cached UMLS relation 404-unavailable markers and try the API again."
         },
         "_allowed_values": {
@@ -368,7 +369,21 @@
             "has_associated_morphology",
             "associated_morphology_of",
             "has_procedure_site",
-            "has_direct_procedure_site"
+            "has_direct_procedure_site",
+            "has_definitional_manifestation",
+            "definitional_manifestation_of",
+            "uses_device",
+            "device_used_by",
+            "has_direct_device",
+            "direct_device_of",
+            "has_measured_component",
+            "measured_component_of"
+          ],
+          "relation_profile": [
+            null,
+            "core",
+            "first_extension",
+            "expanded"
           ]
         },
         "enabled": false,
@@ -386,6 +401,7 @@
         "max_relations_per_cui": 500,
         "max_source_ui_lookups_per_cui": 100,
         "write_partial_every": 25,
+        "relation_profile": null,
         "include_relation_names": [],
         "exclude_relation_names": [],
         "strong_relations_only": true,

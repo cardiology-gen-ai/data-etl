@@ -819,6 +819,7 @@ def process_umls_connections(
         strong_relations_only=bool(
             getattr(config, "umls_connections_strong_relations_only", True)
         ),
+        relation_profile=getattr(config, "umls_connections_relation_profile", None),
         ignore_negative_cache=bool(
             getattr(config, "umls_connections_ignore_negative_cache", False)
         ),

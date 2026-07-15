@@ -19,6 +19,11 @@ from typing import Any, Dict, List, Set
 from neo4j import Driver
 
 from knowledge_graph.entity_schema import ALLOWED_TYPES
+from knowledge_graph.umls_connections import (
+    UMLS_CONNECTION_RELATION_TYPES,
+    first_extension_local_type_rule_rows,
+    first_extension_relationship_types,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -41,16 +46,8 @@ SPECIAL_CANONICAL_TYPES = {
 
 VALID_CANONICAL_TYPES = sorted(ALLOWED_TYPES | SPECIAL_CANONICAL_TYPES)
 VALID_ENTITY_TYPES = sorted(ALLOWED_TYPES)
-UMLS_CONNECTION_RELATION_TYPES = [
-    "UMLS_ISA",
-    "UMLS_INVERSE_ISA",
-    "UMLS_HAS_FINDING_SITE",
-    "UMLS_FINDING_SITE_OF",
-    "UMLS_HAS_ASSOCIATED_MORPHOLOGY",
-    "UMLS_ASSOCIATED_MORPHOLOGY_OF",
-    "UMLS_HAS_PROCEDURE_SITE",
-    "UMLS_HAS_DIRECT_PROCEDURE_SITE",
-]
+FIRST_EXTENSION_RELATIONSHIP_TYPES = first_extension_relationship_types()
+FIRST_EXTENSION_LOCAL_TYPE_RULES = first_extension_local_type_rule_rows()
 COMMON_RELATIONSHIP_METADATA_FIELDS = [
     "relationship_family",
     "provenance",
@@ -855,6 +852,59 @@ CHECKS: List[Dict[str, Any]] = [
                    rel_props['source_cui'] AS relationship_source_cui,
                    target_props['umls_cui'] AS target_node_cui,
                    rel_props['target_cui'] AS relationship_target_cui
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "first_extension_umls_connections_without_compatible_local_types",
+        "title": "First-extension UMLS connections without local_type_compatible=true",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": FIRST_EXTENSION_RELATIONSHIP_TYPES},
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+              AND coalesce(r.local_type_compatible, false) <> true
+            RETURN type(r) AS relationship_type,
+                   r.edge_key AS edge_key,
+                   r.relation_name AS relation_name,
+                   source.name AS source_concept,
+                   source.canonical_type AS source_canonical_type,
+                   target.name AS target_concept,
+                   target.canonical_type AS target_canonical_type,
+                   r.local_type_compatible AS local_type_compatible,
+                   r.local_type_compatibility_reason AS local_type_compatibility_reason
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "first_extension_umls_connection_type_mismatches",
+        "title": "First-extension UMLS connections with incompatible Concept canonical types",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"local_type_rules": FIRST_EXTENSION_LOCAL_TYPE_RULES},
+        "query": """
+            UNWIND $local_type_rules AS rule
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) = rule.relationship_type
+              AND r.provenance = 'umls_connections'
+            WITH rule, source, r, target,
+                 coalesce(toString(source.canonical_type), '') AS source_type,
+                 coalesce(toString(target.canonical_type), '') AS target_type
+            WHERE NOT (source_type IN rule.source_types)
+               OR NOT (target_type IN rule.target_types)
+            RETURN type(r) AS relationship_type,
+                   r.edge_key AS edge_key,
+                   rule.relation_name AS relation_name,
+                   source.name AS source_concept,
+                   source_type AS source_canonical_type,
+                   rule.source_types AS allowed_source_types,
+                   target.name AS target_concept,
+                   target_type AS target_canonical_type,
+                   rule.target_types AS allowed_target_types
             ORDER BY relationship_type, edge_key
         """,
     },

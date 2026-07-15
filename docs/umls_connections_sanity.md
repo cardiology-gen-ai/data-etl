@@ -47,6 +47,37 @@ RETURN type(r) AS relationship_type, count(r) AS n
 ORDER BY relationship_type;
 ```
 
+## First-Extension Local Type Audit
+
+Compatible first-extension materializations must have
+`local_type_compatible=true`. Type-incompatible candidates remain in the review
+exports, but are skipped during materialization.
+
+```cypher
+MATCH (source:Concept)-[r]->(target:Concept)
+WHERE type(r) IN [
+  'UMLS_HAS_DEFINITIONAL_MANIFESTATION',
+  'UMLS_DEFINITIONAL_MANIFESTATION_OF',
+  'UMLS_USES_DEVICE',
+  'UMLS_DEVICE_USED_BY',
+  'UMLS_HAS_DIRECT_DEVICE',
+  'UMLS_DIRECT_DEVICE_OF',
+  'UMLS_HAS_MEASURED_COMPONENT',
+  'UMLS_MEASURED_COMPONENT_OF'
+]
+  AND r.provenance = 'umls_connections'
+  AND coalesce(r.local_type_compatible, false) <> true
+RETURN type(r) AS relationship_type,
+       r.edge_key AS edge_key,
+       r.relation_name AS relation_name,
+       source.name AS source_concept,
+       source.canonical_type AS source_type,
+       target.name AS target_concept,
+       target.canonical_type AS target_type,
+       r.local_type_compatibility_reason AS reason
+ORDER BY relationship_type, edge_key;
+```
+
 ## Idempotence Check
 
 Run the same `umls_connections` command twice with identical config, then compare:

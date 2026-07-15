@@ -23,22 +23,82 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Sequence
 from urllib.parse import unquote, urlparse
 
-from neo4j import Driver
+if TYPE_CHECKING:
+    from neo4j import Driver
+else:
+    Driver = Any
 
 from knowledge_graph.entity_review_exports import safe_filename_component
-from knowledge_graph.neo4j_utils import close_driver, get_neo4j_driver, load_project_dotenv_once
 from knowledge_graph.relationship_metadata import build_ontology_relationship_metadata
-from knowledge_graph.umls_normalization import (
-    DEFAULT_API_RATE_LIMIT_PER_SECOND,
-    DEFAULT_API_TIMEOUT,
-    DEFAULT_UMLS_VERSION,
-    UMLSAPIAuthError,
-    UMLSAPIError,
-    ensure_requests_dependency_available,
-)
+try:
+    from knowledge_graph.umls_normalization import (
+        DEFAULT_API_RATE_LIMIT_PER_SECOND,
+        DEFAULT_API_TIMEOUT,
+        DEFAULT_UMLS_VERSION,
+        UMLSAPIAuthError,
+        UMLSAPIError,
+        ensure_requests_dependency_available,
+    )
+except ModuleNotFoundError as e:
+    if e.name not in {"neo4j", "dotenv"}:
+        raise
+
+    DEFAULT_API_TIMEOUT = 30.0
+    DEFAULT_API_RATE_LIMIT_PER_SECOND = 5.0
+    DEFAULT_UMLS_VERSION = "current"
+
+    class UMLSAPIError(RuntimeError):
+        pass
+
+    class UMLSAPIAuthError(UMLSAPIError):
+        pass
+
+    def ensure_requests_dependency_available() -> None:
+        if requests is None:
+            raise RuntimeError("requests is required for UMLS API access")
+
+try:
+    from knowledge_graph.neo4j_utils import (
+        close_driver,
+        get_neo4j_driver,
+        load_project_dotenv_once,
+    )
+except ModuleNotFoundError as e:
+    if e.name not in {"neo4j", "dotenv"}:
+        raise
+
+    _MISSING_NEO4J_UTILITY_DEPENDENCY = e.name
+    _DOTENV_FALLBACK_LOADED = False
+
+    def load_project_dotenv_once() -> None:
+        global _DOTENV_FALLBACK_LOADED
+        if _DOTENV_FALLBACK_LOADED:
+            return
+
+        try:
+            from dotenv import load_dotenv
+        except ModuleNotFoundError:
+            _DOTENV_FALLBACK_LOADED = True
+            return
+
+        env_path = Path(__file__).resolve().parents[2] / ".env"
+        if env_path.exists():
+            load_dotenv(env_path, override=False)
+        _DOTENV_FALLBACK_LOADED = True
+
+    def get_neo4j_driver(verify: bool = True) -> Driver:
+        raise RuntimeError(
+            "neo4j is required for UMLS connection graph access; install project "
+            "dependencies before running exports or materialization"
+        ) from None
+
+    def close_driver(driver: Driver) -> None:
+        close = getattr(driver, "close", None)
+        if callable(close):
+            close()
 
 try:
     import requests
@@ -58,7 +118,7 @@ DEFAULT_MAX_RELATIONS_PER_CUI = 500
 DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI = 100
 DEFAULT_WRITE_PARTIAL_EVERY = 25
 RELATIONS_404_NEGATIVE_CACHE_THRESHOLD = 3
-STRONG_RELATION_NAMES = {
+CORE_SNOMED_RELATION_NAMES = {
     "isa",
     "inverse_isa",
     "has_finding_site",
@@ -69,6 +129,32 @@ STRONG_RELATION_NAMES = {
     "has_direct_procedure_site",
 }
 
+FIRST_SNOMED_EXTENSION_RELATION_NAMES = {
+    "has_definitional_manifestation",
+    "definitional_manifestation_of",
+    "uses_device",
+    "device_used_by",
+    "has_direct_device",
+    "direct_device_of",
+    "has_measured_component",
+    "measured_component_of",
+}
+
+EXPANDED_SNOMED_RELATION_NAMES = (
+    CORE_SNOMED_RELATION_NAMES
+    | FIRST_SNOMED_EXTENSION_RELATION_NAMES
+)
+
+# Backward-compatible alias. "Strong" now means the expanded SNOMED profile.
+STRONG_RELATION_NAMES = EXPANDED_SNOMED_RELATION_NAMES
+
+RELATION_NAMES_BY_PROFILE = {
+    "core": CORE_SNOMED_RELATION_NAMES,
+    "first_extension": FIRST_SNOMED_EXTENSION_RELATION_NAMES,
+    "expanded": EXPANDED_SNOMED_RELATION_NAMES,
+}
+RELATION_PROFILE_CHOICES = tuple(RELATION_NAMES_BY_PROFILE)
+
 RELATION_TYPE_BY_NAME = {
     "isa": "UMLS_ISA",
     "inverse_isa": "UMLS_INVERSE_ISA",
@@ -78,6 +164,14 @@ RELATION_TYPE_BY_NAME = {
     "associated_morphology_of": "UMLS_ASSOCIATED_MORPHOLOGY_OF",
     "has_procedure_site": "UMLS_HAS_PROCEDURE_SITE",
     "has_direct_procedure_site": "UMLS_HAS_DIRECT_PROCEDURE_SITE",
+    "has_definitional_manifestation": "UMLS_HAS_DEFINITIONAL_MANIFESTATION",
+    "definitional_manifestation_of": "UMLS_DEFINITIONAL_MANIFESTATION_OF",
+    "uses_device": "UMLS_USES_DEVICE",
+    "device_used_by": "UMLS_DEVICE_USED_BY",
+    "has_direct_device": "UMLS_HAS_DIRECT_DEVICE",
+    "direct_device_of": "UMLS_DIRECT_DEVICE_OF",
+    "has_measured_component": "UMLS_HAS_MEASURED_COMPONENT",
+    "measured_component_of": "UMLS_MEASURED_COMPONENT_OF",
 }
 
 SAFE_TRAVERSAL_RELATION_NAMES = {
@@ -90,6 +184,92 @@ HIERARCHY_RELATION_NAMES = {"isa", "inverse_isa"}
 REVERSE_REVIEW_RELATION_NAMES = {
     "finding_site_of",
     "associated_morphology_of",
+}
+LOCAL_TYPE_RULES_BY_RELATION_NAME = {
+    "has_definitional_manifestation": {
+        "source_types": {
+            "disease",
+            "complication_or_comorbidity",
+        },
+        "target_types": {
+            "clinical_finding",
+        },
+    },
+    "definitional_manifestation_of": {
+        "source_types": {
+            "clinical_finding",
+        },
+        "target_types": {
+            "disease",
+            "complication_or_comorbidity",
+        },
+    },
+    "uses_device": {
+        "source_types": {
+            "procedure_or_intervention",
+            "diagnostic_test",
+            "imaging_modality",
+        },
+        "target_types": {
+            "device",
+        },
+    },
+    "device_used_by": {
+        "source_types": {
+            "device",
+        },
+        "target_types": {
+            "procedure_or_intervention",
+            "diagnostic_test",
+            "imaging_modality",
+        },
+    },
+    "has_direct_device": {
+        "source_types": {
+            "procedure_or_intervention",
+            "diagnostic_test",
+        },
+        "target_types": {
+            "device",
+        },
+    },
+    "direct_device_of": {
+        "source_types": {
+            "device",
+        },
+        "target_types": {
+            "procedure_or_intervention",
+            "diagnostic_test",
+        },
+    },
+    "has_measured_component": {
+        "source_types": {
+            "diagnostic_test",
+        },
+        "target_types": {
+            "biomarker",
+        },
+    },
+    "measured_component_of": {
+        "source_types": {
+            "biomarker",
+        },
+        "target_types": {
+            "diagnostic_test",
+        },
+    },
+}
+FIRST_EXTENSION_SAFE_RELATION_NAMES = {
+    "has_definitional_manifestation",
+    "uses_device",
+    "has_direct_device",
+    "has_measured_component",
+}
+FIRST_EXTENSION_REVERSE_REVIEW_RELATION_NAMES = {
+    "definitional_manifestation_of",
+    "device_used_by",
+    "direct_device_of",
+    "measured_component_of",
 }
 UMLS_CONNECTION_RELATION_TYPES = sorted(set(RELATION_TYPE_BY_NAME.values()))
 
@@ -261,6 +441,69 @@ def normalize_relation_name_set(values: Optional[Sequence[str]]) -> set[str]:
     }
 
 
+def normalize_local_type(value: Any) -> str:
+    return clean_text(value).casefold()
+
+
+def resolve_selected_relation_profile(
+    relation_profile: Optional[str] = None,
+    strong_relations_only: bool = False,
+) -> Optional[str]:
+    selected_profile = clean_text(relation_profile).casefold()
+    if not selected_profile:
+        selected_profile = None
+
+    if selected_profile is not None and selected_profile not in RELATION_NAMES_BY_PROFILE:
+        raise ValueError(
+            f"Invalid relation profile {relation_profile!r}; "
+            f"choose one of {', '.join(RELATION_PROFILE_CHOICES)}"
+        )
+
+    if (
+        strong_relations_only
+        and selected_profile is not None
+        and selected_profile != "expanded"
+    ):
+        raise ValueError(
+            "--strong-relations-only is equivalent to --relation-profile "
+            f"expanded and conflicts with --relation-profile {selected_profile}"
+        )
+
+    if strong_relations_only:
+        return "expanded"
+    return selected_profile
+
+
+def evaluate_local_type_compatibility(
+    relation_name: str,
+    source_type: str,
+    target_type: str,
+) -> tuple[bool | None, str]:
+    normalized_relation_name = normalize_relation_term(relation_name)
+    rule = LOCAL_TYPE_RULES_BY_RELATION_NAME.get(normalized_relation_name)
+    if rule is None:
+        return None, "no_type_rule"
+
+    normalized_source_type = normalize_local_type(source_type)
+    normalized_target_type = normalize_local_type(target_type)
+    if not normalized_source_type and not normalized_target_type:
+        return False, "missing_source_and_target_type"
+    if not normalized_source_type:
+        return False, "missing_source_type"
+    if not normalized_target_type:
+        return False, "missing_target_type"
+
+    source_ok = normalized_source_type in rule["source_types"]
+    target_ok = normalized_target_type in rule["target_types"]
+    if source_ok and target_ok:
+        return True, "compatible"
+    if not source_ok and not target_ok:
+        return False, "source_and_target_type_not_allowed"
+    if not source_ok:
+        return False, "source_type_not_allowed"
+    return False, "target_type_not_allowed"
+
+
 def is_short_acronym_like_name(value: Any) -> bool:
     """
     Heuristic used only as a representative-selection tie-breaker.
@@ -338,14 +581,23 @@ def resolve_relation_name_filters(
     include_relation_names: Optional[Sequence[str]] = None,
     exclude_relation_names: Optional[Sequence[str]] = None,
     strong_relations_only: bool = False,
-) -> tuple[set[str], set[str]]:
-    include_names = normalize_relation_name_set(include_relation_names)
+    relation_profile: Optional[str] = None,
+) -> tuple[set[str], set[str], Optional[str]]:
+    selected_profile = resolve_selected_relation_profile(
+        relation_profile=relation_profile,
+        strong_relations_only=strong_relations_only,
+    )
+    include_names = (
+        set(RELATION_NAMES_BY_PROFILE[selected_profile])
+        if selected_profile is not None
+        else set()
+    )
+    include_names.update(normalize_relation_name_set(include_relation_names))
     exclude_names = normalize_relation_name_set(exclude_relation_names)
 
-    if strong_relations_only:
-        include_names = set(STRONG_RELATION_NAMES)
+    include_names.difference_update(exclude_names)
 
-    return include_names, exclude_names
+    return include_names, exclude_names, selected_profile
 
 
 def cache_key(payload: dict[str, Any]) -> str:
@@ -1056,6 +1308,7 @@ def build_initial_relation_stats(
     include_relation_names: set[str],
     exclude_relation_names: set[str],
     strong_relations_only: bool,
+    relation_profile: Optional[str],
 ) -> dict[str, Any]:
     failures: list[dict[str, str]] = []
     return {
@@ -1070,6 +1323,8 @@ def build_initial_relation_stats(
         "include_relation_names": sorted(include_relation_names),
         "exclude_relation_names": sorted(exclude_relation_names),
         "strong_relations_only": strong_relations_only,
+        "relation_profile": relation_profile,
+        "selected_relation_profile": relation_profile,
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
         "final_export_written": False,
@@ -1163,6 +1418,7 @@ def build_candidate_edges(
     include_relation_names: Optional[Sequence[str]] = None,
     exclude_relation_names: Optional[Sequence[str]] = None,
     strong_relations_only: bool = False,
+    relation_profile: Optional[str] = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     by_cui = concepts_by_cui(concepts)
     local_cuis = set(by_cui)
@@ -1172,10 +1428,15 @@ def build_candidate_edges(
         max_cuis=max_cuis,
         by_cui=by_cui,
     )
-    resolved_include_names, resolved_exclude_names = resolve_relation_name_filters(
+    (
+        resolved_include_names,
+        resolved_exclude_names,
+        selected_relation_profile,
+    ) = resolve_relation_name_filters(
         include_relation_names=include_relation_names,
         exclude_relation_names=exclude_relation_names,
         strong_relations_only=strong_relations_only,
+        relation_profile=relation_profile,
     )
     edges: list[dict[str, Any]] = []
     stats = build_initial_relation_stats(
@@ -1189,6 +1450,7 @@ def build_candidate_edges(
         include_relation_names=resolved_include_names,
         exclude_relation_names=resolved_exclude_names,
         strong_relations_only=strong_relations_only,
+        relation_profile=selected_relation_profile,
     )
     stats["ignore_negative_cache"] = bool(getattr(client, "ignore_negative_cache", False))
 
@@ -1643,6 +1905,116 @@ def build_collapsed_edge_key(
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def local_type_compatible_count_key(value: Any) -> str:
+    if value is None:
+        return "null"
+    return "true" if bool(value) else "false"
+
+
+def is_first_extension_relation_name(relation_name: str) -> bool:
+    return normalize_relation_term(relation_name) in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+
+
+def first_extension_relationship_types() -> list[str]:
+    return sorted(
+        RELATION_TYPE_BY_NAME[relation_name]
+        for relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+    )
+
+
+def first_extension_local_type_rule_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "relation_name": relation_name,
+            "relationship_type": RELATION_TYPE_BY_NAME[relation_name],
+            "source_types": sorted(rule["source_types"]),
+            "target_types": sorted(rule["target_types"]),
+        }
+        for relation_name, rule in sorted(LOCAL_TYPE_RULES_BY_RELATION_NAME.items())
+        if relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+    ]
+
+
+def build_collapsed_connection_statistics(
+    collapsed_edges: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    counts_by_relation_name = Counter(
+        clean_text(edge.get("relation_name")) or "(none)"
+        for edge in collapsed_edges
+    )
+    counts_by_traversal_policy = Counter(
+        clean_text(edge.get("traversal_policy")) or "(none)"
+        for edge in collapsed_edges
+    )
+    counts_by_local_type_compatible = Counter(
+        local_type_compatible_count_key(edge.get("local_type_compatible"))
+        for edge in collapsed_edges
+    )
+    representative_type_counts = Counter(
+        (
+            clean_text(edge.get("representative_source_type")) or "(none)",
+            clean_text(edge.get("relation_name")) or "(none)",
+            clean_text(edge.get("representative_target_type")) or "(none)",
+        )
+        for edge in collapsed_edges
+    )
+
+    first_extension_edges = [
+        edge
+        for edge in collapsed_edges
+        if is_first_extension_relation_name(clean_text(edge.get("relation_name")))
+    ]
+    incompatible_examples = [
+        {
+            "source_cui": edge.get("source_cui"),
+            "source_type": edge.get("representative_source_type"),
+            "relation_name": edge.get("relation_name"),
+            "target_type": edge.get("representative_target_type"),
+            "target_cui": edge.get("target_cui"),
+            "reason": edge.get("local_type_compatibility_reason"),
+            "source_names": list(edge.get("source_names") or [])[:3],
+            "target_names": list(edge.get("target_names") or [])[:3],
+        }
+        for edge in first_extension_edges
+        if edge.get("local_type_compatible") is False
+    ][:10]
+
+    return {
+        "collapsed_first_extension_connections": len(first_extension_edges),
+        "compatible_first_extension_connections": sum(
+            1
+            for edge in first_extension_edges
+            if edge.get("local_type_compatible") is True
+        ),
+        "incompatible_first_extension_connections": sum(
+            1
+            for edge in first_extension_edges
+            if edge.get("local_type_compatible") is False
+        ),
+        "counts_by_relation_name": dict(sorted(counts_by_relation_name.items())),
+        "counts_by_traversal_policy": dict(
+            sorted(counts_by_traversal_policy.items())
+        ),
+        "counts_by_local_type_compatible": dict(
+            sorted(counts_by_local_type_compatible.items())
+        ),
+        "counts_by_source_representative_type_relation_target_representative_type": [
+            {
+                "source_type": source_type,
+                "relation_name": relation_name,
+                "target_type": target_type,
+                "count": count,
+            }
+            for (
+                source_type,
+                relation_name,
+                target_type,
+            ), count in representative_type_counts.most_common()
+        ],
+        "incompatible_local_type_examples": incompatible_examples,
+    }
+
+
 def collapsed_connection_key(
     edge: dict[str, Any],
     doc_id: Optional[str],
@@ -1666,12 +2038,31 @@ def collapsed_connection_key(
 
 def traversal_policy_for_relation(
     relation_name: str,
-    source_types: Sequence[str],
-    target_types: Sequence[str],
+    source_types: Sequence[str] = (),
+    target_types: Sequence[str] = (),
+    local_type_compatible: bool | None = None,
 ) -> str:
     relation_name = normalize_relation_term(relation_name)
     source_type_set = {clean_text(item) for item in source_types if clean_text(item)}
     target_type_set = {clean_text(item) for item in target_types if clean_text(item)}
+
+    if relation_name in LOCAL_TYPE_RULES_BY_RELATION_NAME:
+        if local_type_compatible is None:
+            if len(source_type_set) == 1 and len(target_type_set) == 1:
+                local_type_compatible, _reason = evaluate_local_type_compatibility(
+                    relation_name,
+                    next(iter(source_type_set)),
+                    next(iter(target_type_set)),
+                )
+            else:
+                local_type_compatible = False
+
+        if local_type_compatible is False:
+            return "type_review"
+        if relation_name in FIRST_EXTENSION_SAFE_RELATION_NAMES:
+            return "safe"
+        if relation_name in FIRST_EXTENSION_REVERSE_REVIEW_RELATION_NAMES:
+            return "reverse_review"
 
     if relation_name in SAFE_TRAVERSAL_RELATION_NAMES:
         return "safe"
@@ -1687,7 +2078,12 @@ def traversal_policy_for_relation(
 
 
 def review_needed_for_policy(traversal_policy: str) -> bool:
-    return traversal_policy in {"hierarchy_review", "reverse_review", "review"}
+    return traversal_policy in {
+        "hierarchy_review",
+        "reverse_review",
+        "review",
+        "type_review",
+    }
 
 
 def build_collapsed_connections(
@@ -1750,13 +2146,32 @@ def build_collapsed_connections(
         relationship_metadata = build_ontology_relationship_metadata(
             row["source_vocabulary"]
         )
+        source_representative = representatives_by_cui.get(row["source_cui"])
+        target_representative = representatives_by_cui.get(row["target_cui"])
+        representative_source_type = (
+            clean_text(source_representative.canonical_type)
+            if source_representative is not None
+            else ""
+        )
+        representative_target_type = (
+            clean_text(target_representative.canonical_type)
+            if target_representative is not None
+            else ""
+        )
+        (
+            local_type_compatible,
+            local_type_compatibility_reason,
+        ) = evaluate_local_type_compatibility(
+            relation_name=relation_name,
+            source_type=representative_source_type,
+            target_type=representative_target_type,
+        )
         traversal_policy = traversal_policy_for_relation(
             relation_name=relation_name,
             source_types=source_types,
             target_types=target_types,
+            local_type_compatible=local_type_compatible,
         )
-        source_representative = representatives_by_cui.get(row["source_cui"])
-        target_representative = representatives_by_cui.get(row["target_cui"])
         collapsed_edges.append(
             {
                 "edge_key": build_collapsed_edge_key(
@@ -1784,6 +2199,10 @@ def build_collapsed_connections(
                 "target_types": target_types,
                 "status": CONNECTION_STATUS,
                 **relationship_metadata,
+                "local_type_compatible": local_type_compatible,
+                "local_type_compatibility_reason": local_type_compatibility_reason,
+                "representative_source_type": representative_source_type or None,
+                "representative_target_type": representative_target_type or None,
                 "traversal_policy": traversal_policy,
                 "review_needed": review_needed_for_policy(traversal_policy),
                 "source_representative": concept_report(source_representative),
@@ -1802,24 +2221,32 @@ def build_collapsed_connections(
     )
     return collapsed_edges
 
+
 def build_collapsed_connection_rows(
-    edges: Sequence[dict[str, Any]],
+    edges: Sequence[dict[str, Any]] = (),
     doc_id: Optional[str] = None,
     source_vocab: str = DEFAULT_SOURCE_VOCAB,
     umls_version: str = DEFAULT_UMLS_VERSION,
+    collapsed_edges: Optional[Sequence[dict[str, Any]]] = None,
 ) -> list[tuple[Any, ...]]:
-    collapsed_edges = build_collapsed_connections(
-        edges=edges,
-        doc_id=doc_id,
-        source_vocab=source_vocab,
-        umls_version=umls_version,
-    )
+    if collapsed_edges is None:
+        collapsed_edges = build_collapsed_connections(
+            edges=edges,
+            doc_id=doc_id,
+            source_vocab=source_vocab,
+            umls_version=umls_version,
+        )
     rows = [
         (
             edge["source_cui"],
             edge["target_cui"],
             edge["relation_label"],
             edge["relation_name"],
+            edge.get("representative_source_type"),
+            edge.get("representative_target_type"),
+            local_type_compatible_count_key(edge.get("local_type_compatible")),
+            edge.get("local_type_compatibility_reason"),
+            edge["traversal_policy"],
             edge["raw_rows"],
             len(edge["relation_ids"]),
             "; ".join(edge["source_names"][:3]),
@@ -1842,6 +2269,7 @@ def build_summary_markdown(
     cache_dir: Path,
     dry_run: bool,
     umls_version: str = DEFAULT_UMLS_VERSION,
+    collapsed_edges: Optional[Sequence[dict[str, Any]]] = None,
     materialization_report: Optional[dict[str, Any]] = None,
 ) -> str:
     unique_cuis = {concept.umls_cui for concept in concepts}
@@ -1867,13 +2295,20 @@ def build_summary_markdown(
         (source_type, relation, target_type, count)
         for (source_type, relation, target_type), count in type_relation_counts.most_common()
     ]
+    if collapsed_edges is None:
+        representatives = select_representative_concepts(concepts)
+        collapsed_edges = build_collapsed_connections(
+            edges=edges,
+            doc_id=doc_id,
+            source_vocab=source_vocab,
+            umls_version=umls_version,
+            representatives_by_cui=representatives,
+        )
     collapsed_connection_rows = build_collapsed_connection_rows(
-        edges=edges,
-        doc_id=doc_id,
-        source_vocab=source_vocab,
-        umls_version=umls_version,
+        collapsed_edges=collapsed_edges,
     )
     collapsed_connection_count = len(collapsed_connection_rows)
+    collapsed_stats = build_collapsed_connection_statistics(collapsed_edges)
     duplicate_raw_rows_collapsed = max(0, len(edges) - collapsed_connection_count)
     cross_type_isa_edges = sum(
         1
@@ -1902,6 +2337,7 @@ def build_summary_markdown(
         f"- source vocabulary: `{source_vocab or 'ALL'}`",
         f"- UMLS version: `{umls_version}`",
         f"- dry-run/read-only: `{str(dry_run).lower()}`",
+        f"- selected relation profile: `{stats.get('selected_relation_profile') or '(none)'}`",
         f"- candidate CSV: `{csv_path}`",
         f"- collapsed JSON: `{collapsed_json_path or '(not written)'}`",
         f"- relation cache directory: `{cache_dir}`",
@@ -1919,6 +2355,9 @@ def build_summary_markdown(
         f"- internal candidate edges retained: {len(edges)}",
         f"- raw candidate edge rows: {len(edges)}",
         f"- collapsed candidate connections: {collapsed_connection_count}",
+        f"- collapsed first-extension connections: {collapsed_stats['collapsed_first_extension_connections']}",
+        f"- compatible first-extension connections: {collapsed_stats['compatible_first_extension_connections']}",
+        f"- incompatible first-extension connections: {collapsed_stats['incompatible_first_extension_connections']}",
         f"- duplicate raw rows collapsed: {duplicate_raw_rows_collapsed}",
         f"- real relation fetch failures: {stats.get('relation_fetch_failures', 0)}",
         f"- relation fetches unavailable after repeated 404: {stats.get('relation_fetches_unavailable', 0)}",
@@ -1942,6 +2381,7 @@ def build_summary_markdown(
         f"- max_source_ui_lookups_per_cui: {stats.get('max_source_ui_lookups_per_cui')}",
         f"- write_partial_every: {stats.get('write_partial_every')}",
         f"- strong_relations_only: `{str(bool(stats.get('strong_relations_only'))).lower()}`",
+        f"- relation_profile: `{stats.get('selected_relation_profile') or '(none)'}`",
         f"- ignore_negative_cache: `{str(bool(stats.get('ignore_negative_cache'))).lower()}`",
         f"- Neo4j writes enabled: `{str(bool((materialization_report or {}).get('write_neo4j'))).lower()}`",
         f"- included relation names: `{', '.join(stats.get('include_relation_names') or []) or '(none)'}`",
@@ -2045,8 +2485,8 @@ def build_summary_markdown(
     lines.extend(
         [
             "",
-        "## Candidate Edges By Relation Label",
-        "",
+            "## Candidate Edges By Relation Label",
+            "",
         ]
     )
 
@@ -2064,6 +2504,85 @@ def build_summary_markdown(
             type_relation_rows,
         )
     )
+    lines.extend(["", "## Collapsed Connections By Relation Name", ""])
+    lines.extend(
+        markdown_count_table(
+            ["relation_name", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_relation_name"].items()),
+        )
+    )
+    lines.extend(["", "## Collapsed Connections By Traversal Policy", ""])
+    lines.extend(
+        markdown_count_table(
+            ["traversal_policy", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_traversal_policy"].items()),
+        )
+    )
+    lines.extend(["", "## Collapsed Connections By Local Type Compatibility", ""])
+    lines.extend(
+        markdown_count_table(
+            ["local_type_compatible", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_local_type_compatible"].items()),
+        )
+    )
+    representative_type_rows = [
+        (
+            row["source_type"],
+            row["relation_name"],
+            row["target_type"],
+            row["count"],
+        )
+        for row in collapsed_stats[
+            "counts_by_source_representative_type_relation_target_representative_type"
+        ]
+    ]
+    lines.extend(
+        [
+            "",
+            "## Collapsed Connections By Representative Type -> Relation -> Representative Type",
+            "",
+        ]
+    )
+    lines.extend(
+        markdown_count_table(
+            [
+                "source_representative_type",
+                "relation_name",
+                "target_representative_type",
+                "collapsed_connections",
+            ],
+            representative_type_rows,
+        )
+    )
+    incompatible_example_rows = [
+        (
+            item.get("source_cui"),
+            item.get("source_type"),
+            item.get("relation_name"),
+            item.get("target_type"),
+            item.get("target_cui"),
+            item.get("reason"),
+            "; ".join(item.get("source_names") or []),
+            "; ".join(item.get("target_names") or []),
+        )
+        for item in collapsed_stats["incompatible_local_type_examples"]
+    ]
+    lines.extend(["", "## Incompatible First-Extension Examples", ""])
+    lines.extend(
+        markdown_count_table(
+            [
+                "source_cui",
+                "source_type",
+                "relation_name",
+                "target_type",
+                "target_cui",
+                "reason",
+                "example_source_names",
+                "example_target_names",
+            ],
+            incompatible_example_rows,
+        )
+    )
     lines.extend(["", "## Collapsed Candidate Connections", ""])
     lines.extend(
         markdown_count_table(
@@ -2072,6 +2591,11 @@ def build_summary_markdown(
                 "target_cui",
                 "relation_label",
                 "relation_name",
+                "source_representative_type",
+                "target_representative_type",
+                "local_type_compatible",
+                "local_type_reason",
+                "traversal_policy",
                 "raw_rows",
                 "relation_ids",
                 "example_source_names",
@@ -2090,6 +2614,7 @@ def build_summary_markdown(
                 f"- relationships written/merged: {materialization_report.get('relationships_written', 0)}",
                 f"- skipped missing representative: {materialization_report.get('skipped_missing_representative', 0)}",
                 f"- skipped not whitelisted: {materialization_report.get('skipped_not_whitelisted', 0)}",
+                f"- skipped incompatible local types: {materialization_report.get('skipped_incompatible_local_types', 0)}",
                 f"- duplicate edge_key findings after write: {materialization_report.get('duplicate_edge_key_findings', 0)}",
                 f"- CUI mismatch findings after write: {materialization_report.get('cui_mismatch_findings', 0)}",
             ]
@@ -2185,6 +2710,7 @@ def write_review_exports(
         cache_dir=cache_dir,
         dry_run=dry_run,
         umls_version=umls_version,
+        collapsed_edges=collapsed_edges,
         materialization_report=materialization_report,
     )
     write_summary(summary_path, summary)
@@ -2243,8 +2769,16 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
             r.traversal_policy = $traversal_policy,
             r.review_needed = $review_needed,
             r.updated_at = datetime($now)
+        FOREACH (_ IN CASE WHEN $write_local_type_audit THEN [1] ELSE [] END |
+            SET r.local_type_compatible = $local_type_compatible,
+                r.local_type_compatibility_reason = $local_type_compatibility_reason
+        )
         RETURN elementId(r) AS relationship_id
     """
+    write_local_type_audit = (
+        relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+        and edge.get("local_type_compatible") is True
+    )
     record = tx.run(
         query,
         edge_key=edge["edge_key"],
@@ -2268,6 +2802,11 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
         provenance_method=clean_text(relationship_metadata["provenance_method"]),
         traversal_policy=clean_text(edge.get("traversal_policy")),
         review_needed=bool(edge.get("review_needed")),
+        write_local_type_audit=write_local_type_audit,
+        local_type_compatible=bool(edge.get("local_type_compatible")),
+        local_type_compatibility_reason=clean_text(
+            edge.get("local_type_compatibility_reason")
+        ),
         now=now,
         source_concept_id=source_concept_id,
         target_concept_id=target_concept_id,
@@ -2360,8 +2899,12 @@ def materialize_collapsed_connections(
     representatives: dict[str, dict[str, Any]] = {}
     skipped_not_whitelisted = 0
     skipped_missing_representative = 0
+    skipped_incompatible_local_types = 0
     eligible_collapsed_edges = 0
     relationships_written = 0
+    collapsed_connection_statistics = build_collapsed_connection_statistics(
+        collapsed_edges
+    )
 
     with driver.session() as session:
         for edge in collapsed_edges:
@@ -2376,6 +2919,19 @@ def materialize_collapsed_connections(
                     {
                         **edge,
                         "materialization_status": "skipped_not_whitelisted",
+                    }
+                )
+                continue
+
+            if (
+                relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+                and edge.get("local_type_compatible") is not True
+            ):
+                skipped_incompatible_local_types += 1
+                report_edges.append(
+                    {
+                        **edge,
+                        "materialization_status": "skipped_incompatible_local_types",
                     }
                 )
                 continue
@@ -2427,9 +2983,12 @@ def materialize_collapsed_connections(
         "relationships_written": relationships_written,
         "skipped_not_whitelisted": skipped_not_whitelisted,
         "skipped_missing_representative": skipped_missing_representative,
+        "skipped_incompatible_local_types": skipped_incompatible_local_types,
         "duplicate_edge_key_findings": duplicate_findings,
         "cui_mismatch_findings": mismatch_findings,
         "counts_by_relationship_type": sanity.get("counts_by_relationship_type", {}),
+        **collapsed_connection_statistics,
+        "collapsed_connection_statistics": collapsed_connection_statistics,
         "representatives": representatives,
         "relationships": report_edges,
         "sanity": sanity,
@@ -2456,6 +3015,7 @@ def run_umls_connections(
     include_relation_names: Optional[Sequence[str]] = None,
     exclude_relation_names: Optional[Sequence[str]] = None,
     strong_relations_only: bool = False,
+    relation_profile: Optional[str] = None,
     ignore_negative_cache: bool = False,
 ) -> dict[str, Any]:
     if max_cuis is not None and max_cuis < 0:
@@ -2466,6 +3026,16 @@ def run_umls_connections(
         raise ValueError("max_source_ui_lookups_per_cui must be >= 0")
     if write_partial_every < 0:
         raise ValueError("write_partial_every must be >= 0")
+    (
+        resolved_include_names,
+        resolved_exclude_names,
+        selected_relation_profile,
+    ) = resolve_relation_name_filters(
+        include_relation_names=include_relation_names,
+        exclude_relation_names=exclude_relation_names,
+        strong_relations_only=strong_relations_only,
+        relation_profile=relation_profile,
+    )
     dry_run = bool(dry_run) and not bool(write_neo4j)
 
     owns_driver = driver is None
@@ -2494,11 +3064,6 @@ def run_umls_connections(
         doc_id=doc_id,
         output_dir=output_dir,
     )
-    resolved_include_names, resolved_exclude_names = resolve_relation_name_filters(
-        include_relation_names=include_relation_names,
-        exclude_relation_names=exclude_relation_names,
-        strong_relations_only=strong_relations_only,
-    )
     edges: list[dict[str, Any]] = []
     relation_stats: dict[str, Any] = {
         "total_local_cuis": len({concept.umls_cui for concept in concepts}),
@@ -2512,6 +3077,8 @@ def run_umls_connections(
         "include_relation_names": sorted(resolved_include_names),
         "exclude_relation_names": sorted(resolved_exclude_names),
         "strong_relations_only": strong_relations_only,
+        "relation_profile": selected_relation_profile,
+        "selected_relation_profile": selected_relation_profile,
         "ignore_negative_cache": ignore_negative_cache,
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
@@ -2571,6 +3138,7 @@ def run_umls_connections(
             include_relation_names=include_relation_names,
             exclude_relation_names=exclude_relation_names,
             strong_relations_only=strong_relations_only,
+            relation_profile=relation_profile,
         )
         client_stats = dict(client.stats)
     else:
@@ -2584,6 +3152,11 @@ def run_umls_connections(
         umls_version=umls_version,
         representatives_by_cui=representatives,
     )
+    collapsed_connection_statistics = build_collapsed_connection_statistics(
+        collapsed_edges
+    )
+    relation_stats.update(collapsed_connection_statistics)
+    relation_stats["collapsed_connection_statistics"] = collapsed_connection_statistics
     materialization_report: Optional[dict[str, Any]] = None
 
     try:
@@ -2599,6 +3172,11 @@ def run_umls_connections(
                 driver=driver,
                 collapsed_edges=collapsed_edges,
             )
+            materialization_report["selected_relation_profile"] = (
+                selected_relation_profile
+            )
+            materialization_report["relation_profile"] = selected_relation_profile
+            materialization_report["relation_stats"] = relation_stats
 
         relation_stats["final_export_written"] = True
         write_review_exports(
@@ -2773,13 +3351,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--relation-profile",
+        choices=RELATION_PROFILE_CHOICES,
+        default=None,
+        help=(
+            "Initial SNOMED relation include profile: core, first_extension, "
+            "or expanded. Explicit include names are added and excludes are "
+            "then removed."
+        ),
+    )
+    parser.add_argument(
         "--strong-relations-only",
         action="store_true",
         help=(
-            "Shorthand include filter for isa, inverse_isa, has_finding_site, "
-            "finding_site_of, has_associated_morphology, and "
-            "associated_morphology_of, has_procedure_site, and "
-            "has_direct_procedure_site."
+            "Backward-compatible shorthand for --relation-profile expanded."
         ),
     )
     parser.add_argument(
@@ -2809,27 +3394,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    result = run_umls_connections(
-        doc_id=args.doc_id,
-        source_vocab=args.source_vocab,
-        output_dir=args.output_dir,
-        cache_dir=args.cache_dir,
-        dry_run=not args.write_neo4j,
-        write_neo4j=args.write_neo4j,
-        api_timeout=args.api_timeout,
-        api_rate_limit_per_second=args.api_rate_limit_per_second,
-        umls_version=args.umls_version,
-        api_page_size=args.api_page_size,
-        max_cuis=args.max_cuis,
-        skip_cuis=args.skip_cui,
-        max_relations_per_cui=args.max_relations_per_cui,
-        max_source_ui_lookups_per_cui=args.max_source_ui_lookups_per_cui,
-        write_partial_every=args.write_partial_every,
-        include_relation_names=args.include_relation_name,
-        exclude_relation_names=args.exclude_relation_name,
-        strong_relations_only=args.strong_relations_only,
-        ignore_negative_cache=args.ignore_negative_cache,
-    )
+    try:
+        result = run_umls_connections(
+            doc_id=args.doc_id,
+            source_vocab=args.source_vocab,
+            output_dir=args.output_dir,
+            cache_dir=args.cache_dir,
+            dry_run=not args.write_neo4j,
+            write_neo4j=args.write_neo4j,
+            api_timeout=args.api_timeout,
+            api_rate_limit_per_second=args.api_rate_limit_per_second,
+            umls_version=args.umls_version,
+            api_page_size=args.api_page_size,
+            max_cuis=args.max_cuis,
+            skip_cuis=args.skip_cui,
+            max_relations_per_cui=args.max_relations_per_cui,
+            max_source_ui_lookups_per_cui=args.max_source_ui_lookups_per_cui,
+            write_partial_every=args.write_partial_every,
+            include_relation_names=args.include_relation_name,
+            exclude_relation_names=args.exclude_relation_name,
+            strong_relations_only=args.strong_relations_only,
+            relation_profile=args.relation_profile,
+            ignore_negative_cache=args.ignore_negative_cache,
+        )
+    except ValueError as e:
+        parser.error(str(e))
 
     logger.info(
         "Completed UMLS connection export | candidate_edges=%d | collapsed_connections=%d | writes_to_neo4j=%s",
@@ -2846,11 +3435,25 @@ if __name__ == "__main__":
 
 __all__ = [
     "LocalConcept",
+    "CORE_SNOMED_RELATION_NAMES",
+    "FIRST_SNOMED_EXTENSION_RELATION_NAMES",
+    "EXPANDED_SNOMED_RELATION_NAMES",
+    "STRONG_RELATION_NAMES",
     "RELATION_TYPE_BY_NAME",
+    "UMLS_CONNECTION_RELATION_TYPES",
+    "LOCAL_TYPE_RULES_BY_RELATION_NAME",
+    "FIRST_EXTENSION_SAFE_RELATION_NAMES",
+    "FIRST_EXTENSION_REVERSE_REVIEW_RELATION_NAMES",
     "UMLSRelationsClient",
     "build_collapsed_connections",
+    "build_collapsed_connection_statistics",
+    "evaluate_local_type_compatibility",
     "fetch_local_concepts_for_doc",
+    "first_extension_local_type_rule_rows",
+    "first_extension_relationship_types",
     "materialize_collapsed_connections",
+    "resolve_relation_name_filters",
+    "traversal_policy_for_relation",
     "run_umls_connections",
     "build_candidate_edges",
     "select_representative_concepts",
