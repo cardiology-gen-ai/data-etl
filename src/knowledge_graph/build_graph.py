@@ -784,7 +784,7 @@ def process_umls_connections(
     materialization_mode = getattr(
         config,
         "umls_connections_materialization_mode",
-        "legacy",
+        "none",
     )
     configured_output_dir = getattr(config, "umls_connections_output_dir", None)
     configured_cache_dir = getattr(config, "umls_connections_cache_dir", None)
@@ -805,8 +805,12 @@ def process_umls_connections(
         source_vocab=getattr(config, "umls_connections_source_vocab", "SNOMEDCT_US"),
         output_dir=output_dir,
         cache_dir=cache_dir,
+        run_name=getattr(config, "umls_connections_run_name", None),
         dry_run=not write_neo4j,
         write_neo4j=write_neo4j,
+        replace_existing_connections=bool(
+            getattr(config, "umls_connections_replace_existing_connections", False)
+        ),
         materialization_mode=materialization_mode,
         api_timeout=float(getattr(config, "umls_connections_api_timeout", 30.0)),
         api_rate_limit_per_second=float(
@@ -815,6 +819,7 @@ def process_umls_connections(
         umls_version=getattr(config, "umls_connections_umls_version", "current"),
         api_page_size=int(getattr(config, "umls_connections_api_page_size", 200)),
         max_cuis=getattr(config, "umls_connections_max_cuis", None),
+        include_cuis=getattr(config, "umls_connections_include_cuis", None),
         skip_cuis=getattr(config, "umls_connections_skip_cuis", None),
         max_relations_per_cui=int(
             getattr(config, "umls_connections_max_relations_per_cui", 500)

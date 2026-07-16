@@ -150,7 +150,7 @@ def get_embedding_provider() -> str:
 
 def resolve_embedding_provider(provider: Optional[str] = None) -> str:
     """
-    Resolve an explicit embedding provider, falling back to legacy env settings.
+    Resolve an explicit embedding provider, falling back to older env settings.
     """
     return _normalize_provider(
         provider

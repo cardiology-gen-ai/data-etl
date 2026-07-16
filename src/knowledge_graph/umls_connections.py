@@ -118,8 +118,8 @@ DEFAULT_MAX_RELATIONS_PER_CUI = 500
 DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI = 100
 DEFAULT_WRITE_PARTIAL_EVERY = 25
 RELATIONS_404_NEGATIVE_CACHE_THRESHOLD = 3
-MATERIALIZATION_MODE_CHOICES = ("none", "legacy", "approved", "safe_only")
-DEFAULT_MATERIALIZATION_MODE = "legacy"
+MATERIALIZATION_MODE_CHOICES = ("none", "safe_only")
+DEFAULT_MATERIALIZATION_MODE = "none"
 
 
 @dataclass(frozen=True)
@@ -207,7 +207,7 @@ ANATOMICAL_TYPES = _type_tuple({"anatomical_structure"})
 DEVICE_TYPES = _type_tuple({"device"})
 BIOMARKER_TYPES = _type_tuple({"biomarker"})
 
-LEGACY_CORE_SNOMED_RELATION_NAMES = frozenset(
+CORE_SNOMED_RELATION_NAMES = frozenset(
     {
         "isa",
         "inverse_isa",
@@ -219,7 +219,6 @@ LEGACY_CORE_SNOMED_RELATION_NAMES = frozenset(
         "has_direct_procedure_site",
     }
 )
-CORE_SNOMED_RELATION_NAMES = LEGACY_CORE_SNOMED_RELATION_NAMES
 
 FIRST_SNOMED_EXTENSION_RELATION_NAMES = frozenset(
     {
@@ -276,21 +275,21 @@ RELATION_SPECS = dict(
     [
         _relation_spec(
             "isa",
-            family="legacy_core",
+            family="core",
             validation_mode="hierarchy",
             default_traversal_policy="hierarchy",
             materialize_by_default=True,
         ),
         _relation_spec(
             "inverse_isa",
-            family="legacy_core",
+            family="core",
             validation_mode="hierarchy",
             default_traversal_policy="hierarchy",
             materialize_by_default=True,
         ),
         _relation_spec(
             "has_finding_site",
-            family="legacy_core",
+            family="core",
             source_types=DISEASE_FINDING_TYPES,
             target_types=ANATOMICAL_TYPES,
             default_traversal_policy="safe",
@@ -298,7 +297,7 @@ RELATION_SPECS = dict(
         ),
         _relation_spec(
             "finding_site_of",
-            family="legacy_core",
+            family="core",
             source_types=ANATOMICAL_TYPES,
             target_types=DISEASE_FINDING_TYPES,
             default_traversal_policy="reverse_review",
@@ -306,7 +305,7 @@ RELATION_SPECS = dict(
         ),
         _relation_spec(
             "has_associated_morphology",
-            family="legacy_core",
+            family="core",
             source_types=DISEASE_FINDING_TYPES,
             target_types=DISEASE_FINDING_TYPES,
             default_traversal_policy="safe",
@@ -314,7 +313,7 @@ RELATION_SPECS = dict(
         ),
         _relation_spec(
             "associated_morphology_of",
-            family="legacy_core",
+            family="core",
             source_types=DISEASE_FINDING_TYPES,
             target_types=DISEASE_FINDING_TYPES,
             default_traversal_policy="reverse_review",
@@ -322,7 +321,7 @@ RELATION_SPECS = dict(
         ),
         _relation_spec(
             "has_procedure_site",
-            family="legacy_core",
+            family="core",
             source_types=PROCEDURE_TYPES,
             target_types=ANATOMICAL_TYPES,
             default_traversal_policy="safe",
@@ -330,7 +329,7 @@ RELATION_SPECS = dict(
         ),
         _relation_spec(
             "has_direct_procedure_site",
-            family="legacy_core",
+            family="core",
             source_types=DIRECT_PROCEDURE_TYPES,
             target_types=ANATOMICAL_TYPES,
             default_traversal_policy="safe",
@@ -550,7 +549,6 @@ RELATION_SPECS = dict(
 )
 
 RELATION_NAMES_BY_PROFILE = {
-    "legacy_core": CORE_SNOMED_RELATION_NAMES,
     "core": CORE_SNOMED_RELATION_NAMES,
     "first_extension": FIRST_SNOMED_EXTENSION_RELATION_NAMES,
     "expanded": EXPANDED_SNOMED_RELATION_NAMES,
@@ -1706,6 +1704,8 @@ def build_initial_relation_stats(
     source_cuis: Sequence[str],
     skipped_cuis: Sequence[dict[str, Any]],
     max_cuis: Optional[int],
+    include_cuis: Sequence[str],
+    skip_cuis: Sequence[str],
     max_relations_per_cui: int,
     max_source_ui_lookups_per_cui: int,
     write_partial_every: int,
@@ -1718,7 +1718,12 @@ def build_initial_relation_stats(
     failures: list[dict[str, str]] = []
     return {
         "total_local_cuis": len(local_cuis),
+        "eligible_local_cuis": sorted(local_cuis),
+        "eligible_local_cui_count": len(local_cuis),
         "source_cuis_selected": len(source_cuis),
+        "selected_source_cuis": list(source_cuis),
+        "include_cuis": list(include_cuis),
+        "skip_cuis": list(skip_cuis),
         "processed_cuis": [],
         "skipped_cuis": list(skipped_cuis),
         "max_cuis": max_cuis,
@@ -1756,10 +1761,18 @@ def build_initial_relation_stats(
 
 def select_source_cuis(
     local_cuis: set[str],
+    include_cuis: Optional[Sequence[str]],
     skip_cuis: Optional[Sequence[str]],
     max_cuis: Optional[int],
     by_cui: dict[str, list[LocalConcept]],
 ) -> tuple[list[str], list[dict[str, Any]]]:
+    requested_include_cuis = sorted(
+        {
+            normalize_cui(cui)
+            for cui in (include_cuis or [])
+            if normalize_cui(cui)
+        }
+    )
     requested_skip_cuis = sorted(
         {
             normalize_cui(cui)
@@ -1768,6 +1781,16 @@ def select_source_cuis(
         }
     )
     skipped: list[dict[str, Any]] = []
+
+    for cui in requested_include_cuis:
+        if cui not in local_cuis:
+            skipped.append(
+                {
+                    "cui": cui,
+                    "reason": "requested_include_not_in_local_cuis",
+                    "local_concepts": 0,
+                }
+            )
 
     for cui in requested_skip_cuis:
         if cui not in local_cuis:
@@ -1779,8 +1802,12 @@ def select_source_cuis(
                 }
             )
 
+    source_pool = set(local_cuis)
+    if requested_include_cuis:
+        source_pool.intersection_update(requested_include_cuis)
+
     source_cuis: list[str] = []
-    for cui in sorted(local_cuis):
+    for cui in sorted(source_pool):
         if cui in requested_skip_cuis:
             skipped.append(
                 {
@@ -1813,6 +1840,7 @@ def build_candidate_edges(
     client: UMLSRelationsClient,
     source_vocab: str,
     max_cuis: Optional[int] = None,
+    include_cuis: Optional[Sequence[str]] = None,
     skip_cuis: Optional[Sequence[str]] = None,
     max_relations_per_cui: int = DEFAULT_MAX_RELATIONS_PER_CUI,
     max_source_ui_lookups_per_cui: int = DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI,
@@ -1832,9 +1860,16 @@ def build_candidate_edges(
     local_cuis = set(by_cui)
     source_cuis, skipped_cuis = select_source_cuis(
         local_cuis=local_cuis,
+        include_cuis=include_cuis,
         skip_cuis=skip_cuis,
         max_cuis=max_cuis,
         by_cui=by_cui,
+    )
+    normalized_include_cuis = sorted(
+        {normalize_cui(cui) for cui in (include_cuis or []) if normalize_cui(cui)}
+    )
+    normalized_skip_cuis = sorted(
+        {normalize_cui(cui) for cui in (skip_cuis or []) if normalize_cui(cui)}
     )
     (
         resolved_include_names,
@@ -1852,6 +1887,8 @@ def build_candidate_edges(
         source_cuis=source_cuis,
         skipped_cuis=skipped_cuis,
         max_cuis=max_cuis,
+        include_cuis=normalized_include_cuis,
+        skip_cuis=normalized_skip_cuis,
         max_relations_per_cui=max_relations_per_cui,
         max_source_ui_lookups_per_cui=max_source_ui_lookups_per_cui,
         write_partial_every=write_partial_every,
@@ -2218,6 +2255,40 @@ def deduplicate_edges(edges: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     return deduped
 
 
+def resolve_run_name(
+    *,
+    run_name: Optional[str] = None,
+    relation_profile: Optional[str] = None,
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
+    max_relations_per_cui: int = DEFAULT_MAX_RELATIONS_PER_CUI,
+    max_source_ui_lookups_per_cui: int = DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI,
+) -> str:
+    explicit_run_name = clean_text(run_name)
+    if explicit_run_name:
+        return safe_filename_component(explicit_run_name, fallback="umls_run")
+
+    profile_component = safe_filename_component(
+        relation_profile or "custom",
+        fallback="custom",
+    )
+    mode_component = safe_filename_component(
+        normalize_materialization_mode(materialization_mode),
+        fallback=DEFAULT_MATERIALIZATION_MODE,
+    )
+    return "__".join(
+        [
+            profile_component,
+            mode_component,
+            f"r{int(max_relations_per_cui)}",
+            f"ui{int(max_source_ui_lookups_per_cui)}",
+        ]
+    )
+
+
+def resolve_run_output_dir(output_dir: Path, run_name: str) -> Path:
+    return Path(output_dir) / safe_filename_component(run_name, fallback="umls_run")
+
+
 def output_paths(doc_id: Optional[str], output_dir: Path) -> tuple[Path, Path]:
     safe_doc_id = safe_filename_component(doc_id, fallback="all_docs")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -2237,6 +2308,12 @@ def materialization_report_path(doc_id: Optional[str], output_dir: Path) -> Path
     safe_doc_id = safe_filename_component(doc_id, fallback="all_docs")
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir / f"{safe_doc_id}_materialization_report.json"
+
+
+def statistics_report_path(doc_id: Optional[str], output_dir: Path) -> Path:
+    safe_doc_id = safe_filename_component(doc_id, fallback="all_docs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / f"{safe_doc_id}_connection_statistics.json"
 
 
 def write_candidate_edges_csv(path: Path, edges: Sequence[dict[str, Any]]) -> None:
@@ -2374,8 +2451,8 @@ def normalize_materialization_mode(value: Optional[str]) -> str:
     mode = clean_text(value).casefold() or DEFAULT_MATERIALIZATION_MODE
     if mode not in MATERIALIZATION_MODE_CHOICES:
         raise ValueError(
-            f"Invalid materialization mode {value!r}; choose one of "
-            f"{', '.join(MATERIALIZATION_MODE_CHOICES)}"
+            f"Invalid materialization mode {value!r}; the only supported "
+            "values are none and safe_only"
         )
     return mode
 
@@ -2390,47 +2467,334 @@ def should_materialize_relation(
     if mode == "none":
         return False, "materialization_mode_none"
 
-    relation_name = normalize_relation_term(edge.get("relation_name"))
-    spec = RELATION_SPECS.get(relation_name)
-    relationship_type = clean_text(edge.get("relationship_type"))
-    if spec is None or not relationship_type:
-        return False, "unsupported_relation"
-
     if require_representatives and (
         not edge.get("source_representative")
         or not edge.get("target_representative")
     ):
         return False, "missing_representative"
 
+    relation_name = normalize_relation_term(edge.get("relation_name"))
+    spec = RELATION_SPECS.get(relation_name)
+    relationship_type = clean_text(edge.get("relationship_type"))
+    if spec is None or not relationship_type:
+        return False, "unsupported_relation"
+
     compatibility_status = clean_text(edge.get("compatibility_status"))
     local_type_compatible = edge.get("local_type_compatible")
 
-    if mode == "legacy":
-        if relation_name not in EXPANDED_SNOMED_RELATION_NAMES:
-            return False, "legacy_relation_not_in_expanded_profile"
-        if (
-            relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
-            and local_type_compatible is not True
-        ):
-            return False, "legacy_incompatible_first_extension"
-        return True, "legacy_materialization"
-
     if not spec.materialize_by_default:
         return False, "not_materialize_by_default"
-    if compatibility_status not in {"compatible", "compatible_broad"}:
+    if compatibility_status != "compatible":
         return False, f"compatibility_status_{compatibility_status or 'missing'}"
+    if local_type_compatible is not True:
+        return False, "local_type_not_compatible"
 
-    if mode == "safe_only":
-        traversal_policy = clean_text(edge.get("traversal_policy"))
-        if traversal_policy not in {"safe", "hierarchy"}:
-            return False, f"traversal_policy_{traversal_policy or 'missing'}"
-        return True, "safe_only_materialization"
+    traversal_policy = clean_text(edge.get("traversal_policy"))
+    if traversal_policy not in {"safe", "hierarchy"}:
+        return False, f"traversal_policy_{traversal_policy or 'missing'}"
+    if bool(edge.get("review_needed")):
+        return False, "review_needed"
 
-    return True, "approved_materialization"
+    return True, "safe_only_materialization"
+
+
+def nearest_rank_percentile(values: Sequence[int], percentile: int) -> Optional[int]:
+    """
+    Deterministic nearest-rank percentile over sorted integer values.
+
+    For p95, the selected value is rank ceil(0.95 * n), clamped to the
+    observed range. This intentionally avoids interpolation so experiment
+    reports remain directly comparable.
+    """
+    if not values:
+        return None
+
+    sorted_values = sorted(int(value) for value in values)
+    percentile = max(0, min(int(percentile), 100))
+    rank = ((percentile * len(sorted_values)) + 99) // 100
+    index = max(0, min(len(sorted_values) - 1, rank - 1))
+    return sorted_values[index]
+
+
+def median_numeric(values: Sequence[int]) -> Optional[float]:
+    if not values:
+        return None
+
+    sorted_values = sorted(int(value) for value in values)
+    midpoint = len(sorted_values) // 2
+    if len(sorted_values) % 2:
+        return float(sorted_values[midpoint])
+    return (sorted_values[midpoint - 1] + sorted_values[midpoint]) / 2
+
+
+def representative_by_cui_from_edges(
+    collapsed_edges: Sequence[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    representatives: dict[str, dict[str, Any]] = {}
+    for edge in collapsed_edges:
+        for cui_key, representative_key in (
+            ("source_cui", "source_representative"),
+            ("target_cui", "target_representative"),
+        ):
+            cui = normalize_cui(edge.get(cui_key))
+            representative = edge.get(representative_key)
+            if cui and isinstance(representative, dict) and cui not in representatives:
+                representatives[cui] = dict(representative)
+    return representatives
+
+
+def compute_cui_graph_statistics(
+    collapsed_edges: Sequence[dict[str, Any]],
+    *,
+    eligible_cuis: Optional[Sequence[str]] = None,
+    selected_source_cuis: Optional[Sequence[str]] = None,
+    representatives_by_cui: Optional[dict[str, LocalConcept]] = None,
+) -> dict[str, Any]:
+    normalized_edges = [
+        (normalize_cui(edge.get("source_cui")), normalize_cui(edge.get("target_cui")))
+        for edge in collapsed_edges
+    ]
+    normalized_edges = [
+        (source_cui, target_cui)
+        for source_cui, target_cui in normalized_edges
+        if source_cui and target_cui
+    ]
+    eligible_cui_set = {
+        normalize_cui(cui)
+        for cui in (eligible_cuis or [])
+        if normalize_cui(cui)
+    }
+    selected_source_cui_set = {
+        normalize_cui(cui)
+        for cui in (selected_source_cuis or [])
+        if normalize_cui(cui)
+    }
+    if not eligible_cui_set:
+        eligible_cui_set = {
+            cui
+            for edge in normalized_edges
+            for cui in edge
+            if cui
+        }
+
+    source_cuis = {source_cui for source_cui, _target_cui in normalized_edges}
+    target_cuis = {target_cui for _source_cui, target_cui in normalized_edges}
+    connected_cuis = source_cuis | target_cuis
+
+    undirected_pairs = {
+        tuple(sorted((source_cui, target_cui)))
+        for source_cui, target_cui in normalized_edges
+    }
+    self_cui_edges = sum(
+        1 for source_cui, target_cui in normalized_edges if source_cui == target_cui
+    )
+
+    adjacency: dict[str, set[str]] = defaultdict(set)
+    in_degree: Counter[str] = Counter()
+    out_degree: Counter[str] = Counter()
+    for source_cui, target_cui in normalized_edges:
+        adjacency[source_cui].add(target_cui)
+        adjacency[target_cui].add(source_cui)
+        out_degree[source_cui] += 1
+        in_degree[target_cui] += 1
+
+    graph_nodes = set(eligible_cui_set) | connected_cuis
+    for cui in graph_nodes:
+        adjacency.setdefault(cui, set())
+
+    degree_by_cui = {
+        cui: len(neighbors)
+        for cui, neighbors in adjacency.items()
+        if cui in graph_nodes
+    }
+    degree_values = [degree_by_cui.get(cui, 0) for cui in sorted(graph_nodes)]
+    max_degree = max(degree_values) if degree_values else 0
+    maximum_degree_cuis = sorted(
+        cui for cui, degree in degree_by_cui.items() if degree == max_degree
+    ) if degree_values else []
+
+    visited: set[str] = set()
+    component_sizes: list[int] = []
+    for start in sorted(graph_nodes):
+        if start in visited:
+            continue
+        stack = [start]
+        visited.add(start)
+        size = 0
+        while stack:
+            current = stack.pop()
+            size += 1
+            for neighbor in sorted(adjacency.get(current, set())):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        component_sizes.append(size)
+
+    largest_component_size = max(component_sizes) if component_sizes else 0
+    eligible_count = len(eligible_cui_set)
+    selected_count = len(selected_source_cui_set)
+    isolated_eligible_cuis = sorted(
+        cui for cui in eligible_cui_set if degree_by_cui.get(cui, 0) == 0
+    )
+    isolated_selected_source_cuis = sorted(
+        cui for cui in selected_source_cui_set if degree_by_cui.get(cui, 0) == 0
+    )
+
+    edge_representatives = representative_by_cui_from_edges(collapsed_edges)
+    top_degree_rows: list[dict[str, Any]] = []
+    for cui in sorted(degree_by_cui, key=lambda item: (-degree_by_cui[item], item))[:10]:
+        local_representative = (
+            representatives_by_cui.get(cui)
+            if representatives_by_cui is not None
+            else None
+        )
+        edge_representative = edge_representatives.get(cui) or {}
+        top_degree_rows.append(
+            {
+                "cui": cui,
+                "representative_name": (
+                    local_representative.name
+                    if local_representative is not None
+                    else edge_representative.get("name")
+                ),
+                "canonical_type": (
+                    local_representative.canonical_type
+                    if local_representative is not None
+                    else edge_representative.get("canonical_type")
+                ),
+                "degree": degree_by_cui.get(cui, 0),
+                "in_degree": int(in_degree.get(cui, 0)),
+                "out_degree": int(out_degree.get(cui, 0)),
+            }
+        )
+
+    return {
+        "eligible_local_cuis": eligible_count,
+        "selected_source_cuis": selected_count,
+        "unique_source_cuis": len(source_cuis),
+        "unique_target_cuis": len(target_cuis),
+        "unique_connected_cuis": len(connected_cuis),
+        "isolated_eligible_local_cuis": isolated_eligible_cuis,
+        "isolated_eligible_local_cui_count": len(isolated_eligible_cuis),
+        "isolated_selected_source_cuis": isolated_selected_source_cuis,
+        "isolated_selected_source_cui_count": len(isolated_selected_source_cuis),
+        "cui_coverage_ratio": (
+            len(connected_cuis & eligible_cui_set) / eligible_count
+            if eligible_count
+            else 0.0
+        ),
+        "selected_source_cui_coverage_ratio": (
+            len(connected_cuis & selected_source_cui_set) / selected_count
+            if selected_count
+            else 0.0
+        ),
+        "directed_edges": len(normalized_edges),
+        "unique_undirected_cui_pairs": len(undirected_pairs),
+        "self_cui_edges": self_cui_edges,
+        "minimum_degree": min(degree_values) if degree_values else 0,
+        "median_degree": median_numeric(degree_values),
+        "mean_degree": (
+            sum(degree_values) / len(degree_values)
+            if degree_values
+            else 0.0
+        ),
+        "p95_degree": nearest_rank_percentile(degree_values, 95),
+        "maximum_degree": max_degree,
+        "maximum_degree_cuis": maximum_degree_cuis,
+        "weakly_connected_components": len(component_sizes),
+        "largest_component_size": largest_component_size,
+        "largest_component_coverage_ratio": (
+            largest_component_size / eligible_count if eligible_count else 0.0
+        ),
+        "maximum_in_degree": max(in_degree.values()) if in_degree else 0,
+        "maximum_in_degree_cuis": sorted(
+            cui
+            for cui, degree in in_degree.items()
+            if degree == (max(in_degree.values()) if in_degree else 0)
+        ) if in_degree else [],
+        "maximum_out_degree": max(out_degree.values()) if out_degree else 0,
+        "maximum_out_degree_cuis": sorted(
+            cui
+            for cui, degree in out_degree.items()
+            if degree == (max(out_degree.values()) if out_degree else 0)
+        ) if out_degree else [],
+        "top_degree_cui_representatives": top_degree_rows,
+        "degree_percentile_method": "nearest_rank",
+    }
+
+
+def build_relation_profile_statistics(
+    collapsed_edges: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    by_relation: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for edge in collapsed_edges:
+        by_relation[clean_text(edge.get("relation_name")) or "(none)"].append(edge)
+
+    summaries: list[dict[str, Any]] = []
+    for relation_name in sorted(by_relation):
+        edges_for_relation = by_relation[relation_name]
+        compatibility_counts = Counter(
+            clean_text(edge.get("compatibility_status")) or "(none)"
+            for edge in edges_for_relation
+        )
+        traversal_counts = Counter(
+            clean_text(edge.get("traversal_policy")) or "(none)"
+            for edge in edges_for_relation
+        )
+        type_counts = Counter(
+            (
+                clean_text(edge.get("representative_source_type")) or "(none)",
+                clean_text(edge.get("representative_target_type")) or "(none)",
+            )
+            for edge in edges_for_relation
+        )
+        examples = [
+            {
+                "source_cui": edge.get("source_cui"),
+                "source_type": edge.get("representative_source_type"),
+                "target_cui": edge.get("target_cui"),
+                "target_type": edge.get("representative_target_type"),
+                "compatibility_status": edge.get("compatibility_status"),
+                "traversal_policy": edge.get("traversal_policy"),
+                "materialization_decision": edge.get("materialization_decision"),
+                "source_names": list(edge.get("source_names") or [])[:3],
+                "target_names": list(edge.get("target_names") or [])[:3],
+            }
+            for edge in edges_for_relation[:5]
+        ]
+        summaries.append(
+            {
+                "relation_name": relation_name,
+                "candidate_count": len(edges_for_relation),
+                "materializable_count": sum(
+                    1
+                    for edge in edges_for_relation
+                    if edge.get("materialization_decision") is True
+                ),
+                "compatibility_status_counts": dict(
+                    sorted(compatibility_counts.items())
+                ),
+                "traversal_policy_counts": dict(sorted(traversal_counts.items())),
+                "source_type_to_target_type_counts": [
+                    {
+                        "source_type": source_type,
+                        "target_type": target_type,
+                        "count": count,
+                    }
+                    for (source_type, target_type), count in type_counts.most_common()
+                ],
+                "examples": examples,
+            }
+        )
+    return summaries
 
 
 def build_collapsed_connection_statistics(
     collapsed_edges: Sequence[dict[str, Any]],
+    *,
+    eligible_cuis: Optional[Sequence[str]] = None,
+    selected_source_cuis: Optional[Sequence[str]] = None,
+    representatives_by_cui: Optional[dict[str, LocalConcept]] = None,
 ) -> dict[str, Any]:
     counts_by_relation_name = Counter(
         clean_text(edge.get("relation_name")) or "(none)"
@@ -2518,6 +2882,23 @@ def build_collapsed_connection_statistics(
         for edge in first_extension_edges
         if edge.get("local_type_compatible") is False
     ][:10]
+    materializable_edges = [
+        edge
+        for edge in collapsed_edges
+        if edge.get("materialization_decision") is True
+    ]
+    candidate_graph_statistics = compute_cui_graph_statistics(
+        collapsed_edges,
+        eligible_cuis=eligible_cuis,
+        selected_source_cuis=selected_source_cuis,
+        representatives_by_cui=representatives_by_cui,
+    )
+    materializable_graph_statistics = compute_cui_graph_statistics(
+        materializable_edges,
+        eligible_cuis=eligible_cuis,
+        selected_source_cuis=selected_source_cuis,
+        representatives_by_cui=representatives_by_cui,
+    )
 
     return {
         "collapsed_first_extension_connections": len(first_extension_edges),
@@ -2578,6 +2959,9 @@ def build_collapsed_connection_statistics(
             ), examples in sorted(examples_by_relation_status.items())
         ],
         "incompatible_local_type_examples": incompatible_examples,
+        "candidate_graph_statistics": candidate_graph_statistics,
+        "materializable_graph_statistics": materializable_graph_statistics,
+        "relation_summaries": build_relation_profile_statistics(collapsed_edges),
     }
 
 
@@ -2912,12 +3296,22 @@ def build_summary_markdown(
             representatives_by_cui=representatives,
             materialization_mode=materialization_mode,
         )
+    else:
+        representatives = select_representative_concepts(concepts)
     collapsed_connection_rows = build_collapsed_connection_rows(
         collapsed_edges=collapsed_edges,
     )
     collapsed_connection_count = len(collapsed_connection_rows)
-    collapsed_stats = build_collapsed_connection_statistics(collapsed_edges)
+    collapsed_stats = build_collapsed_connection_statistics(
+        collapsed_edges,
+        eligible_cuis=stats.get("eligible_local_cuis") or [],
+        selected_source_cuis=stats.get("selected_source_cuis") or [],
+        representatives_by_cui=representatives,
+    )
     duplicate_raw_rows_collapsed = max(0, len(edges) - collapsed_connection_count)
+    strict_materializable_connections = sum(
+        1 for edge in collapsed_edges if edge.get("materialization_decision") is True
+    )
     cross_type_isa_edges = sum(
         1
         for edge in edges
@@ -2944,11 +3338,16 @@ def build_summary_markdown(
         f"- selected doc_id: `{doc_id or 'ALL'}`",
         f"- source vocabulary: `{source_vocab or 'ALL'}`",
         f"- UMLS version: `{umls_version}`",
+        f"- run name: `{stats.get('run_name') or '(none)'}`",
+        f"- output path: `{stats.get('output_dir') or csv_path.parent}`",
         f"- dry-run/read-only: `{str(dry_run).lower()}`",
         f"- selected relation profile: `{stats.get('selected_relation_profile') or '(none)'}`",
         f"- materialization mode: `{materialization_mode}`",
+        f"- write_neo4j: `{str(bool(stats.get('write_neo4j'))).lower()}`",
+        f"- replace_existing_connections: `{str(bool(stats.get('replace_existing_connections'))).lower()}`",
         f"- candidate CSV: `{csv_path}`",
         f"- collapsed JSON: `{collapsed_json_path or '(not written)'}`",
+        f"- statistics JSON: `{stats.get('statistics_json_path') or '(not written)'}`",
         f"- relation cache directory: `{cache_dir}`",
         "",
         "## Counts",
@@ -2964,6 +3363,7 @@ def build_summary_markdown(
         f"- internal candidate edges retained: {len(edges)}",
         f"- raw candidate edge rows: {len(edges)}",
         f"- collapsed candidate connections: {collapsed_connection_count}",
+        f"- strict materializable connections: {strict_materializable_connections}",
         f"- collapsed first-extension connections: {collapsed_stats['collapsed_first_extension_connections']}",
         f"- compatible first-extension connections: {collapsed_stats['compatible_first_extension_connections']}",
         f"- incompatible first-extension connections: {collapsed_stats['incompatible_first_extension_connections']}",
@@ -2991,6 +3391,8 @@ def build_summary_markdown(
         f"- write_partial_every: {stats.get('write_partial_every')}",
         f"- strong_relations_only: `{str(bool(stats.get('strong_relations_only'))).lower()}`",
         f"- relation_profile: `{stats.get('selected_relation_profile') or '(none)'}`",
+        f"- included CUIs: `{', '.join(stats.get('include_cuis') or []) or '(none)'}`",
+        f"- skipped CUIs: `{', '.join(stats.get('skip_cuis') or []) or '(none)'}`",
         f"- ignore_negative_cache: `{str(bool(stats.get('ignore_negative_cache'))).lower()}`",
         f"- Neo4j writes enabled: `{str(bool((materialization_report or {}).get('write_neo4j'))).lower()}`",
         f"- included relation names: `{', '.join(stats.get('include_relation_names') or []) or '(none)'}`",
@@ -3169,6 +3571,78 @@ def build_summary_markdown(
             sorted(collapsed_stats["counts_by_materialization_reason"].items()),
         )
     )
+    graph_stat_rows = []
+    for label, graph_stats in (
+        ("candidate", collapsed_stats["candidate_graph_statistics"]),
+        ("materializable", collapsed_stats["materializable_graph_statistics"]),
+    ):
+        graph_stat_rows.append(
+            (
+                label,
+                graph_stats.get("unique_source_cuis"),
+                graph_stats.get("unique_target_cuis"),
+                graph_stats.get("unique_connected_cuis"),
+                graph_stats.get("isolated_eligible_local_cui_count"),
+                f"{graph_stats.get('cui_coverage_ratio', 0.0):.4f}",
+                graph_stats.get("directed_edges"),
+                graph_stats.get("unique_undirected_cui_pairs"),
+                graph_stats.get("self_cui_edges"),
+                graph_stats.get("minimum_degree"),
+                graph_stats.get("median_degree"),
+                f"{graph_stats.get('mean_degree', 0.0):.4f}",
+                graph_stats.get("p95_degree"),
+                graph_stats.get("maximum_degree"),
+                graph_stats.get("weakly_connected_components"),
+                graph_stats.get("largest_component_size"),
+                f"{graph_stats.get('largest_component_coverage_ratio', 0.0):.4f}",
+            )
+        )
+    lines.extend(["", "## Graph Coverage And Degree Statistics", ""])
+    lines.extend(
+        markdown_count_table(
+            [
+                "subset",
+                "source_cuis",
+                "target_cuis",
+                "connected_cuis",
+                "isolated_eligible",
+                "coverage",
+                "directed_edges",
+                "undirected_pairs",
+                "self_edges",
+                "min_degree",
+                "median_degree",
+                "mean_degree",
+                "p95_degree",
+                "max_degree",
+                "components",
+                "largest_component",
+                "largest_component_coverage",
+            ],
+            graph_stat_rows,
+        )
+    )
+    top_degree_rows = [
+        (
+            item.get("cui"),
+            item.get("representative_name"),
+            item.get("canonical_type"),
+            item.get("degree"),
+            item.get("in_degree"),
+            item.get("out_degree"),
+        )
+        for item in collapsed_stats["candidate_graph_statistics"].get(
+            "top_degree_cui_representatives",
+            [],
+        )
+    ]
+    lines.extend(["", "## Top Candidate CUI Degrees", ""])
+    lines.extend(
+        markdown_count_table(
+            ["cui", "representative_name", "canonical_type", "degree", "in_degree", "out_degree"],
+            top_degree_rows,
+        )
+    )
     representative_type_rows = [
         (
             row["source_type"],
@@ -3307,6 +3781,8 @@ def build_summary_markdown(
             [
                 f"- write_neo4j: `{str(bool(materialization_report.get('write_neo4j'))).lower()}`",
                 f"- materialization_mode: `{materialization_report.get('materialization_mode', DEFAULT_MATERIALIZATION_MODE)}`",
+                f"- replace_existing_connections: `{str(bool(materialization_report.get('replace_existing_connections'))).lower()}`",
+                f"- relationships deleted before replacement write: {materialization_report.get('relationships_deleted_before_write', 0)}",
                 f"- eligible collapsed edges: {materialization_report.get('eligible_collapsed_edges', 0)}",
                 f"- relationships written/merged: {materialization_report.get('relationships_written', 0)}",
                 f"- skipped missing representative: {materialization_report.get('skipped_missing_representative', 0)}",
@@ -3315,6 +3791,7 @@ def build_summary_markdown(
                 f"- skipped not materialize-by-default: {materialization_report.get('skipped_not_materialize_by_default', 0)}",
                 f"- duplicate edge_key findings after write: {materialization_report.get('duplicate_edge_key_findings', 0)}",
                 f"- CUI mismatch findings after write: {materialization_report.get('cui_mismatch_findings', 0)}",
+                f"- strict policy violation findings after write: {materialization_report.get('strict_policy_violation_findings', 0)}",
             ]
         )
         skipped_by_reason = (
@@ -3389,6 +3866,7 @@ def write_review_exports(
     collapsed_edges: Optional[Sequence[dict[str, Any]]] = None,
     materialization_report: Optional[dict[str, Any]] = None,
     materialization_json_path: Optional[Path] = None,
+    statistics_json_path: Optional[Path] = None,
     materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> None:
     materialization_mode = normalize_materialization_mode(materialization_mode)
@@ -3408,6 +3886,22 @@ def write_review_exports(
         write_json(collapsed_json_path, list(collapsed_edges))
     if materialization_report is not None and materialization_json_path is not None:
         write_json(materialization_json_path, materialization_report)
+    if statistics_json_path is not None:
+        write_json(
+            statistics_json_path,
+            {
+                "doc_id": doc_id,
+                "source_vocab": source_vocab,
+                "umls_version": umls_version,
+                "dry_run": dry_run,
+                "materialization_mode": materialization_mode,
+                "stats": stats,
+                "client_stats": client_stats,
+                "candidate_edges": len(edges),
+                "collapsed_connections": len(collapsed_edges),
+                "materialization_report": materialization_report,
+            },
+        )
 
     summary = build_summary_markdown(
         doc_id=doc_id,
@@ -3434,6 +3928,25 @@ def fetch_local_concepts(
 ) -> list[LocalConcept]:
     with driver.session() as session:
         return session.execute_read(fetch_local_concepts_for_doc, doc_id)
+
+
+def delete_existing_umls_connections_for_doc(tx, doc_id: str) -> int:
+    result = tx.run(
+        """
+        MATCH (:Concept)-[r]->(:Concept)
+        WHERE type(r) IN $relationship_types
+          AND properties(r)['provenance'] = 'umls_connections'
+          AND properties(r)['doc_id'] = $doc_id
+        WITH collect(r) AS relationships, count(r) AS deleted_count
+        FOREACH (relationship IN relationships | DELETE relationship)
+        RETURN deleted_count
+        """,
+        relationship_types=UMLS_CONNECTION_RELATION_TYPES,
+        doc_id=clean_text(doc_id),
+    ).single()
+    if result is None:
+        return 0
+    return int_or_zero(result.get("deleted_count"))
 
 
 def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[str]:
@@ -3551,9 +4064,11 @@ def fetch_umls_connection_write_sanity(tx) -> dict[str, Any]:
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-            WITH r.edge_key AS edge_key,
+            WITH properties(r) AS rel_props,
+                 type(r) AS relationship_type
+            WITH rel_props['edge_key'] AS edge_key,
                  count(r) AS n,
-                 collect(DISTINCT type(r)) AS relationship_types
+                 collect(DISTINCT relationship_type) AS relationship_types
             WHERE edge_key IS NULL OR trim(toString(edge_key)) = '' OR n > 1
             RETURN edge_key, n, relationship_types
             ORDER BY n DESC, edge_key
@@ -3591,6 +4106,36 @@ def fetch_umls_connection_write_sanity(tx) -> dict[str, Any]:
         )
     ]
 
+    strict_policy_violation_rows = [
+        dict(row)
+        for row in tx.run(
+            """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE coalesce(toString(rel_props['materialization_mode']), '') <> 'safe_only'
+               OR coalesce(rel_props['materialization_decision'], false) <> true
+               OR coalesce(toString(rel_props['compatibility_status']), '') <> 'compatible'
+               OR coalesce(rel_props['local_type_compatible'], false) <> true
+               OR coalesce(rel_props['review_needed'], true) <> false
+               OR NOT (coalesce(toString(rel_props['traversal_policy']), '') IN ['safe', 'hierarchy'])
+            RETURN type(r) AS relationship_type,
+                   rel_props['edge_key'] AS edge_key,
+                   source.name AS source_name,
+                   target.name AS target_name,
+                   rel_props['materialization_mode'] AS materialization_mode,
+                   rel_props['materialization_decision'] AS materialization_decision,
+                   rel_props['compatibility_status'] AS compatibility_status,
+                   rel_props['local_type_compatible'] AS local_type_compatible,
+                   rel_props['review_needed'] AS review_needed,
+                   rel_props['traversal_policy'] AS traversal_policy
+            ORDER BY relationship_type, edge_key
+            """,
+            relationship_types=relationship_types,
+        )
+    ]
+
     count_rows = [
         dict(row)
         for row in tx.run(
@@ -3608,6 +4153,7 @@ def fetch_umls_connection_write_sanity(tx) -> dict[str, Any]:
     return {
         "duplicate_edge_keys": duplicate_rows,
         "cui_mismatches": mismatch_rows,
+        "strict_policy_violations": strict_policy_violation_rows,
         "counts_by_relationship_type": {
             clean_text(row.get("relationship_type")): int_or_zero(row.get("n"))
             for row in count_rows
@@ -3619,8 +4165,18 @@ def materialize_collapsed_connections(
     driver: Driver,
     collapsed_edges: Sequence[dict[str, Any]],
     materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
+    *,
+    doc_id: Optional[str] = None,
+    replace_existing_connections: bool = False,
 ) -> dict[str, Any]:
     materialization_mode = normalize_materialization_mode(materialization_mode)
+    if replace_existing_connections and materialization_mode != "safe_only":
+        raise ValueError(
+            "replace_existing_connections=true requires materialization_mode=safe_only"
+        )
+    if replace_existing_connections and not clean_text(doc_id):
+        raise ValueError("replace_existing_connections=true requires a selected doc_id")
+
     now = utc_now_iso()
     report_edges: list[dict[str, Any]] = []
     representatives: dict[str, dict[str, Any]] = {}
@@ -3631,6 +4187,7 @@ def materialize_collapsed_connections(
     skipped_by_materialization_reason: Counter[str] = Counter()
     eligible_collapsed_edges = 0
     relationships_written = 0
+    relationships_deleted_before_write = 0
 
     if materialization_mode == "none":
         for edge in collapsed_edges:
@@ -3655,6 +4212,8 @@ def materialize_collapsed_connections(
             "write_neo4j": False,
             "written_at": now,
             "materialization_mode": materialization_mode,
+            "replace_existing_connections": False,
+            "relationships_deleted_before_write": 0,
             "collapsed_edges": len(collapsed_edges),
             "eligible_collapsed_edges": 0,
             "relationships_written": 0,
@@ -3675,57 +4234,74 @@ def materialize_collapsed_connections(
             "sanity": {},
         }
 
-    with driver.session() as session:
-        for edge in collapsed_edges:
-            source_representative = edge.get("source_representative")
-            target_representative = edge.get("target_representative")
-            decision, reason = should_materialize_relation(
-                edge,
-                materialization_mode=materialization_mode,
-            )
-            edge_for_report = {
-                **edge,
-                "materialization_mode": materialization_mode,
-                "materialization_decision": decision,
-                "materialization_decision_reason": reason,
-            }
-            if not decision:
-                skipped_by_materialization_reason[reason] += 1
-                if reason in {
-                    "unsupported_relation",
-                    "legacy_relation_not_in_expanded_profile",
-                }:
-                    skipped_not_whitelisted += 1
-                elif reason == "missing_representative":
-                    skipped_missing_representative += 1
-                elif reason == "not_materialize_by_default":
-                    skipped_not_materialize_by_default += 1
-                elif reason.startswith("compatibility_status_") or reason in {
-                    "legacy_incompatible_first_extension",
-                }:
-                    skipped_incompatible_local_types += 1
-                report_edges.append(
-                    {
-                        **edge_for_report,
-                        "materialization_status": f"skipped_{reason}",
-                    }
-                )
-                continue
-
-            if not source_representative or not target_representative:
+    eligible_report_indexes: list[int] = []
+    eligible_edges: list[dict[str, Any]] = []
+    for edge in collapsed_edges:
+        source_representative = edge.get("source_representative")
+        target_representative = edge.get("target_representative")
+        decision, reason = should_materialize_relation(
+            edge,
+            materialization_mode=materialization_mode,
+        )
+        edge_for_report = {
+            **edge,
+            "materialization_mode": materialization_mode,
+            "materialization_decision": decision,
+            "materialization_decision_reason": reason,
+        }
+        if not decision:
+            skipped_by_materialization_reason[reason] += 1
+            if reason == "unsupported_relation":
+                skipped_not_whitelisted += 1
+            elif reason == "missing_representative":
                 skipped_missing_representative += 1
-                report_edges.append(
-                    {
-                        **edge_for_report,
-                        "materialization_status": "skipped_missing_representative",
-                    }
-                )
-                continue
+            elif reason == "not_materialize_by_default":
+                skipped_not_materialize_by_default += 1
+            elif (
+                reason.startswith("compatibility_status_")
+                or reason == "local_type_not_compatible"
+                or reason.startswith("traversal_policy_")
+                or reason == "review_needed"
+            ):
+                skipped_incompatible_local_types += 1
+            report_edges.append(
+                {
+                    **edge_for_report,
+                    "materialization_status": f"skipped_{reason}",
+                }
+            )
+            continue
 
-            eligible_collapsed_edges += 1
-            representatives[edge["source_cui"]] = source_representative
-            representatives[edge["target_cui"]] = target_representative
+        if not source_representative or not target_representative:
+            skipped_missing_representative += 1
+            report_edges.append(
+                {
+                    **edge_for_report,
+                    "materialization_status": "skipped_missing_representative",
+                }
+            )
+            continue
 
+        eligible_collapsed_edges += 1
+        representatives[edge["source_cui"]] = source_representative
+        representatives[edge["target_cui"]] = target_representative
+        eligible_edges.append(edge_for_report)
+        eligible_report_indexes.append(len(report_edges))
+        report_edges.append(
+            {
+                **edge_for_report,
+                "materialization_status": "pending_write",
+            }
+        )
+
+    with driver.session() as session:
+        if replace_existing_connections:
+            relationships_deleted_before_write = session.execute_write(
+                delete_existing_umls_connections_for_doc,
+                clean_text(doc_id),
+            )
+
+        for edge_for_report, report_index in zip(eligible_edges, eligible_report_indexes):
             relationship_id = session.execute_write(
                 materialize_collapsed_edge,
                 edge_for_report,
@@ -3738,9 +4314,9 @@ def materialize_collapsed_connections(
                 status = "skipped_missing_concept"
                 skipped_missing_representative += 1
 
-            report_edges.append(
+            report_edges[report_index] = (
                 {
-                    **edge_for_report,
+                    **report_edges[report_index],
                     "materialization_status": status,
                     "materialized_relationship_id": relationship_id,
                 }
@@ -3758,6 +4334,8 @@ def materialize_collapsed_connections(
         "write_neo4j": True,
         "written_at": now,
         "materialization_mode": materialization_mode,
+        "replace_existing_connections": bool(replace_existing_connections),
+        "relationships_deleted_before_write": relationships_deleted_before_write,
         "collapsed_edges": len(collapsed_edges),
         "eligible_collapsed_edges": eligible_collapsed_edges,
         "relationships_written": relationships_written,
@@ -3770,6 +4348,9 @@ def materialize_collapsed_connections(
         ),
         "duplicate_edge_key_findings": duplicate_findings,
         "cui_mismatch_findings": mismatch_findings,
+        "strict_policy_violation_findings": len(
+            sanity.get("strict_policy_violations") or []
+        ),
         "counts_by_relationship_type": sanity.get("counts_by_relationship_type", {}),
         **collapsed_connection_statistics,
         "collapsed_connection_statistics": collapsed_connection_statistics,
@@ -3784,8 +4365,10 @@ def run_umls_connections(
     source_vocab: str = DEFAULT_SOURCE_VOCAB,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     cache_dir: Path = DEFAULT_RELATION_CACHE_DIR,
+    run_name: Optional[str] = None,
     dry_run: bool = True,
     write_neo4j: bool = False,
+    replace_existing_connections: bool = False,
     materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
     driver: Optional[Driver] = None,
     api_timeout: float = DEFAULT_API_TIMEOUT,
@@ -3793,6 +4376,7 @@ def run_umls_connections(
     umls_version: str = DEFAULT_UMLS_VERSION,
     api_page_size: int = DEFAULT_RELATION_PAGE_SIZE,
     max_cuis: Optional[int] = None,
+    include_cuis: Optional[Sequence[str]] = None,
     skip_cuis: Optional[Sequence[str]] = None,
     max_relations_per_cui: int = DEFAULT_MAX_RELATIONS_PER_CUI,
     max_source_ui_lookups_per_cui: int = DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI,
@@ -3822,17 +4406,50 @@ def run_umls_connections(
         strong_relations_only=strong_relations_only,
         relation_profile=relation_profile,
     )
-    if (
-        bool(write_neo4j)
-        and selected_relation_profile == "audit_all"
-        and materialization_mode != "none"
-    ):
+    write_neo4j = bool(write_neo4j)
+    replace_existing_connections = bool(replace_existing_connections)
+    if write_neo4j and selected_relation_profile == "audit_all":
         raise ValueError(
-            "relation_profile=audit_all is review-only; use "
-            "--materialization-mode none to export candidates without Neo4j writes"
+            "relation_profile=audit_all is export-only and cannot write to Neo4j"
         )
-    write_neo4j = bool(write_neo4j) and materialization_mode != "none"
-    dry_run = bool(dry_run) and not bool(write_neo4j)
+    if write_neo4j and materialization_mode != "safe_only":
+        raise ValueError(
+            "write_neo4j=true requires materialization_mode=safe_only; "
+            "the only supported write policy is safe_only"
+        )
+    if replace_existing_connections and not write_neo4j:
+        raise ValueError(
+            "replace_existing_connections=true requires write_neo4j=true "
+            "and materialization_mode=safe_only"
+        )
+    if replace_existing_connections and materialization_mode != "safe_only":
+        raise ValueError(
+            "replace_existing_connections=true requires materialization_mode=safe_only"
+        )
+    if replace_existing_connections and not clean_text(doc_id):
+        raise ValueError("replace_existing_connections=true requires a selected doc_id")
+
+    dry_run = not write_neo4j
+    normalized_include_cuis = sorted(
+        {normalize_cui(cui) for cui in (include_cuis or []) if normalize_cui(cui)}
+    )
+    normalized_skip_cuis = sorted(
+        {normalize_cui(cui) for cui in (skip_cuis or []) if normalize_cui(cui)}
+    )
+    resolved_run_name = resolve_run_name(
+        run_name=run_name,
+        relation_profile=selected_relation_profile,
+        materialization_mode=materialization_mode,
+        max_relations_per_cui=max_relations_per_cui,
+        max_source_ui_lookups_per_cui=max_source_ui_lookups_per_cui,
+    )
+    run_output_dir = resolve_run_output_dir(Path(output_dir), resolved_run_name)
+    if clean_text(run_name) and safe_filename_component(run_name) != clean_text(run_name):
+        logger.info(
+            "Sanitized UMLS connection run_name | requested=%s | resolved=%s",
+            run_name,
+            resolved_run_name,
+        )
 
     owns_driver = driver is None
     try:
@@ -3851,19 +4468,28 @@ def run_umls_connections(
         len({concept.umls_cui for concept in concepts}),
     )
 
-    csv_path, summary_path = output_paths(doc_id=doc_id, output_dir=output_dir)
+    csv_path, summary_path = output_paths(doc_id=doc_id, output_dir=run_output_dir)
     collapsed_json_path = collapsed_connections_path(
         doc_id=doc_id,
-        output_dir=output_dir,
+        output_dir=run_output_dir,
     )
     materialization_json_path = materialization_report_path(
         doc_id=doc_id,
-        output_dir=output_dir,
+        output_dir=run_output_dir,
+    )
+    statistics_json_path = statistics_report_path(
+        doc_id=doc_id,
+        output_dir=run_output_dir,
     )
     edges: list[dict[str, Any]] = []
     relation_stats: dict[str, Any] = {
         "total_local_cuis": len({concept.umls_cui for concept in concepts}),
+        "eligible_local_cuis": sorted({concept.umls_cui for concept in concepts}),
+        "eligible_local_cui_count": len({concept.umls_cui for concept in concepts}),
         "source_cuis_selected": 0,
+        "selected_source_cuis": [],
+        "include_cuis": normalized_include_cuis,
+        "skip_cuis": normalized_skip_cuis,
         "processed_cuis": [],
         "skipped_cuis": [],
         "max_cuis": max_cuis,
@@ -3875,6 +4501,11 @@ def run_umls_connections(
         "strong_relations_only": strong_relations_only,
         "relation_profile": selected_relation_profile,
         "selected_relation_profile": selected_relation_profile,
+        "run_name": resolved_run_name,
+        "output_dir": str(run_output_dir),
+        "statistics_json_path": str(statistics_json_path),
+        "write_neo4j": write_neo4j,
+        "replace_existing_connections": replace_existing_connections,
         "materialization_mode": materialization_mode,
         "ignore_negative_cache": ignore_negative_cache,
         "partial_exports_written": 0,
@@ -3924,6 +4555,7 @@ def run_umls_connections(
             client=client,
             source_vocab=source_vocab,
             max_cuis=max_cuis,
+            include_cuis=include_cuis,
             skip_cuis=skip_cuis,
             max_relations_per_cui=max_relations_per_cui,
             max_source_ui_lookups_per_cui=max_source_ui_lookups_per_cui,
@@ -3942,6 +4574,18 @@ def run_umls_connections(
     else:
         logger.warning("No eligible local UMLS-matched concepts found for doc_id=%s", doc_id)
 
+    relation_stats.update(
+        {
+            "run_name": resolved_run_name,
+            "output_dir": str(run_output_dir),
+            "statistics_json_path": str(statistics_json_path),
+            "write_neo4j": write_neo4j,
+            "replace_existing_connections": replace_existing_connections,
+            "include_cuis": normalized_include_cuis,
+            "skip_cuis": normalized_skip_cuis,
+        }
+    )
+
     representatives = select_representative_concepts(concepts)
     collapsed_edges = build_collapsed_connections(
         edges=edges,
@@ -3952,7 +4596,10 @@ def run_umls_connections(
         materialization_mode=materialization_mode,
     )
     collapsed_connection_statistics = build_collapsed_connection_statistics(
-        collapsed_edges
+        collapsed_edges,
+        eligible_cuis=relation_stats.get("eligible_local_cuis") or [],
+        selected_source_cuis=relation_stats.get("selected_source_cuis") or [],
+        representatives_by_cui=representatives,
     )
     relation_stats.update(collapsed_connection_statistics)
     relation_stats["collapsed_connection_statistics"] = collapsed_connection_statistics
@@ -3971,12 +4618,17 @@ def run_umls_connections(
                 driver=driver,
                 collapsed_edges=collapsed_edges,
                 materialization_mode=materialization_mode,
+                doc_id=doc_id,
+                replace_existing_connections=replace_existing_connections,
             )
             materialization_report["selected_relation_profile"] = (
                 selected_relation_profile
             )
             materialization_report["relation_profile"] = selected_relation_profile
             materialization_report["materialization_mode"] = materialization_mode
+            materialization_report["replace_existing_connections"] = (
+                replace_existing_connections
+            )
             materialization_report["relation_stats"] = relation_stats
 
         relation_stats["final_export_written"] = True
@@ -3998,6 +4650,7 @@ def run_umls_connections(
             materialization_json_path=(
                 materialization_json_path if materialization_report is not None else None
             ),
+            statistics_json_path=statistics_json_path,
             materialization_mode=materialization_mode,
         )
     finally:
@@ -4016,6 +4669,9 @@ def run_umls_connections(
         "csv_path": csv_path,
         "summary_path": summary_path,
         "collapsed_json_path": collapsed_json_path,
+        "statistics_json_path": statistics_json_path,
+        "run_name": resolved_run_name,
+        "output_dir": run_output_dir,
         "materialization_report_path": (
             materialization_json_path if materialization_report is not None else None
         ),
@@ -4058,6 +4714,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=f"Directory for cached UMLS relation responses (default: {DEFAULT_RELATION_CACHE_DIR})",
     )
     parser.add_argument(
+        "--run-name",
+        default=None,
+        help=(
+            "Experiment run name. When omitted, a deterministic name is derived "
+            "from profile, materialization mode, and relation lookup limits."
+        ),
+    )
+    parser.add_argument(
         "--ignore-negative-cache",
         action="store_true",
         help=(
@@ -4075,8 +4739,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--write-neo4j",
         action="store_true",
         help=(
-            "Materialize whitelisted collapsed candidate relations directly "
+            "Materialize strict safe_only collapsed candidate relations directly "
             "between representative Concept nodes. Defaults to off."
+        ),
+    )
+    parser.add_argument(
+        "--replace-existing-connections",
+        action="store_true",
+        help=(
+            "Before a safe_only write, delete existing UMLS connection edges for "
+            "this doc_id that were produced by this module."
         ),
     )
     parser.add_argument(
@@ -4084,7 +4756,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=MATERIALIZATION_MODE_CHOICES,
         default=DEFAULT_MATERIALIZATION_MODE,
         help=(
-            "Materialization decision mode: none, legacy, approved, or safe_only "
+            "Materialization decision mode: none or safe_only "
             f"(default: {DEFAULT_MATERIALIZATION_MODE})."
         ),
     )
@@ -4125,6 +4797,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="Skip a source CUI. May be repeated, for example: --skip-cui C0013520.",
+    )
+    parser.add_argument(
+        "--include-cui",
+        action="append",
+        default=[],
+        help=(
+            "Restrict source processing to this CUI before skips and max_cuis. "
+            "May be repeated."
+        ),
     )
     parser.add_argument(
         "--max-relations-per-cui",
@@ -4211,14 +4892,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             source_vocab=args.source_vocab,
             output_dir=args.output_dir,
             cache_dir=args.cache_dir,
+            run_name=args.run_name,
             dry_run=not args.write_neo4j,
             write_neo4j=args.write_neo4j,
+            replace_existing_connections=args.replace_existing_connections,
             materialization_mode=args.materialization_mode,
             api_timeout=args.api_timeout,
             api_rate_limit_per_second=args.api_rate_limit_per_second,
             umls_version=args.umls_version,
             api_page_size=args.api_page_size,
             max_cuis=args.max_cuis,
+            include_cuis=args.include_cui,
             skip_cuis=args.skip_cui,
             max_relations_per_cui=args.max_relations_per_cui,
             max_source_ui_lookups_per_cui=args.max_source_ui_lookups_per_cui,
@@ -4252,7 +4936,6 @@ __all__ = [
     "RELATION_SPECS",
     "MATERIALIZATION_MODE_CHOICES",
     "DEFAULT_MATERIALIZATION_MODE",
-    "LEGACY_CORE_SNOMED_RELATION_NAMES",
     "CORE_SNOMED_RELATION_NAMES",
     "FIRST_SNOMED_EXTENSION_RELATION_NAMES",
     "EXPANDED_SNOMED_RELATION_NAMES",
@@ -4269,8 +4952,10 @@ __all__ = [
     "UMLSRelationsClient",
     "build_collapsed_connections",
     "build_collapsed_connection_statistics",
+    "compute_cui_graph_statistics",
     "catalog_local_type_rule_rows",
     "catalog_relationship_type_rows",
+    "delete_existing_umls_connections_for_doc",
     "evaluate_relation_compatibility",
     "evaluate_local_type_compatibility",
     "fetch_local_concepts_for_doc",
@@ -4278,6 +4963,7 @@ __all__ = [
     "first_extension_relationship_types",
     "materialize_collapsed_connections",
     "normalize_materialization_mode",
+    "resolve_run_name",
     "resolve_relation_name_filters",
     "should_materialize_relation",
     "traversal_policy_for_relation",

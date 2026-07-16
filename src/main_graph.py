@@ -133,13 +133,16 @@ class GraphPipelineConfig:
     umls_connections_source_vocab: str = "SNOMEDCT_US"
     umls_connections_output_dir: Optional[Path] = None
     umls_connections_cache_dir: Optional[Path] = None
+    umls_connections_run_name: Optional[str] = None
     umls_connections_write_neo4j: bool = False
-    umls_connections_materialization_mode: str = "legacy"
+    umls_connections_replace_existing_connections: bool = False
+    umls_connections_materialization_mode: str = "none"
     umls_connections_umls_version: str = "current"
     umls_connections_api_timeout: float = 30.0
-    umls_connections_api_rate_limit_per_second: float = 5.0
+    umls_connections_api_rate_limit_per_second: float = 2.0
     umls_connections_api_page_size: int = 200
     umls_connections_max_cuis: Optional[int] = None
+    umls_connections_include_cuis: Optional[list[str]] = None
     umls_connections_skip_cuis: Optional[list[str]] = None
     umls_connections_max_relations_per_cui: int = 500
     umls_connections_max_source_ui_lookups_per_cui: int = 100
@@ -602,13 +605,16 @@ def make_graph_pipeline_config(
     umls_connections_source_vocab: str = "SNOMEDCT_US",
     umls_connections_output_dir: Optional[Path] = None,
     umls_connections_cache_dir: Optional[Path] = None,
+    umls_connections_run_name: Optional[str] = None,
     umls_connections_write_neo4j: bool = False,
-    umls_connections_materialization_mode: str = "legacy",
+    umls_connections_replace_existing_connections: bool = False,
+    umls_connections_materialization_mode: str = "none",
     umls_connections_umls_version: str = "current",
     umls_connections_api_timeout: float = 30.0,
-    umls_connections_api_rate_limit_per_second: float = 5.0,
+    umls_connections_api_rate_limit_per_second: float = 2.0,
     umls_connections_api_page_size: int = 200,
     umls_connections_max_cuis: Optional[int] = None,
+    umls_connections_include_cuis: Optional[list[str]] = None,
     umls_connections_skip_cuis: Optional[list[str]] = None,
     umls_connections_max_relations_per_cui: int = 500,
     umls_connections_max_source_ui_lookups_per_cui: int = 100,
@@ -741,7 +747,11 @@ def make_graph_pipeline_config(
             umls_connections_cache_dir.resolve()
             if umls_connections_cache_dir else None
         ),
+        umls_connections_run_name=umls_connections_run_name,
         umls_connections_write_neo4j=umls_connections_write_neo4j,
+        umls_connections_replace_existing_connections=(
+            umls_connections_replace_existing_connections
+        ),
         umls_connections_materialization_mode=umls_connections_materialization_mode,
         umls_connections_umls_version=umls_connections_umls_version,
         umls_connections_api_timeout=umls_connections_api_timeout,
@@ -750,6 +760,7 @@ def make_graph_pipeline_config(
         ),
         umls_connections_api_page_size=umls_connections_api_page_size,
         umls_connections_max_cuis=umls_connections_max_cuis,
+        umls_connections_include_cuis=umls_connections_include_cuis,
         umls_connections_skip_cuis=umls_connections_skip_cuis,
         umls_connections_max_relations_per_cui=(
             umls_connections_max_relations_per_cui
@@ -909,13 +920,16 @@ def main(
     umls_connections_source_vocab: str = "SNOMEDCT_US",
     umls_connections_output_dir: Optional[Path] = None,
     umls_connections_cache_dir: Optional[Path] = None,
+    umls_connections_run_name: Optional[str] = None,
     umls_connections_write_neo4j: bool = False,
-    umls_connections_materialization_mode: str = "legacy",
+    umls_connections_replace_existing_connections: bool = False,
+    umls_connections_materialization_mode: str = "none",
     umls_connections_umls_version: str = "current",
     umls_connections_api_timeout: float = 30.0,
-    umls_connections_api_rate_limit_per_second: float = 5.0,
+    umls_connections_api_rate_limit_per_second: float = 2.0,
     umls_connections_api_page_size: int = 200,
     umls_connections_max_cuis: Optional[int] = None,
+    umls_connections_include_cuis: Optional[list[str]] = None,
     umls_connections_skip_cuis: Optional[list[str]] = None,
     umls_connections_max_relations_per_cui: int = 500,
     umls_connections_max_source_ui_lookups_per_cui: int = 100,
@@ -1088,7 +1102,11 @@ def main(
         umls_connections_source_vocab=umls_connections_source_vocab,
         umls_connections_output_dir=umls_connections_output_dir,
         umls_connections_cache_dir=umls_connections_cache_dir,
+        umls_connections_run_name=umls_connections_run_name,
         umls_connections_write_neo4j=umls_connections_write_neo4j,
+        umls_connections_replace_existing_connections=(
+            umls_connections_replace_existing_connections
+        ),
         umls_connections_materialization_mode=umls_connections_materialization_mode,
         umls_connections_umls_version=umls_connections_umls_version,
         umls_connections_api_timeout=umls_connections_api_timeout,
@@ -1097,6 +1115,7 @@ def main(
         ),
         umls_connections_api_page_size=umls_connections_api_page_size,
         umls_connections_max_cuis=umls_connections_max_cuis,
+        umls_connections_include_cuis=umls_connections_include_cuis,
         umls_connections_skip_cuis=umls_connections_skip_cuis,
         umls_connections_max_relations_per_cui=(
             umls_connections_max_relations_per_cui
@@ -1373,16 +1392,25 @@ def _resolve_umls_connection_kwargs(
             work_root / "umls_api_cache" / "relations",
             project_root,
         ) or (work_root / "umls_api_cache" / "relations").resolve(),
+        "umls_connections_run_name": _get_env_or_config_str(
+            "KG_UMLS_CONNECTIONS_RUN_NAME",
+            config.get("run_name"),
+        ),
         "umls_connections_write_neo4j": _get_env_or_config_bool(
             "KG_UMLS_CONNECTIONS_WRITE_NEO4J",
             config.get("write_neo4j"),
             False,
         ),
+        "umls_connections_replace_existing_connections": _get_env_or_config_bool(
+            "KG_UMLS_CONNECTIONS_REPLACE_EXISTING_CONNECTIONS",
+            config.get("replace_existing_connections"),
+            False,
+        ),
         "umls_connections_materialization_mode": _get_env_or_config_str(
             "KG_UMLS_CONNECTIONS_MATERIALIZATION_MODE",
             config.get("materialization_mode"),
-            "legacy",
-        ) or "legacy",
+            "none",
+        ) or "none",
         "umls_connections_umls_version": _get_env_or_config_str(
             "KG_UMLS_CONNECTIONS_UMLS_VERSION",
             config.get("umls_version"),
@@ -1396,7 +1424,7 @@ def _resolve_umls_connection_kwargs(
         "umls_connections_api_rate_limit_per_second": _get_env_or_config_float(
             "KG_UMLS_CONNECTIONS_API_RATE_LIMIT_PER_SECOND",
             config.get("api_rate_limit_per_second"),
-            5.0,
+            2.0,
         ),
         "umls_connections_api_page_size": _get_env_or_config_int(
             "KG_UMLS_CONNECTIONS_API_PAGE_SIZE",
@@ -1406,6 +1434,11 @@ def _resolve_umls_connection_kwargs(
         "umls_connections_max_cuis": _get_env_or_config_optional_int(
             "KG_UMLS_CONNECTIONS_MAX_CUIS",
             config.get("max_cuis"),
+        ),
+        "umls_connections_include_cuis": _get_env_or_config_string_list(
+            "KG_UMLS_CONNECTIONS_INCLUDE_CUIS",
+            config.get("include_cuis"),
+            [],
         ),
         "umls_connections_skip_cuis": _get_env_or_config_string_list(
             "KG_UMLS_CONNECTIONS_SKIP_CUIS",

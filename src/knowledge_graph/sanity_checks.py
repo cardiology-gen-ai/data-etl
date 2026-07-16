@@ -53,7 +53,7 @@ AUDIT_ONLY_UMLS_RELATIONSHIP_TYPES = sorted(
     for row in UMLS_CATALOG_RELATIONSHIP_ROWS
     if not row["materialize_by_default"]
 )
-APPROVED_UMLS_RELATIONSHIP_TYPES = sorted(
+MATERIALIZABLE_UMLS_RELATIONSHIP_TYPES = sorted(
     row["relationship_type"]
     for row in UMLS_CATALOG_RELATIONSHIP_ROWS
     if row["materialize_by_default"]
@@ -876,57 +876,64 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH (source:Concept)-[r]->(target:Concept)
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-              AND (
-                   r.compatibility_status IS NULL
-                OR r.compatibility_reason IS NULL
-                OR r.local_type_compatible IS NULL
-                OR r.local_type_compatibility_reason IS NULL
-                OR r.relation_family IS NULL
-                OR r.materialize_by_default IS NULL
-                OR r.materialization_decision IS NULL
-                OR r.materialization_decision_reason IS NULL
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE (
+                   rel_props['compatibility_status'] IS NULL
+                OR rel_props['compatibility_reason'] IS NULL
+                OR rel_props['local_type_compatible'] IS NULL
+                OR rel_props['local_type_compatibility_reason'] IS NULL
+                OR rel_props['relation_family'] IS NULL
+                OR rel_props['materialize_by_default'] IS NULL
+                OR rel_props['materialization_decision'] IS NULL
+                OR rel_props['materialization_decision_reason'] IS NULL
               )
             RETURN type(r) AS relationship_type,
-                   r.edge_key AS edge_key,
-                   r.relation_name AS relation_name,
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['relation_name'] AS relation_name,
                    source.name AS source_concept,
                    target.name AS target_concept,
-                   r.compatibility_status AS compatibility_status,
-                   r.compatibility_reason AS compatibility_reason,
-                   r.local_type_compatible AS local_type_compatible,
-                   r.local_type_compatibility_reason AS local_type_compatibility_reason,
-                   r.relation_family AS relation_family,
-                   r.materialize_by_default AS materialize_by_default,
-                   r.materialization_decision AS materialization_decision,
-                   r.materialization_decision_reason AS materialization_decision_reason
+                   rel_props['compatibility_status'] AS compatibility_status,
+                   rel_props['compatibility_reason'] AS compatibility_reason,
+                   rel_props['local_type_compatible'] AS local_type_compatible,
+                   rel_props['local_type_compatibility_reason'] AS local_type_compatibility_reason,
+                   rel_props['relation_family'] AS relation_family,
+                   rel_props['materialize_by_default'] AS materialize_by_default,
+                   rel_props['materialization_decision'] AS materialization_decision,
+                   rel_props['materialization_decision_reason'] AS materialization_decision_reason
             ORDER BY relationship_type, edge_key
         """,
     },
     {
-        "name": "approved_umls_connections_without_compatible_status",
-        "title": "Approved materialized UMLS connections without compatible status",
+        "name": "safe_only_umls_connections_policy_violations",
+        "title": "Materialized UMLS connections violating safe_only policy",
         "group": "UMLS connections",
         "phases": {"entities"},
         "level": "ERROR",
-        "params": {"relationship_types": APPROVED_UMLS_RELATIONSHIP_TYPES},
+        "params": {"relationship_types": MATERIALIZABLE_UMLS_RELATIONSHIP_TYPES},
         "query": """
             MATCH (source:Concept)-[r]->(target:Concept)
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-              AND coalesce(r.materialize_by_default, false) = true
-              AND NOT (coalesce(toString(r.compatibility_status), '') IN [
-                  'compatible',
-                  'compatible_broad'
-              ])
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE coalesce(toString(rel_props['materialization_mode']), '') <> 'safe_only'
+               OR coalesce(rel_props['materialization_decision'], false) <> true
+               OR coalesce(toString(rel_props['compatibility_status']), '') <> 'compatible'
+               OR coalesce(rel_props['local_type_compatible'], false) <> true
+               OR coalesce(rel_props['review_needed'], true) <> false
+               OR NOT (coalesce(toString(rel_props['traversal_policy']), '') IN ['safe', 'hierarchy'])
             RETURN type(r) AS relationship_type,
-                   r.edge_key AS edge_key,
-                   r.relation_name AS relation_name,
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['relation_name'] AS relation_name,
                    source.name AS source_concept,
                    source.canonical_type AS source_canonical_type,
                    target.name AS target_concept,
                    target.canonical_type AS target_canonical_type,
-                   r.compatibility_status AS compatibility_status,
-                   r.compatibility_reason AS compatibility_reason
+                   rel_props['materialization_mode'] AS materialization_mode,
+                   rel_props['materialization_decision'] AS materialization_decision,
+                   rel_props['compatibility_status'] AS compatibility_status,
+                   rel_props['local_type_compatible'] AS local_type_compatible,
+                   rel_props['review_needed'] AS review_needed,
+                   rel_props['traversal_policy'] AS traversal_policy
             ORDER BY relationship_type, edge_key
         """,
     },
@@ -971,8 +978,9 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-            RETURN coalesce(toString(r.compatibility_status), '(missing)') AS compatibility_status,
-                   count(r) AS n
+            WITH properties(r) AS rel_props
+            RETURN coalesce(toString(rel_props['compatibility_status']), '(missing)') AS compatibility_status,
+                   count(*) AS n
             ORDER BY compatibility_status
         """,
     },
@@ -988,8 +996,9 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-            RETURN coalesce(toString(r.traversal_policy), '(missing)') AS traversal_policy,
-                   count(r) AS n
+            WITH properties(r) AS rel_props
+            RETURN coalesce(toString(rel_props['traversal_policy']), '(missing)') AS traversal_policy,
+                   count(*) AS n
             ORDER BY traversal_policy
         """,
     },
@@ -1004,9 +1013,10 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH (source:Concept)-[r]->(target:Concept)
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-              AND (
-                   coalesce(r.review_needed, false) = true
-                OR coalesce(toString(r.traversal_policy), '') IN [
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE (
+                   coalesce(rel_props['review_needed'], false) = true
+                OR coalesce(toString(rel_props['traversal_policy']), '') IN [
                     'hierarchy_review',
                     'reverse_review',
                     'review',
@@ -1014,14 +1024,14 @@ CHECKS: List[Dict[str, Any]] = [
                 ]
               )
             RETURN type(r) AS relationship_type,
-                   r.edge_key AS edge_key,
-                   r.relation_name AS relation_name,
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['relation_name'] AS relation_name,
                    source.name AS source_concept,
                    target.name AS target_concept,
-                   r.compatibility_status AS compatibility_status,
-                   r.compatibility_reason AS compatibility_reason,
-                   r.traversal_policy AS traversal_policy,
-                   r.review_needed AS review_needed
+                   rel_props['compatibility_status'] AS compatibility_status,
+                   rel_props['compatibility_reason'] AS compatibility_reason,
+                   rel_props['traversal_policy'] AS traversal_policy,
+                   rel_props['review_needed'] AS review_needed
             ORDER BY relationship_type, edge_key
         """,
     },
@@ -1036,13 +1046,14 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH (source:Concept)-[r]->(target:Concept)
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
+            WITH source, r, target, properties(r) AS rel_props
             RETURN type(r) AS relationship_type,
-                   r.edge_key AS edge_key,
-                   r.relation_name AS relation_name,
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['relation_name'] AS relation_name,
                    source.name AS source_concept,
                    target.name AS target_concept,
-                   r.materialization_mode AS materialization_mode,
-                   r.materialization_decision_reason AS materialization_decision_reason
+                   rel_props['materialization_mode'] AS materialization_mode,
+                   rel_props['materialization_decision_reason'] AS materialization_decision_reason
             ORDER BY relationship_type, edge_key
         """,
     },
