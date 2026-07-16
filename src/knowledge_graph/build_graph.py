@@ -717,6 +717,9 @@ def process_entity_normalization(
         threshold=float(
             getattr(config, "entity_normalization_threshold", 0.85)
         ),
+        exact_threshold=float(
+            getattr(config, "entity_normalization_exact_threshold", 0.75)
+        ),
         max_candidates=int(
             getattr(config, "entity_normalization_max_candidates", 3)
         ),
@@ -750,6 +753,16 @@ def process_entity_normalization(
                 config,
                 "entity_normalization_api_rate_limit_per_second",
                 5.0,
+            )
+        ),
+        create_same_as_edges=bool(
+            getattr(config, "entity_normalization_create_same_as_edges", False)
+        ),
+        create_fuzzy_candidate_edges=bool(
+            getattr(
+                config,
+                "entity_normalization_create_fuzzy_candidate_edges",
+                False,
             )
         ),
     )

@@ -111,6 +111,7 @@ class GraphPipelineConfig:
     entity_normalization_model_name: str = "en_core_sci_sm"
     entity_normalization_linker_name: str = "umls"
     entity_normalization_threshold: float = 0.85
+    entity_normalization_exact_threshold: float = 0.75
     entity_normalization_max_candidates: int = 3
     entity_normalization_use_acronyms: bool = True
     entity_normalization_acronym_dir: Optional[Path] = None
@@ -118,6 +119,8 @@ class GraphPipelineConfig:
     entity_normalization_dry_run: bool = False
     entity_normalization_export_review: bool = True
     entity_normalization_review_output_dir: Optional[Path] = None
+    entity_normalization_create_same_as_edges: bool = False
+    entity_normalization_create_fuzzy_candidate_edges: bool = False
     entity_normalization_fuzzy_threshold: int = 90
     entity_normalization_api_cache_dir: Optional[Path] = None
     entity_normalization_api_timeout: float = 30.0
@@ -579,6 +582,7 @@ def make_graph_pipeline_config(
     entity_normalization_model_name: str = "en_core_sci_sm",
     entity_normalization_linker_name: str = "umls",
     entity_normalization_threshold: float = 0.85,
+    entity_normalization_exact_threshold: float = 0.75,
     entity_normalization_max_candidates: int = 3,
     entity_normalization_use_acronyms: bool = True,
     entity_normalization_acronym_dir: Optional[Path] = None,
@@ -586,6 +590,8 @@ def make_graph_pipeline_config(
     entity_normalization_dry_run: bool = False,
     entity_normalization_export_review: bool = True,
     entity_normalization_review_output_dir: Optional[Path] = None,
+    entity_normalization_create_same_as_edges: bool = False,
+    entity_normalization_create_fuzzy_candidate_edges: bool = False,
     entity_normalization_fuzzy_threshold: int = 90,
     entity_normalization_api_cache_dir: Optional[Path] = None,
     entity_normalization_api_timeout: float = 30.0,
@@ -690,6 +696,9 @@ def make_graph_pipeline_config(
         entity_normalization_model_name=entity_normalization_model_name,
         entity_normalization_linker_name=entity_normalization_linker_name,
         entity_normalization_threshold=entity_normalization_threshold,
+        entity_normalization_exact_threshold=(
+            entity_normalization_exact_threshold
+        ),
         entity_normalization_max_candidates=entity_normalization_max_candidates,
         entity_normalization_use_acronyms=entity_normalization_use_acronyms,
         entity_normalization_acronym_dir=(
@@ -702,6 +711,12 @@ def make_graph_pipeline_config(
         entity_normalization_review_output_dir=(
             entity_normalization_review_output_dir.resolve()
             if entity_normalization_review_output_dir else None
+        ),
+        entity_normalization_create_same_as_edges=(
+            entity_normalization_create_same_as_edges
+        ),
+        entity_normalization_create_fuzzy_candidate_edges=(
+            entity_normalization_create_fuzzy_candidate_edges
         ),
         entity_normalization_fuzzy_threshold=entity_normalization_fuzzy_threshold,
         entity_normalization_api_cache_dir=(
@@ -874,6 +889,7 @@ def main(
     entity_normalization_model_name: str = "en_core_sci_sm",
     entity_normalization_linker_name: str = "umls",
     entity_normalization_threshold: float = 0.85,
+    entity_normalization_exact_threshold: float = 0.75,
     entity_normalization_max_candidates: int = 3,
     entity_normalization_use_acronyms: bool = True,
     entity_normalization_acronym_dir: Optional[Path] = None,
@@ -881,6 +897,8 @@ def main(
     entity_normalization_dry_run: bool = False,
     entity_normalization_export_review: bool = True,
     entity_normalization_review_output_dir: Optional[Path] = None,
+    entity_normalization_create_same_as_edges: bool = False,
+    entity_normalization_create_fuzzy_candidate_edges: bool = False,
     entity_normalization_fuzzy_threshold: int = 90,
     entity_normalization_api_cache_dir: Optional[Path] = None,
     entity_normalization_api_timeout: float = 30.0,
@@ -1038,6 +1056,9 @@ def main(
         entity_normalization_model_name=entity_normalization_model_name,
         entity_normalization_linker_name=entity_normalization_linker_name,
         entity_normalization_threshold=entity_normalization_threshold,
+        entity_normalization_exact_threshold=(
+            entity_normalization_exact_threshold
+        ),
         entity_normalization_max_candidates=entity_normalization_max_candidates,
         entity_normalization_use_acronyms=entity_normalization_use_acronyms,
         entity_normalization_acronym_dir=entity_normalization_acronym_dir,
@@ -1046,6 +1067,12 @@ def main(
         entity_normalization_export_review=entity_normalization_export_review,
         entity_normalization_review_output_dir=(
             entity_normalization_review_output_dir
+        ),
+        entity_normalization_create_same_as_edges=(
+            entity_normalization_create_same_as_edges
+        ),
+        entity_normalization_create_fuzzy_candidate_edges=(
+            entity_normalization_create_fuzzy_candidate_edges
         ),
         entity_normalization_fuzzy_threshold=entity_normalization_fuzzy_threshold,
         entity_normalization_api_cache_dir=entity_normalization_api_cache_dir,
@@ -1238,6 +1265,11 @@ def _resolve_normalization_kwargs(
         "entity_normalization_threshold": _get_env_or_config_float(
             "KG_ENTITY_NORMALIZATION_THRESHOLD", config.get("threshold"), 0.85
         ),
+        "entity_normalization_exact_threshold": _get_env_or_config_float(
+            "KG_ENTITY_NORMALIZATION_EXACT_THRESHOLD",
+            config.get("exact_threshold"),
+            0.75,
+        ),
         "entity_normalization_max_candidates": _get_env_or_config_int(
             "KG_ENTITY_NORMALIZATION_MAX_CANDIDATES",
             config.get("max_candidates"),
@@ -1264,6 +1296,16 @@ def _resolve_normalization_kwargs(
         ),
         "entity_normalization_review_output_dir": _resolve_optional_project_path(
             review_dir, work_root / "entity_review", project_root
+        ),
+        "entity_normalization_create_same_as_edges": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_CREATE_SAME_AS_EDGES",
+            config.get("create_same_as_edges"),
+            False,
+        ),
+        "entity_normalization_create_fuzzy_candidate_edges": _get_env_or_config_bool(
+            "KG_ENTITY_NORMALIZATION_CREATE_FUZZY_CANDIDATE_EDGES",
+            config.get("create_fuzzy_candidate_edges"),
+            False,
         ),
         "entity_normalization_fuzzy_threshold": _get_env_or_config_int(
             "KG_ENTITY_NORMALIZATION_FUZZY_THRESHOLD",

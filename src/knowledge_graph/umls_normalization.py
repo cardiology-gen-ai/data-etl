@@ -21,7 +21,10 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from neo4j import Driver
+try:
+    from neo4j import Driver
+except ImportError:
+    Driver = Any  # type: ignore[misc, assignment]
 
 from knowledge_graph.acronym_utils import (
     clean_acronym_definition,
@@ -72,6 +75,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_NAME = "en_core_sci_sm"
 DEFAULT_LINKER_NAME = "umls"
 DEFAULT_UMLS_THRESHOLD = 0.85
+# Exact UMLS searches are stronger candidate evidence than normalizedString
+# or words searches, but exact lookup alone does not guarantee the correct
+# clinical sense. Keep a separate conservative acceptance threshold.
+DEFAULT_EXACT_UMLS_THRESHOLD = 0.75
 DEFAULT_FUZZY_THRESHOLD = 90
 DEFAULT_MAX_CANDIDATES = 3
 DEFAULT_ALIAS_LIMIT = 12
@@ -390,12 +397,14 @@ def find_cached_scispacy_file_without_head(
     if not url.startswith(("http://", "https://")):
         return None
 
-    try:
-        import scispacy.file_cache as scispacy_file_cache
-    except Exception:
-        return None
-
-    cache = Path(cache_dir or scispacy_file_cache.DATASET_CACHE)
+    if cache_dir is None:
+        try:
+            import scispacy.file_cache as scispacy_file_cache
+        except Exception:
+            return None
+        cache = Path(scispacy_file_cache.DATASET_CACHE)
+    else:
+        cache = Path(cache_dir)
     if not cache.exists():
         return None
 
@@ -1168,6 +1177,7 @@ def select_best_umls_api_match(
     form without requiring an LLM.
     """
     matches: List[Tuple[float, int, int, UMLSMatch]] = []
+    exact_matches: List[Tuple[float, int, int, UMLSMatch]] = []
 
     for alias_index, alias in enumerate(aliases):
         alias = str(alias or "").strip()
@@ -1182,21 +1192,39 @@ def select_best_umls_api_match(
             )
             if match is None:
                 continue
+            if match.type_compatible is False:
+                continue
 
-            matches.append(
-                (
-                    match.score,
-                    -alias_index,
-                    -search_index,
-                    match,
-                )
+            ranked_match = (
+                match.score,
+                -alias_index,
+                -search_index,
+                match,
             )
+            matches.append(ranked_match)
+            if match.search_type == "exact":
+                exact_matches.append(ranked_match)
 
             if match.score >= 0.98:
                 break
 
     if not matches:
         return None
+
+    if exact_matches:
+        # For exact searches, alias order carries contextual evidence. In
+        # particular, validated acronym expansions are intentionally placed
+        # before short or secondary aliases. Use lexical score only as a
+        # secondary criterion within the same alias priority.
+        exact_matches.sort(
+            key=lambda item: (
+                item[1],  # -alias_index
+                item[0],  # lexical score
+                item[2],  # -search_index
+            ),
+            reverse=True,
+        )
+        return exact_matches[0][3]
 
     matches.sort(
         key=lambda item: (item[0], item[1], item[2]),
@@ -1320,25 +1348,26 @@ def write_concept_normalization_status(
 def is_confident_umls_match(
     match: Optional[UMLSMatch],
     threshold: float,
+    exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> bool:
-    """
-    Decide whether a UMLS candidate is safe to write automatically.
+    """Return whether a UMLS candidate is safe to accept automatically.
 
-    Policy:
-    - candidates obtained through the permissive ``words`` search are always
-      routed to low-confidence review;
-    - type-compatible ``exact`` matches are accepted even when the preferred
-      UMLS name differs lexically from the searched synonym;
-    - all other candidates must meet the configured score threshold.
+    Exact lookup is stronger than permissive word search, but an exact term can
+    still be polysemous or point to an overly broad/specific clinical sense.
+    Therefore exact candidates use a dedicated conservative lexical threshold.
+    Word-search candidates remain review-only.
     """
     if match is None:
         return False
 
-    if match.search_type == "words":
+    if match.type_compatible is False:
         return False
 
-    if match.search_type == "exact" and match.type_compatible is True:
-        return True
+    if match.search_type == "exact":
+        return match.score >= exact_threshold
+
+    if match.search_type == "words":
+        return False
 
     return match.score >= threshold
 
@@ -1354,6 +1383,7 @@ def update_concept_from_result(
     match_method: str = AUTO_NORMALIZATION_METHOD,
     low_confidence_method: str = LOW_CONFIDENCE_METHOD,
     no_match_method: str = NO_MATCH_METHOD,
+    exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> None:
     if should_preserve_existing_normalization(concept, force=force):
         concept.normalization_status = "skipped"
@@ -1363,7 +1393,11 @@ def update_concept_from_result(
 
     match = concept.best_match
 
-    if is_confident_umls_match(match, threshold):
+    if is_confident_umls_match(
+        match,
+        threshold=threshold,
+        exact_threshold=exact_threshold,
+    ):
         concept.normalization_status = "umls_matched"
         concept.normalization_method = match_method
         concept.reason = "best_candidate_above_threshold"
@@ -1611,7 +1645,7 @@ def create_duplicate_evidence(
     fuzzy_threshold: int,
     normalized_at: str,
     dry_run: bool,
-    create_same_as_edges: bool = True,
+    create_same_as_edges: bool = False,
     create_fuzzy_candidate_edges: bool = False,
 ) -> Dict[str, int]:
     same_as_pairs = compute_same_cui_pairs(concepts)
@@ -1706,6 +1740,7 @@ def build_review_record(
     backend: str,
     threshold: float,
     fuzzy_threshold: int,
+    exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> Dict[str, Any]:
     match = concept.best_match
 
@@ -1733,6 +1768,7 @@ def build_review_record(
         "model_name": model_name,
         "linker_name": linker_name,
         "threshold": threshold,
+        "exact_threshold": exact_threshold,
         "fuzzy_threshold": fuzzy_threshold,
         "candidate_duplicates": concept.duplicate_candidates,
     }
@@ -1763,6 +1799,7 @@ def write_review_records(
     fuzzy_threshold: int,
     review_output_dir: Optional[Path],
     run_id: str,
+    exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> int:
     path = get_review_output_path(
         doc_id=doc_id,
@@ -1779,6 +1816,7 @@ def write_review_records(
                 linker_name=linker_name,
                 backend=backend,
                 threshold=threshold,
+                exact_threshold=exact_threshold,
                 fuzzy_threshold=fuzzy_threshold,
             )
             f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
@@ -1841,8 +1879,9 @@ def normalize_concepts_with_umls(
     api_cache_dir: Optional[Path] = None,
     api_timeout: float = DEFAULT_API_TIMEOUT,
     api_rate_limit_per_second: float = DEFAULT_API_RATE_LIMIT_PER_SECOND,
-    create_same_as_edges: bool = True,
+    create_same_as_edges: bool = False,
     create_fuzzy_candidate_edges: bool = False,
+    exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> Dict[str, int]:
     """
     Normalize existing Concept nodes with UMLS and add duplicate evidence.
@@ -1852,6 +1891,8 @@ def normalize_concepts_with_umls(
     """
     if not 0 <= threshold <= 1:
         raise ValueError("threshold must be between 0 and 1")
+    if not 0 <= exact_threshold <= 1:
+        raise ValueError("exact_threshold must be between 0 and 1")
     if not 0 <= fuzzy_threshold <= 100:
         raise ValueError("fuzzy_threshold must be between 0 and 100")
     if max_candidates < 1:
@@ -1953,7 +1994,11 @@ def normalize_concepts_with_umls(
 
                 if dry_run:
                     match = concept.best_match
-                    if is_confident_umls_match(match, threshold):
+                    if is_confident_umls_match(
+                        match,
+                        threshold=threshold,
+                        exact_threshold=exact_threshold,
+                    ):
                         concept.normalization_status = "umls_matched"
                         concept.normalization_method = method_for_match
                         concept.reason = "dry_run_best_candidate_above_threshold"
@@ -1985,6 +2030,7 @@ def normalize_concepts_with_umls(
                         method_for_match,
                         method_for_low_confidence,
                         method_for_no_match,
+                        exact_threshold,
                     )
 
             except Exception as e:
@@ -2031,14 +2077,17 @@ def normalize_concepts_with_umls(
             linker_name=resolved_linker_name,
             backend=backend,
             threshold=threshold,
+            exact_threshold=exact_threshold,
             fuzzy_threshold=fuzzy_threshold,
             review_output_dir=review_output_dir,
             run_id=run_id,
         )
 
     logger.info(
-        "UMLS normalization completed | backend=%s | seen=%d | normalized=%d | low_confidence=%d | no_match=%d | failed=%d | skipped=%d | same_as=%d | fuzzy=%d | dry_run=%s",
+        "UMLS normalization completed | backend=%s | threshold=%.3f | exact_threshold=%.3f | seen=%d | normalized=%d | low_confidence=%d | no_match=%d | failed=%d | skipped=%d | same_as=%d | fuzzy=%d | dry_run=%s",
         backend,
+        threshold,
+        exact_threshold,
         stats["concepts_seen"],
         stats["concepts_normalized"],
         stats["concepts_low_confidence"],
@@ -2059,6 +2108,7 @@ __all__ = [
     "UMLSAPIError",
     "UMLSAPIAuthError",
     "UMLSMatch",
+    "DEFAULT_EXACT_UMLS_THRESHOLD",
     "setup_normalization_schema",
     "fetch_concepts_for_normalization",
     "build_aliases_for_concept",
