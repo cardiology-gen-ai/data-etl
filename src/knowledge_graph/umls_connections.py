@@ -4067,7 +4067,7 @@ def fetch_umls_connection_write_sanity(tx) -> dict[str, Any]:
             WITH properties(r) AS rel_props,
                  type(r) AS relationship_type
             WITH rel_props['edge_key'] AS edge_key,
-                 count(r) AS n,
+                 count(*) AS n,
                  collect(DISTINCT relationship_type) AS relationship_types
             WHERE edge_key IS NULL OR trim(toString(edge_key)) = '' OR n > 1
             RETURN edge_key, n, relationship_types
@@ -4143,7 +4143,7 @@ def fetch_umls_connection_write_sanity(tx) -> dict[str, Any]:
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-            RETURN type(r) AS relationship_type, count(r) AS n
+            RETURN type(r) AS relationship_type, count(*) AS n
             ORDER BY relationship_type
             """,
             relationship_types=relationship_types,
