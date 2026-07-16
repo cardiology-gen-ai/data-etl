@@ -331,7 +331,7 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH ()-[r]->()
             RETURN coalesce(r.relationship_family, 'UNSET') AS relationship_family,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY n DESC, relationship_family ASC
         """,
     },
@@ -345,7 +345,7 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH ()-[r]->()
             RETURN coalesce(r.provenance, 'UNSET') AS provenance,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY n DESC, provenance ASC
         """,
     },
@@ -359,7 +359,7 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH ()-[r]->()
             RETURN coalesce(r.provenance_source, 'UNSET') AS provenance_source,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY n DESC, provenance_source ASC
         """,
     },
@@ -373,7 +373,7 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH ()-[r]->()
             RETURN coalesce(r.provenance_method, 'UNSET') AS provenance_method,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY n DESC, provenance_method ASC
         """,
     },
@@ -389,7 +389,7 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
             RETURN coalesce(r.source_vocabulary, 'UNSET') AS source_vocabulary,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY n DESC, source_vocabulary ASC
         """,
     },
@@ -404,7 +404,7 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH ()-[r]->()
             RETURN type(r) AS relationship_type,
                    coalesce(r.relationship_family, 'UNSET') AS relationship_family,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY relationship_type ASC, relationship_family ASC
         """,
     },
@@ -810,7 +810,7 @@ CHECKS: List[Dict[str, Any]] = [
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
             RETURN type(r) AS relationship_type,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY relationship_type
         """,
     },
@@ -826,7 +826,7 @@ CHECKS: List[Dict[str, Any]] = [
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
             WITH r.edge_key AS edge_key,
-                 count(r) AS n,
+                 count(*) AS n,
                  collect(DISTINCT type(r)) AS relationship_types
             WHERE edge_key IS NULL OR trim(toString(edge_key)) = '' OR n > 1
             RETURN edge_key,
@@ -1224,7 +1224,7 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH (:Section)-[r:MENTIONS]->(:Concept)
             RETURN coalesce(r.support_method, 'UNSET') AS support_method,
-                   count(r) AS n
+                   count(*) AS n
             ORDER BY n DESC, support_method ASC
         """,
     },
