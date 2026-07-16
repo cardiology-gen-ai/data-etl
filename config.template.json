@@ -337,7 +337,8 @@
           "source_vocab": "UMLS source vocabulary for relation lookup.",
           "output_dir": "Directory for raw candidate CSV, collapsed JSON, Markdown summary, and optional materialization report. Use null for work_root/umls_connections.",
           "cache_dir": "Directory for cached UMLS relation responses and negative-cache markers. Use null for work_root/umls_api_cache/relations.",
-          "write_neo4j": "When true, materialize whitelisted collapsed candidate relations between representative Concept nodes. Defaults false.",
+          "write_neo4j": "When true, materialize collapsed candidate relations between representative Concept nodes according to materialization_mode. Defaults false.",
+          "materialization_mode": "Materialization mode: none exports only, legacy preserves the prior expanded-profile write behavior, approved writes catalog-approved compatible relations, safe_only restricts approved writes to safe/hierarchy policies.",
           "umls_version": "UMLS API version.",
           "api_timeout": "HTTP timeout in seconds.",
           "api_rate_limit_per_second": "Maximum UMLS API requests per second.",
@@ -347,10 +348,10 @@
           "max_relations_per_cui": "Maximum UMLS relation records to process for one source CUI.",
           "max_source_ui_lookups_per_cui": "Maximum sourceUi target lookups to attempt for one source CUI.",
           "write_partial_every": "Write partial CSV/summary every N processed CUIs. Use 0 to disable.",
-          "relation_profile": "Optional initial relation include profile: core, first_extension, or expanded. Leave null for no profile seed.",
+          "relation_profile": "Optional initial relation include profile: legacy_core, core, first_extension, expanded, balanced_core, or audit_all. Leave null for no profile seed.",
           "include_relation_names": "Optional normalized relation-name whitelist additions. Added after relation_profile is applied.",
           "exclude_relation_names": "Optional normalized relation-name denylist. Removed after profile/include additions.",
-          "strong_relations_only": "Backward-compatible alias for relation_profile=expanded. Set false when selecting core or first_extension explicitly.",
+          "strong_relations_only": "Backward-compatible alias for relation_profile=expanded. Defaults false; set false when selecting a profile explicitly.",
           "ignore_negative_cache": "Bypass cached UMLS relation 404-unavailable markers and try the API again."
         },
         "_allowed_values": {
@@ -360,6 +361,12 @@
           "write_neo4j": [
             false,
             true
+          ],
+          "materialization_mode": [
+            "none",
+            "legacy",
+            "approved",
+            "safe_only"
           ],
           "relation_names": [
             "isa",
@@ -377,13 +384,34 @@
             "has_direct_device",
             "direct_device_of",
             "has_measured_component",
-            "measured_component_of"
+            "measured_component_of",
+            "procedure_site_of",
+            "direct_procedure_site_of",
+            "has_method",
+            "method_of",
+            "has_causative_agent",
+            "causative_agent_of",
+            "has_pathological_process",
+            "pathological_process_of",
+            "has_associated_finding",
+            "associated_finding_of",
+            "interprets",
+            "is_interpreted_by",
+            "has_interpretation",
+            "interpretation_of",
+            "has_clinical_course",
+            "clinical_course_of",
+            "due_to",
+            "cause_of"
           ],
           "relation_profile": [
             null,
+            "legacy_core",
             "core",
             "first_extension",
-            "expanded"
+            "expanded",
+            "balanced_core",
+            "audit_all"
           ]
         },
         "enabled": false,
@@ -392,6 +420,7 @@
         "output_dir": null,
         "cache_dir": null,
         "write_neo4j": false,
+        "materialization_mode": "legacy",
         "umls_version": "current",
         "api_timeout": 30,
         "api_rate_limit_per_second": 2,
@@ -404,7 +433,7 @@
         "relation_profile": null,
         "include_relation_names": [],
         "exclude_relation_names": [],
-        "strong_relations_only": true,
+        "strong_relations_only": false,
         "ignore_negative_cache": false
       },
       "section_embeddings": {

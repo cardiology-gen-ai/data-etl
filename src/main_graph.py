@@ -131,6 +131,7 @@ class GraphPipelineConfig:
     umls_connections_output_dir: Optional[Path] = None
     umls_connections_cache_dir: Optional[Path] = None
     umls_connections_write_neo4j: bool = False
+    umls_connections_materialization_mode: str = "legacy"
     umls_connections_umls_version: str = "current"
     umls_connections_api_timeout: float = 30.0
     umls_connections_api_rate_limit_per_second: float = 5.0
@@ -142,7 +143,7 @@ class GraphPipelineConfig:
     umls_connections_write_partial_every: int = 25
     umls_connections_include_relation_names: Optional[list[str]] = None
     umls_connections_exclude_relation_names: Optional[list[str]] = None
-    umls_connections_strong_relations_only: bool = True
+    umls_connections_strong_relations_only: bool = False
     umls_connections_relation_profile: Optional[str] = None
     umls_connections_ignore_negative_cache: bool = False
 
@@ -596,6 +597,7 @@ def make_graph_pipeline_config(
     umls_connections_output_dir: Optional[Path] = None,
     umls_connections_cache_dir: Optional[Path] = None,
     umls_connections_write_neo4j: bool = False,
+    umls_connections_materialization_mode: str = "legacy",
     umls_connections_umls_version: str = "current",
     umls_connections_api_timeout: float = 30.0,
     umls_connections_api_rate_limit_per_second: float = 5.0,
@@ -607,7 +609,7 @@ def make_graph_pipeline_config(
     umls_connections_write_partial_every: int = 25,
     umls_connections_include_relation_names: Optional[list[str]] = None,
     umls_connections_exclude_relation_names: Optional[list[str]] = None,
-    umls_connections_strong_relations_only: bool = True,
+    umls_connections_strong_relations_only: bool = False,
     umls_connections_relation_profile: Optional[str] = None,
     umls_connections_ignore_negative_cache: bool = False,
     sanity_mode: Optional[str] = "full",
@@ -725,6 +727,7 @@ def make_graph_pipeline_config(
             if umls_connections_cache_dir else None
         ),
         umls_connections_write_neo4j=umls_connections_write_neo4j,
+        umls_connections_materialization_mode=umls_connections_materialization_mode,
         umls_connections_umls_version=umls_connections_umls_version,
         umls_connections_api_timeout=umls_connections_api_timeout,
         umls_connections_api_rate_limit_per_second=(
@@ -889,6 +892,7 @@ def main(
     umls_connections_output_dir: Optional[Path] = None,
     umls_connections_cache_dir: Optional[Path] = None,
     umls_connections_write_neo4j: bool = False,
+    umls_connections_materialization_mode: str = "legacy",
     umls_connections_umls_version: str = "current",
     umls_connections_api_timeout: float = 30.0,
     umls_connections_api_rate_limit_per_second: float = 5.0,
@@ -900,7 +904,7 @@ def main(
     umls_connections_write_partial_every: int = 25,
     umls_connections_include_relation_names: Optional[list[str]] = None,
     umls_connections_exclude_relation_names: Optional[list[str]] = None,
-    umls_connections_strong_relations_only: bool = True,
+    umls_connections_strong_relations_only: bool = False,
     umls_connections_relation_profile: Optional[str] = None,
     umls_connections_ignore_negative_cache: bool = False,
     sanity_mode: Optional[str] = "full",
@@ -1058,6 +1062,7 @@ def main(
         umls_connections_output_dir=umls_connections_output_dir,
         umls_connections_cache_dir=umls_connections_cache_dir,
         umls_connections_write_neo4j=umls_connections_write_neo4j,
+        umls_connections_materialization_mode=umls_connections_materialization_mode,
         umls_connections_umls_version=umls_connections_umls_version,
         umls_connections_api_timeout=umls_connections_api_timeout,
         umls_connections_api_rate_limit_per_second=(
@@ -1331,6 +1336,11 @@ def _resolve_umls_connection_kwargs(
             config.get("write_neo4j"),
             False,
         ),
+        "umls_connections_materialization_mode": _get_env_or_config_str(
+            "KG_UMLS_CONNECTIONS_MATERIALIZATION_MODE",
+            config.get("materialization_mode"),
+            "legacy",
+        ) or "legacy",
         "umls_connections_umls_version": _get_env_or_config_str(
             "KG_UMLS_CONNECTIONS_UMLS_VERSION",
             config.get("umls_version"),
@@ -1388,7 +1398,7 @@ def _resolve_umls_connection_kwargs(
         "umls_connections_strong_relations_only": _get_env_or_config_bool(
             "KG_UMLS_CONNECTIONS_STRONG_RELATIONS_ONLY",
             config.get("strong_relations_only"),
-            True,
+            False,
         ),
         "umls_connections_relation_profile": _get_env_or_config_str(
             "KG_UMLS_CONNECTIONS_RELATION_PROFILE",

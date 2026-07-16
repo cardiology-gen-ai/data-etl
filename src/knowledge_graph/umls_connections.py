@@ -118,160 +118,486 @@ DEFAULT_MAX_RELATIONS_PER_CUI = 500
 DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI = 100
 DEFAULT_WRITE_PARTIAL_EVERY = 25
 RELATIONS_404_NEGATIVE_CACHE_THRESHOLD = 3
-CORE_SNOMED_RELATION_NAMES = {
-    "isa",
-    "inverse_isa",
-    "has_finding_site",
-    "finding_site_of",
-    "has_associated_morphology",
-    "associated_morphology_of",
-    "has_procedure_site",
-    "has_direct_procedure_site",
-}
+MATERIALIZATION_MODE_CHOICES = ("none", "legacy", "approved", "safe_only")
+DEFAULT_MATERIALIZATION_MODE = "legacy"
 
-FIRST_SNOMED_EXTENSION_RELATION_NAMES = {
-    "has_definitional_manifestation",
-    "definitional_manifestation_of",
-    "uses_device",
-    "device_used_by",
-    "has_direct_device",
-    "direct_device_of",
-    "has_measured_component",
-    "measured_component_of",
-}
 
-EXPANDED_SNOMED_RELATION_NAMES = (
+@dataclass(frozen=True)
+class RelationSpec:
+    relationship_type: str
+    family: str
+    validation_mode: str
+    source_types: tuple[str, ...]
+    target_types: tuple[str, ...]
+    broad_source_types: tuple[str, ...]
+    broad_target_types: tuple[str, ...]
+    default_traversal_policy: str
+    materialize_by_default: bool
+
+
+@dataclass(frozen=True)
+class CompatibilityResult:
+    status: str
+    reason: str
+
+
+def _type_tuple(values: Sequence[str] = ()) -> tuple[str, ...]:
+    return tuple(sorted({str(value).strip().casefold() for value in values if value}))
+
+
+def _umls_relationship_type(relation_name: str) -> str:
+    return "UMLS_" + re.sub(r"[^A-Z0-9]+", "_", relation_name.upper()).strip("_")
+
+
+def _relation_spec(
+    relation_name: str,
+    *,
+    family: str,
+    validation_mode: str = "exact",
+    source_types: Sequence[str] = (),
+    target_types: Sequence[str] = (),
+    broad_source_types: Sequence[str] = (),
+    broad_target_types: Sequence[str] = (),
+    default_traversal_policy: str = "review",
+    materialize_by_default: bool = False,
+) -> tuple[str, RelationSpec]:
+    normalized_name = re.sub(
+        r"[^a-z0-9]+",
+        "_",
+        str(relation_name or "").strip().casefold(),
+    ).strip("_")
+    return (
+        normalized_name,
+        RelationSpec(
+            relationship_type=_umls_relationship_type(normalized_name),
+            family=family,
+            validation_mode=validation_mode,
+            source_types=_type_tuple(source_types),
+            target_types=_type_tuple(target_types),
+            broad_source_types=_type_tuple(broad_source_types),
+            broad_target_types=_type_tuple(broad_target_types),
+            default_traversal_policy=default_traversal_policy,
+            materialize_by_default=bool(materialize_by_default),
+        ),
+    )
+
+
+DISEASE_FINDING_TYPES = _type_tuple(
+    {
+        "disease",
+        "clinical_finding",
+        "complication_or_comorbidity",
+    }
+)
+DIAGNOSTIC_FAMILY_TYPES = _type_tuple({"diagnostic_test", "imaging_modality"})
+PROCEDURE_TYPES = _type_tuple(
+    {
+        "procedure_or_intervention",
+        "diagnostic_test",
+        "imaging_modality",
+    }
+)
+DIRECT_PROCEDURE_TYPES = _type_tuple(
+    {
+        "procedure_or_intervention",
+        "diagnostic_test",
+    }
+)
+ANATOMICAL_TYPES = _type_tuple({"anatomical_structure"})
+DEVICE_TYPES = _type_tuple({"device"})
+BIOMARKER_TYPES = _type_tuple({"biomarker"})
+
+LEGACY_CORE_SNOMED_RELATION_NAMES = frozenset(
+    {
+        "isa",
+        "inverse_isa",
+        "has_finding_site",
+        "finding_site_of",
+        "has_associated_morphology",
+        "associated_morphology_of",
+        "has_procedure_site",
+        "has_direct_procedure_site",
+    }
+)
+CORE_SNOMED_RELATION_NAMES = LEGACY_CORE_SNOMED_RELATION_NAMES
+
+FIRST_SNOMED_EXTENSION_RELATION_NAMES = frozenset(
+    {
+        "has_definitional_manifestation",
+        "definitional_manifestation_of",
+        "uses_device",
+        "device_used_by",
+        "has_direct_device",
+        "direct_device_of",
+        "has_measured_component",
+        "measured_component_of",
+    }
+)
+
+AUDIT_ONLY_RELATION_NAMES = frozenset(
+    {
+        "procedure_site_of",
+        "direct_procedure_site_of",
+        "has_method",
+        "method_of",
+        "has_causative_agent",
+        "causative_agent_of",
+        "has_pathological_process",
+        "pathological_process_of",
+        "has_associated_finding",
+        "associated_finding_of",
+        "interprets",
+        "is_interpreted_by",
+        "has_interpretation",
+        "interpretation_of",
+        "has_clinical_course",
+        "clinical_course_of",
+        "due_to",
+        "cause_of",
+    }
+)
+
+EXPANDED_SNOMED_RELATION_NAMES = frozenset(
     CORE_SNOMED_RELATION_NAMES
     | FIRST_SNOMED_EXTENSION_RELATION_NAMES
+)
+BALANCED_CORE_SNOMED_RELATION_NAMES = frozenset(
+    CORE_SNOMED_RELATION_NAMES
+    | {"procedure_site_of", "direct_procedure_site_of"}
+)
+AUDIT_ALL_SNOMED_RELATION_NAMES = frozenset(
+    EXPANDED_SNOMED_RELATION_NAMES | AUDIT_ONLY_RELATION_NAMES
 )
 
 # Backward-compatible alias. "Strong" now means the expanded SNOMED profile.
 STRONG_RELATION_NAMES = EXPANDED_SNOMED_RELATION_NAMES
 
+RELATION_SPECS = dict(
+    [
+        _relation_spec(
+            "isa",
+            family="legacy_core",
+            validation_mode="hierarchy",
+            default_traversal_policy="hierarchy",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "inverse_isa",
+            family="legacy_core",
+            validation_mode="hierarchy",
+            default_traversal_policy="hierarchy",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_finding_site",
+            family="legacy_core",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=ANATOMICAL_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "finding_site_of",
+            family="legacy_core",
+            source_types=ANATOMICAL_TYPES,
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_associated_morphology",
+            family="legacy_core",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "associated_morphology_of",
+            family="legacy_core",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_procedure_site",
+            family="legacy_core",
+            source_types=PROCEDURE_TYPES,
+            target_types=ANATOMICAL_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_direct_procedure_site",
+            family="legacy_core",
+            source_types=DIRECT_PROCEDURE_TYPES,
+            target_types=ANATOMICAL_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_definitional_manifestation",
+            family="first_extension",
+            source_types={"disease", "complication_or_comorbidity"},
+            target_types={"clinical_finding"},
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "definitional_manifestation_of",
+            family="first_extension",
+            source_types={"clinical_finding"},
+            target_types={"disease", "complication_or_comorbidity"},
+            default_traversal_policy="reverse_review",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "uses_device",
+            family="first_extension",
+            source_types=PROCEDURE_TYPES,
+            target_types=DEVICE_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "device_used_by",
+            family="first_extension",
+            source_types=DEVICE_TYPES,
+            target_types=PROCEDURE_TYPES,
+            default_traversal_policy="reverse_review",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_direct_device",
+            family="first_extension",
+            source_types=DIRECT_PROCEDURE_TYPES,
+            target_types=DEVICE_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "direct_device_of",
+            family="first_extension",
+            source_types=DEVICE_TYPES,
+            target_types=DIRECT_PROCEDURE_TYPES,
+            default_traversal_policy="reverse_review",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "has_measured_component",
+            family="first_extension",
+            source_types={"diagnostic_test"},
+            target_types=BIOMARKER_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "measured_component_of",
+            family="first_extension",
+            source_types=BIOMARKER_TYPES,
+            target_types={"diagnostic_test"},
+            default_traversal_policy="reverse_review",
+            materialize_by_default=True,
+        ),
+        _relation_spec(
+            "procedure_site_of",
+            family="audit_candidate",
+            source_types=ANATOMICAL_TYPES,
+            target_types=PROCEDURE_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "direct_procedure_site_of",
+            family="audit_candidate",
+            source_types=ANATOMICAL_TYPES,
+            target_types=DIRECT_PROCEDURE_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "has_method",
+            family="audit_candidate",
+            source_types=PROCEDURE_TYPES,
+            target_types={"care_strategy", "procedure_or_intervention"},
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "method_of",
+            family="audit_candidate",
+            source_types={"care_strategy", "procedure_or_intervention"},
+            target_types=PROCEDURE_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "has_causative_agent",
+            family="audit_candidate",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types={"drug_or_drug_class", "genetic_factor", "risk_factor"},
+            broad_target_types={"biomarker", "drug_or_drug_class", "genetic_factor", "risk_factor"},
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "causative_agent_of",
+            family="audit_candidate",
+            source_types={"drug_or_drug_class", "genetic_factor", "risk_factor"},
+            target_types=DISEASE_FINDING_TYPES,
+            broad_source_types={"biomarker", "drug_or_drug_class", "genetic_factor", "risk_factor"},
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "has_pathological_process",
+            family="audit_candidate",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types={"clinical_finding"},
+            broad_target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "pathological_process_of",
+            family="audit_candidate",
+            source_types={"clinical_finding"},
+            target_types=DISEASE_FINDING_TYPES,
+            broad_source_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "has_associated_finding",
+            family="audit_candidate",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "associated_finding_of",
+            family="audit_candidate",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "interprets",
+            family="audit_candidate",
+            source_types={"diagnostic_test", "imaging_modality", "score_or_risk_model"},
+            target_types={"biomarker", "clinical_finding"},
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "is_interpreted_by",
+            family="audit_candidate",
+            source_types={"biomarker", "clinical_finding"},
+            target_types={"diagnostic_test", "imaging_modality", "score_or_risk_model"},
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "has_interpretation",
+            family="audit_candidate",
+            source_types={"biomarker", "diagnostic_test", "imaging_modality"},
+            target_types={"clinical_finding"},
+            broad_target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "interpretation_of",
+            family="audit_candidate",
+            source_types={"clinical_finding"},
+            target_types={"biomarker", "diagnostic_test", "imaging_modality"},
+            broad_source_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "has_clinical_course",
+            family="audit_candidate",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types={"clinical_outcome"},
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "clinical_course_of",
+            family="audit_candidate",
+            source_types={"clinical_outcome"},
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+        _relation_spec(
+            "due_to",
+            family="audit_candidate",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types={
+                "disease",
+                "clinical_finding",
+                "complication_or_comorbidity",
+                "drug_or_drug_class",
+                "genetic_factor",
+                "risk_factor",
+            },
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "cause_of",
+            family="audit_candidate",
+            source_types={
+                "disease",
+                "clinical_finding",
+                "complication_or_comorbidity",
+                "drug_or_drug_class",
+                "genetic_factor",
+                "risk_factor",
+            },
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="reverse_review",
+        ),
+    ]
+)
+
 RELATION_NAMES_BY_PROFILE = {
+    "legacy_core": CORE_SNOMED_RELATION_NAMES,
     "core": CORE_SNOMED_RELATION_NAMES,
     "first_extension": FIRST_SNOMED_EXTENSION_RELATION_NAMES,
     "expanded": EXPANDED_SNOMED_RELATION_NAMES,
+    "balanced_core": BALANCED_CORE_SNOMED_RELATION_NAMES,
+    "audit_all": AUDIT_ALL_SNOMED_RELATION_NAMES,
 }
 RELATION_PROFILE_CHOICES = tuple(RELATION_NAMES_BY_PROFILE)
 
 RELATION_TYPE_BY_NAME = {
-    "isa": "UMLS_ISA",
-    "inverse_isa": "UMLS_INVERSE_ISA",
-    "has_finding_site": "UMLS_HAS_FINDING_SITE",
-    "finding_site_of": "UMLS_FINDING_SITE_OF",
-    "has_associated_morphology": "UMLS_HAS_ASSOCIATED_MORPHOLOGY",
-    "associated_morphology_of": "UMLS_ASSOCIATED_MORPHOLOGY_OF",
-    "has_procedure_site": "UMLS_HAS_PROCEDURE_SITE",
-    "has_direct_procedure_site": "UMLS_HAS_DIRECT_PROCEDURE_SITE",
-    "has_definitional_manifestation": "UMLS_HAS_DEFINITIONAL_MANIFESTATION",
-    "definitional_manifestation_of": "UMLS_DEFINITIONAL_MANIFESTATION_OF",
-    "uses_device": "UMLS_USES_DEVICE",
-    "device_used_by": "UMLS_DEVICE_USED_BY",
-    "has_direct_device": "UMLS_HAS_DIRECT_DEVICE",
-    "direct_device_of": "UMLS_DIRECT_DEVICE_OF",
-    "has_measured_component": "UMLS_HAS_MEASURED_COMPONENT",
-    "measured_component_of": "UMLS_MEASURED_COMPONENT_OF",
-}
-
-SAFE_TRAVERSAL_RELATION_NAMES = {
-    "has_finding_site",
-    "has_associated_morphology",
-    "has_procedure_site",
-    "has_direct_procedure_site",
-}
-HIERARCHY_RELATION_NAMES = {"isa", "inverse_isa"}
-REVERSE_REVIEW_RELATION_NAMES = {
-    "finding_site_of",
-    "associated_morphology_of",
-}
-LOCAL_TYPE_RULES_BY_RELATION_NAME = {
-    "has_definitional_manifestation": {
-        "source_types": {
-            "disease",
-            "complication_or_comorbidity",
-        },
-        "target_types": {
-            "clinical_finding",
-        },
-    },
-    "definitional_manifestation_of": {
-        "source_types": {
-            "clinical_finding",
-        },
-        "target_types": {
-            "disease",
-            "complication_or_comorbidity",
-        },
-    },
-    "uses_device": {
-        "source_types": {
-            "procedure_or_intervention",
-            "diagnostic_test",
-            "imaging_modality",
-        },
-        "target_types": {
-            "device",
-        },
-    },
-    "device_used_by": {
-        "source_types": {
-            "device",
-        },
-        "target_types": {
-            "procedure_or_intervention",
-            "diagnostic_test",
-            "imaging_modality",
-        },
-    },
-    "has_direct_device": {
-        "source_types": {
-            "procedure_or_intervention",
-            "diagnostic_test",
-        },
-        "target_types": {
-            "device",
-        },
-    },
-    "direct_device_of": {
-        "source_types": {
-            "device",
-        },
-        "target_types": {
-            "procedure_or_intervention",
-            "diagnostic_test",
-        },
-    },
-    "has_measured_component": {
-        "source_types": {
-            "diagnostic_test",
-        },
-        "target_types": {
-            "biomarker",
-        },
-    },
-    "measured_component_of": {
-        "source_types": {
-            "biomarker",
-        },
-        "target_types": {
-            "diagnostic_test",
-        },
-    },
-}
-FIRST_EXTENSION_SAFE_RELATION_NAMES = {
-    "has_definitional_manifestation",
-    "uses_device",
-    "has_direct_device",
-    "has_measured_component",
-}
-FIRST_EXTENSION_REVERSE_REVIEW_RELATION_NAMES = {
-    "definitional_manifestation_of",
-    "device_used_by",
-    "direct_device_of",
-    "measured_component_of",
+    relation_name: spec.relationship_type
+    for relation_name, spec in sorted(RELATION_SPECS.items())
 }
 UMLS_CONNECTION_RELATION_TYPES = sorted(set(RELATION_TYPE_BY_NAME.values()))
+
+SAFE_TRAVERSAL_RELATION_NAMES = frozenset(
+    relation_name
+    for relation_name, spec in RELATION_SPECS.items()
+    if spec.default_traversal_policy == "safe"
+)
+HIERARCHY_RELATION_NAMES = frozenset(
+    relation_name
+    for relation_name, spec in RELATION_SPECS.items()
+    if spec.validation_mode == "hierarchy"
+)
+REVERSE_REVIEW_RELATION_NAMES = frozenset(
+    relation_name
+    for relation_name, spec in RELATION_SPECS.items()
+    if spec.default_traversal_policy == "reverse_review"
+)
+LOCAL_TYPE_RULES_BY_RELATION_NAME = {
+    relation_name: {
+        "source_types": set(spec.source_types),
+        "target_types": set(spec.target_types),
+    }
+    for relation_name, spec in RELATION_SPECS.items()
+    if spec.validation_mode == "exact" and spec.source_types and spec.target_types
+}
+FIRST_EXTENSION_SAFE_RELATION_NAMES = frozenset(
+    relation_name
+    for relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+    if RELATION_SPECS[relation_name].default_traversal_policy == "safe"
+)
+FIRST_EXTENSION_REVERSE_REVIEW_RELATION_NAMES = frozenset(
+    relation_name
+    for relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+    if RELATION_SPECS[relation_name].default_traversal_policy == "reverse_review"
+)
 
 CONNECTION_STATUS = "candidate"
 CUI_PATTERN = re.compile(r"\bC\d{7}\b", re.IGNORECASE)
@@ -445,6 +771,99 @@ def normalize_local_type(value: Any) -> str:
     return clean_text(value).casefold()
 
 
+def local_type_compatible_from_status(status: str) -> bool:
+    return clean_text(status) in {"compatible", "compatible_broad"}
+
+
+def _missing_type_result(source_type: str, target_type: str) -> Optional[CompatibilityResult]:
+    if not source_type and not target_type:
+        return CompatibilityResult("missing_type", "missing_source_and_target_type")
+    if not source_type:
+        return CompatibilityResult("missing_type", "missing_source_type")
+    if not target_type:
+        return CompatibilityResult("missing_type", "missing_target_type")
+    return None
+
+
+def evaluate_hierarchy_compatibility(
+    source_type: str,
+    target_type: str,
+) -> CompatibilityResult:
+    normalized_source_type = normalize_local_type(source_type)
+    normalized_target_type = normalize_local_type(target_type)
+    missing = _missing_type_result(normalized_source_type, normalized_target_type)
+    if missing is not None:
+        return missing
+
+    if normalized_source_type == normalized_target_type:
+        return CompatibilityResult("compatible", "same_canonical_type")
+
+    hierarchy_broad_families = (
+        set(DISEASE_FINDING_TYPES),
+        set(DIAGNOSTIC_FAMILY_TYPES),
+    )
+    for broad_family in hierarchy_broad_families:
+        if (
+            normalized_source_type in broad_family
+            and normalized_target_type in broad_family
+        ):
+            return CompatibilityResult("compatible_broad", "broad_hierarchy_family")
+
+    return CompatibilityResult("review", "cross_type_hierarchy_requires_review")
+
+
+def evaluate_relation_compatibility(
+    relation_name: str,
+    source_type: str,
+    target_type: str,
+) -> CompatibilityResult:
+    normalized_relation_name = normalize_relation_term(relation_name)
+    spec = RELATION_SPECS.get(normalized_relation_name)
+    if spec is None:
+        return CompatibilityResult("unsupported_local_schema", "relation_not_in_catalog")
+
+    normalized_source_type = normalize_local_type(source_type)
+    normalized_target_type = normalize_local_type(target_type)
+    missing = _missing_type_result(normalized_source_type, normalized_target_type)
+    if missing is not None:
+        return missing
+
+    if spec.validation_mode == "hierarchy":
+        return evaluate_hierarchy_compatibility(
+            normalized_source_type,
+            normalized_target_type,
+        )
+
+    if spec.validation_mode == "review":
+        return CompatibilityResult("review", "requires_relation_review")
+
+    if spec.validation_mode != "exact" or not spec.source_types or not spec.target_types:
+        return CompatibilityResult(
+            "unsupported_local_schema",
+            "no_exact_type_rule",
+        )
+
+    source_ok = normalized_source_type in spec.source_types
+    target_ok = normalized_target_type in spec.target_types
+    if source_ok and target_ok:
+        return CompatibilityResult("compatible", "compatible")
+
+    broad_source_types = set(spec.broad_source_types or spec.source_types)
+    broad_target_types = set(spec.broad_target_types or spec.target_types)
+    source_broad_ok = normalized_source_type in broad_source_types
+    target_broad_ok = normalized_target_type in broad_target_types
+    if source_broad_ok and target_broad_ok:
+        return CompatibilityResult("compatible_broad", "broad_type_match")
+
+    if not source_ok and not target_ok:
+        reason = "source_and_target_type_not_allowed"
+    elif not source_ok:
+        reason = "source_type_not_allowed"
+    else:
+        reason = "target_type_not_allowed"
+    return CompatibilityResult("incompatible", reason)
+
+
 def resolve_selected_relation_profile(
     relation_profile: Optional[str] = None,
     strong_relations_only: bool = False,
@@ -479,29 +898,14 @@ def evaluate_local_type_compatibility(
     source_type: str,
     target_type: str,
 ) -> tuple[bool | None, str]:
-    normalized_relation_name = normalize_relation_term(relation_name)
-    rule = LOCAL_TYPE_RULES_BY_RELATION_NAME.get(normalized_relation_name)
-    if rule is None:
-        return None, "no_type_rule"
-
-    normalized_source_type = normalize_local_type(source_type)
-    normalized_target_type = normalize_local_type(target_type)
-    if not normalized_source_type and not normalized_target_type:
-        return False, "missing_source_and_target_type"
-    if not normalized_source_type:
-        return False, "missing_source_type"
-    if not normalized_target_type:
-        return False, "missing_target_type"
-
-    source_ok = normalized_source_type in rule["source_types"]
-    target_ok = normalized_target_type in rule["target_types"]
-    if source_ok and target_ok:
-        return True, "compatible"
-    if not source_ok and not target_ok:
-        return False, "source_and_target_type_not_allowed"
-    if not source_ok:
-        return False, "source_type_not_allowed"
-    return False, "target_type_not_allowed"
+    result = evaluate_relation_compatibility(
+        relation_name=relation_name,
+        source_type=source_type,
+        target_type=target_type,
+    )
+    if result.status == "unsupported_local_schema":
+        return None, result.reason
+    return local_type_compatible_from_status(result.status), result.reason
 
 
 def is_short_acronym_like_name(value: Any) -> bool:
@@ -1309,6 +1713,7 @@ def build_initial_relation_stats(
     exclude_relation_names: set[str],
     strong_relations_only: bool,
     relation_profile: Optional[str],
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> dict[str, Any]:
     failures: list[dict[str, str]] = []
     return {
@@ -1325,6 +1730,7 @@ def build_initial_relation_stats(
         "strong_relations_only": strong_relations_only,
         "relation_profile": relation_profile,
         "selected_relation_profile": relation_profile,
+        "materialization_mode": materialization_mode,
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
         "final_export_written": False,
@@ -1419,7 +1825,9 @@ def build_candidate_edges(
     exclude_relation_names: Optional[Sequence[str]] = None,
     strong_relations_only: bool = False,
     relation_profile: Optional[str] = None,
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    materialization_mode = normalize_materialization_mode(materialization_mode)
     by_cui = concepts_by_cui(concepts)
     local_cuis = set(by_cui)
     source_cuis, skipped_cuis = select_source_cuis(
@@ -1451,6 +1859,7 @@ def build_candidate_edges(
         exclude_relation_names=resolved_exclude_names,
         strong_relations_only=strong_relations_only,
         relation_profile=selected_relation_profile,
+        materialization_mode=materialization_mode,
     )
     stats["ignore_negative_cache"] = bool(getattr(client, "ignore_negative_cache", False))
 
@@ -1527,6 +1936,7 @@ def build_candidate_edges(
                     summary_path=partial_summary_path,
                     cache_dir=cache_dir,
                     dry_run=dry_run,
+                    materialization_mode=materialization_mode,
                 )
                 logger.info(
                     "Partial UMLS connection export written | processed_cuis=%d | csv=%s | summary=%s",
@@ -1754,6 +2164,7 @@ def build_candidate_edges(
                 summary_path=partial_summary_path,
                 cache_dir=cache_dir,
                 dry_run=dry_run,
+                materialization_mode=materialization_mode,
             )
             logger.info(
                 "Partial UMLS connection export written | processed_cuis=%d | csv=%s | summary=%s",
@@ -1915,6 +2326,35 @@ def is_first_extension_relation_name(relation_name: str) -> bool:
     return normalize_relation_term(relation_name) in FIRST_SNOMED_EXTENSION_RELATION_NAMES
 
 
+def catalog_relationship_type_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "relation_name": relation_name,
+            "relationship_type": spec.relationship_type,
+            "family": spec.family,
+            "validation_mode": spec.validation_mode,
+            "materialize_by_default": spec.materialize_by_default,
+            "default_traversal_policy": spec.default_traversal_policy,
+        }
+        for relation_name, spec in sorted(RELATION_SPECS.items())
+    ]
+
+
+def catalog_local_type_rule_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "relation_name": relation_name,
+            "relationship_type": spec.relationship_type,
+            "source_types": list(spec.source_types),
+            "target_types": list(spec.target_types),
+            "validation_mode": spec.validation_mode,
+            "materialize_by_default": spec.materialize_by_default,
+        }
+        for relation_name, spec in sorted(RELATION_SPECS.items())
+        if spec.validation_mode == "exact" and spec.source_types and spec.target_types
+    ]
+
+
 def first_extension_relationship_types() -> list[str]:
     return sorted(
         RELATION_TYPE_BY_NAME[relation_name]
@@ -1924,15 +2364,69 @@ def first_extension_relationship_types() -> list[str]:
 
 def first_extension_local_type_rule_rows() -> list[dict[str, Any]]:
     return [
-        {
-            "relation_name": relation_name,
-            "relationship_type": RELATION_TYPE_BY_NAME[relation_name],
-            "source_types": sorted(rule["source_types"]),
-            "target_types": sorted(rule["target_types"]),
-        }
-        for relation_name, rule in sorted(LOCAL_TYPE_RULES_BY_RELATION_NAME.items())
-        if relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+        row
+        for row in catalog_local_type_rule_rows()
+        if row["relation_name"] in FIRST_SNOMED_EXTENSION_RELATION_NAMES
     ]
+
+
+def normalize_materialization_mode(value: Optional[str]) -> str:
+    mode = clean_text(value).casefold() or DEFAULT_MATERIALIZATION_MODE
+    if mode not in MATERIALIZATION_MODE_CHOICES:
+        raise ValueError(
+            f"Invalid materialization mode {value!r}; choose one of "
+            f"{', '.join(MATERIALIZATION_MODE_CHOICES)}"
+        )
+    return mode
+
+
+def should_materialize_relation(
+    edge: dict[str, Any],
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
+    *,
+    require_representatives: bool = True,
+) -> tuple[bool, str]:
+    mode = normalize_materialization_mode(materialization_mode)
+    if mode == "none":
+        return False, "materialization_mode_none"
+
+    relation_name = normalize_relation_term(edge.get("relation_name"))
+    spec = RELATION_SPECS.get(relation_name)
+    relationship_type = clean_text(edge.get("relationship_type"))
+    if spec is None or not relationship_type:
+        return False, "unsupported_relation"
+
+    if require_representatives and (
+        not edge.get("source_representative")
+        or not edge.get("target_representative")
+    ):
+        return False, "missing_representative"
+
+    compatibility_status = clean_text(edge.get("compatibility_status"))
+    local_type_compatible = edge.get("local_type_compatible")
+
+    if mode == "legacy":
+        if relation_name not in EXPANDED_SNOMED_RELATION_NAMES:
+            return False, "legacy_relation_not_in_expanded_profile"
+        if (
+            relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
+            and local_type_compatible is not True
+        ):
+            return False, "legacy_incompatible_first_extension"
+        return True, "legacy_materialization"
+
+    if not spec.materialize_by_default:
+        return False, "not_materialize_by_default"
+    if compatibility_status not in {"compatible", "compatible_broad"}:
+        return False, f"compatibility_status_{compatibility_status or 'missing'}"
+
+    if mode == "safe_only":
+        traversal_policy = clean_text(edge.get("traversal_policy"))
+        if traversal_policy not in {"safe", "hierarchy"}:
+            return False, f"traversal_policy_{traversal_policy or 'missing'}"
+        return True, "safe_only_materialization"
+
+    return True, "approved_materialization"
 
 
 def build_collapsed_connection_statistics(
@@ -1946,8 +2440,28 @@ def build_collapsed_connection_statistics(
         clean_text(edge.get("traversal_policy")) or "(none)"
         for edge in collapsed_edges
     )
+    counts_by_compatibility_status = Counter(
+        clean_text(edge.get("compatibility_status")) or "(none)"
+        for edge in collapsed_edges
+    )
+    counts_by_compatibility_reason = Counter(
+        clean_text(edge.get("compatibility_reason")) or "(none)"
+        for edge in collapsed_edges
+    )
     counts_by_local_type_compatible = Counter(
         local_type_compatible_count_key(edge.get("local_type_compatible"))
+        for edge in collapsed_edges
+    )
+    counts_by_materialize_by_default = Counter(
+        local_type_compatible_count_key(edge.get("materialize_by_default"))
+        for edge in collapsed_edges
+    )
+    counts_by_materialization_decision = Counter(
+        local_type_compatible_count_key(edge.get("materialization_decision"))
+        for edge in collapsed_edges
+    )
+    counts_by_materialization_reason = Counter(
+        clean_text(edge.get("materialization_decision_reason")) or "(none)"
         for edge in collapsed_edges
     )
     representative_type_counts = Counter(
@@ -1958,6 +2472,32 @@ def build_collapsed_connection_statistics(
         )
         for edge in collapsed_edges
     )
+    examples_by_relation_status: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for edge in collapsed_edges:
+        key = (
+            clean_text(edge.get("relation_name")) or "(none)",
+            clean_text(edge.get("compatibility_status")) or "(none)",
+        )
+        examples = examples_by_relation_status.setdefault(key, [])
+        if len(examples) < 3:
+            examples.append(
+                {
+                    "source_cui": edge.get("source_cui"),
+                    "source_type": edge.get("representative_source_type"),
+                    "relation_name": edge.get("relation_name"),
+                    "target_type": edge.get("representative_target_type"),
+                    "target_cui": edge.get("target_cui"),
+                    "compatibility_status": edge.get("compatibility_status"),
+                    "compatibility_reason": edge.get("compatibility_reason"),
+                    "traversal_policy": edge.get("traversal_policy"),
+                    "materialization_decision": edge.get("materialization_decision"),
+                    "materialization_decision_reason": edge.get(
+                        "materialization_decision_reason"
+                    ),
+                    "source_names": list(edge.get("source_names") or [])[:3],
+                    "target_names": list(edge.get("target_names") or [])[:3],
+                }
+            )
 
     first_extension_edges = [
         edge
@@ -1995,8 +2535,23 @@ def build_collapsed_connection_statistics(
         "counts_by_traversal_policy": dict(
             sorted(counts_by_traversal_policy.items())
         ),
+        "counts_by_compatibility_status": dict(
+            sorted(counts_by_compatibility_status.items())
+        ),
+        "counts_by_compatibility_reason": dict(
+            sorted(counts_by_compatibility_reason.items())
+        ),
         "counts_by_local_type_compatible": dict(
             sorted(counts_by_local_type_compatible.items())
+        ),
+        "counts_by_materialize_by_default": dict(
+            sorted(counts_by_materialize_by_default.items())
+        ),
+        "counts_by_materialization_decision": dict(
+            sorted(counts_by_materialization_decision.items())
+        ),
+        "counts_by_materialization_reason": dict(
+            sorted(counts_by_materialization_reason.items())
         ),
         "counts_by_source_representative_type_relation_target_representative_type": [
             {
@@ -2010,6 +2565,17 @@ def build_collapsed_connection_statistics(
                 relation_name,
                 target_type,
             ), count in representative_type_counts.most_common()
+        ],
+        "examples_by_relation_and_compatibility_status": [
+            {
+                "relation_name": relation_name,
+                "compatibility_status": compatibility_status,
+                "examples": examples,
+            }
+            for (
+                relation_name,
+                compatibility_status,
+            ), examples in sorted(examples_by_relation_status.items())
         ],
         "incompatible_local_type_examples": incompatible_examples,
     }
@@ -2041,40 +2607,48 @@ def traversal_policy_for_relation(
     source_types: Sequence[str] = (),
     target_types: Sequence[str] = (),
     local_type_compatible: bool | None = None,
+    compatibility_status: Optional[str] = None,
 ) -> str:
     relation_name = normalize_relation_term(relation_name)
+    spec = RELATION_SPECS.get(relation_name)
+    if spec is None:
+        return "type_review"
+
     source_type_set = {clean_text(item) for item in source_types if clean_text(item)}
     target_type_set = {clean_text(item) for item in target_types if clean_text(item)}
 
-    if relation_name in LOCAL_TYPE_RULES_BY_RELATION_NAME:
-        if local_type_compatible is None:
-            if len(source_type_set) == 1 and len(target_type_set) == 1:
-                local_type_compatible, _reason = evaluate_local_type_compatibility(
-                    relation_name,
-                    next(iter(source_type_set)),
-                    next(iter(target_type_set)),
-                )
-            else:
-                local_type_compatible = False
+    if compatibility_status is None:
+        if local_type_compatible is True:
+            compatibility_status = "compatible"
+        elif local_type_compatible is False:
+            compatibility_status = "incompatible"
+        elif len(source_type_set) == 1 and len(target_type_set) == 1:
+            compatibility_status = evaluate_relation_compatibility(
+                relation_name,
+                next(iter(source_type_set)),
+                next(iter(target_type_set)),
+            ).status
+        else:
+            compatibility_status = "missing_type"
 
-        if local_type_compatible is False:
-            return "type_review"
-        if relation_name in FIRST_EXTENSION_SAFE_RELATION_NAMES:
-            return "safe"
-        if relation_name in FIRST_EXTENSION_REVERSE_REVIEW_RELATION_NAMES:
-            return "reverse_review"
+    compatibility_status = clean_text(compatibility_status)
+    if compatibility_status in {
+        "incompatible",
+        "missing_type",
+        "unsupported_local_schema",
+    }:
+        return "type_review"
+    if compatibility_status == "review":
+        return "review"
 
-    if relation_name in SAFE_TRAVERSAL_RELATION_NAMES:
-        return "safe"
-    if relation_name in REVERSE_REVIEW_RELATION_NAMES:
-        return "reverse_review"
-    if relation_name in HIERARCHY_RELATION_NAMES:
-        return (
-            "hierarchy"
-            if source_type_set == target_type_set and len(source_type_set) == 1
-            else "hierarchy_review"
-        )
-    return "review"
+    if spec.validation_mode == "hierarchy":
+        if compatibility_status == "compatible":
+            return "hierarchy"
+        if compatibility_status == "compatible_broad":
+            return "hierarchy_review"
+        return "review"
+
+    return spec.default_traversal_policy
 
 
 def review_needed_for_policy(traversal_policy: str) -> bool:
@@ -2092,6 +2666,7 @@ def build_collapsed_connections(
     source_vocab: str,
     umls_version: str,
     representatives_by_cui: Optional[dict[str, LocalConcept]] = None,
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> list[dict[str, Any]]:
     grouped: dict[tuple[str, str, str, str, str, str, str], dict[str, Any]] = {}
 
@@ -2158,57 +2733,81 @@ def build_collapsed_connections(
             if target_representative is not None
             else ""
         )
-        (
-            local_type_compatible,
-            local_type_compatibility_reason,
-        ) = evaluate_local_type_compatibility(
+        compatibility = evaluate_relation_compatibility(
             relation_name=relation_name,
             source_type=representative_source_type,
             target_type=representative_target_type,
         )
+        local_type_compatible = local_type_compatible_from_status(
+            compatibility.status
+        )
         traversal_policy = traversal_policy_for_relation(
             relation_name=relation_name,
-            source_types=source_types,
-            target_types=target_types,
-            local_type_compatible=local_type_compatible,
+            source_types=[representative_source_type],
+            target_types=[representative_target_type],
+            compatibility_status=compatibility.status,
         )
-        collapsed_edges.append(
+        spec = RELATION_SPECS.get(relation_name)
+        collapsed_edge = {
+            "edge_key": build_collapsed_edge_key(
+                doc_id=row["doc_id"],
+                source_vocab=row["source_vocabulary"],
+                umls_version=row["umls_version"],
+                source_cui=row["source_cui"],
+                target_cui=row["target_cui"],
+                relation_label=row["relation_label"],
+                relation_name=relation_name,
+            ),
+            "doc_id": row["doc_id"],
+            "source_cui": row["source_cui"],
+            "target_cui": row["target_cui"],
+            "relation_label": row["relation_label"],
+            "relation_name": relation_name,
+            "relationship_type": (
+                spec.relationship_type if spec is not None else None
+            ),
+            "source_vocabulary": row["source_vocabulary"],
+            "umls_version": row["umls_version"],
+            "raw_rows": row["raw_rows"],
+            "relation_ids": sorted(row["relation_ids"]),
+            "source_names": sorted(row["source_names"]),
+            "target_names": sorted(row["target_names"]),
+            "source_types": source_types,
+            "target_types": target_types,
+            "status": CONNECTION_STATUS,
+            **relationship_metadata,
+            "compatibility_status": compatibility.status,
+            "compatibility_reason": compatibility.reason,
+            "relation_family": spec.family if spec is not None else None,
+            "materialize_by_default": (
+                spec.materialize_by_default if spec is not None else False
+            ),
+            "local_type_compatible": local_type_compatible,
+            "local_type_compatibility_reason": compatibility.reason,
+            "representative_source_type": representative_source_type or None,
+            "representative_target_type": representative_target_type or None,
+            "traversal_policy": traversal_policy,
+            "review_needed": review_needed_for_policy(traversal_policy),
+            "source_representative": concept_report(source_representative),
+            "target_representative": concept_report(target_representative),
+        }
+        (
+            materialization_decision,
+            materialization_decision_reason,
+        ) = should_materialize_relation(
+            collapsed_edge,
+            materialization_mode=materialization_mode,
+        )
+        collapsed_edge.update(
             {
-                "edge_key": build_collapsed_edge_key(
-                    doc_id=row["doc_id"],
-                    source_vocab=row["source_vocabulary"],
-                    umls_version=row["umls_version"],
-                    source_cui=row["source_cui"],
-                    target_cui=row["target_cui"],
-                    relation_label=row["relation_label"],
-                    relation_name=relation_name,
+                "materialization_mode": normalize_materialization_mode(
+                    materialization_mode
                 ),
-                "doc_id": row["doc_id"],
-                "source_cui": row["source_cui"],
-                "target_cui": row["target_cui"],
-                "relation_label": row["relation_label"],
-                "relation_name": relation_name,
-                "relationship_type": RELATION_TYPE_BY_NAME.get(relation_name),
-                "source_vocabulary": row["source_vocabulary"],
-                "umls_version": row["umls_version"],
-                "raw_rows": row["raw_rows"],
-                "relation_ids": sorted(row["relation_ids"]),
-                "source_names": sorted(row["source_names"]),
-                "target_names": sorted(row["target_names"]),
-                "source_types": source_types,
-                "target_types": target_types,
-                "status": CONNECTION_STATUS,
-                **relationship_metadata,
-                "local_type_compatible": local_type_compatible,
-                "local_type_compatibility_reason": local_type_compatibility_reason,
-                "representative_source_type": representative_source_type or None,
-                "representative_target_type": representative_target_type or None,
-                "traversal_policy": traversal_policy,
-                "review_needed": review_needed_for_policy(traversal_policy),
-                "source_representative": concept_report(source_representative),
-                "target_representative": concept_report(target_representative),
+                "materialization_decision": materialization_decision,
+                "materialization_decision_reason": materialization_decision_reason,
             }
         )
+        collapsed_edges.append(collapsed_edge)
 
     collapsed_edges.sort(
         key=lambda item: (
@@ -2246,7 +2845,13 @@ def build_collapsed_connection_rows(
             edge.get("representative_target_type"),
             local_type_compatible_count_key(edge.get("local_type_compatible")),
             edge.get("local_type_compatibility_reason"),
+            edge.get("compatibility_status"),
+            edge.get("compatibility_reason"),
+            edge.get("relation_family"),
             edge["traversal_policy"],
+            local_type_compatible_count_key(edge.get("materialize_by_default")),
+            local_type_compatible_count_key(edge.get("materialization_decision")),
+            edge.get("materialization_decision_reason"),
             edge["raw_rows"],
             len(edge["relation_ids"]),
             "; ".join(edge["source_names"][:3]),
@@ -2271,7 +2876,9 @@ def build_summary_markdown(
     umls_version: str = DEFAULT_UMLS_VERSION,
     collapsed_edges: Optional[Sequence[dict[str, Any]]] = None,
     materialization_report: Optional[dict[str, Any]] = None,
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> str:
+    materialization_mode = normalize_materialization_mode(materialization_mode)
     unique_cuis = {concept.umls_cui for concept in concepts}
 
     relation_counts = Counter(
@@ -2303,6 +2910,7 @@ def build_summary_markdown(
             source_vocab=source_vocab,
             umls_version=umls_version,
             representatives_by_cui=representatives,
+            materialization_mode=materialization_mode,
         )
     collapsed_connection_rows = build_collapsed_connection_rows(
         collapsed_edges=collapsed_edges,
@@ -2338,6 +2946,7 @@ def build_summary_markdown(
         f"- UMLS version: `{umls_version}`",
         f"- dry-run/read-only: `{str(dry_run).lower()}`",
         f"- selected relation profile: `{stats.get('selected_relation_profile') or '(none)'}`",
+        f"- materialization mode: `{materialization_mode}`",
         f"- candidate CSV: `{csv_path}`",
         f"- collapsed JSON: `{collapsed_json_path or '(not written)'}`",
         f"- relation cache directory: `{cache_dir}`",
@@ -2518,11 +3127,46 @@ def build_summary_markdown(
             sorted(collapsed_stats["counts_by_traversal_policy"].items()),
         )
     )
+    lines.extend(["", "## Collapsed Connections By Compatibility Status", ""])
+    lines.extend(
+        markdown_count_table(
+            ["compatibility_status", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_compatibility_status"].items()),
+        )
+    )
+    lines.extend(["", "## Collapsed Connections By Compatibility Reason", ""])
+    lines.extend(
+        markdown_count_table(
+            ["compatibility_reason", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_compatibility_reason"].items()),
+        )
+    )
     lines.extend(["", "## Collapsed Connections By Local Type Compatibility", ""])
     lines.extend(
         markdown_count_table(
             ["local_type_compatible", "collapsed_connections"],
             sorted(collapsed_stats["counts_by_local_type_compatible"].items()),
+        )
+    )
+    lines.extend(["", "## Collapsed Connections By Materialize-By-Default", ""])
+    lines.extend(
+        markdown_count_table(
+            ["materialize_by_default", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_materialize_by_default"].items()),
+        )
+    )
+    lines.extend(["", "## Collapsed Connections By Materialization Decision", ""])
+    lines.extend(
+        markdown_count_table(
+            ["materialization_decision", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_materialization_decision"].items()),
+        )
+    )
+    lines.extend(["", "## Collapsed Connections By Materialization Reason", ""])
+    lines.extend(
+        markdown_count_table(
+            ["materialization_reason", "collapsed_connections"],
+            sorted(collapsed_stats["counts_by_materialization_reason"].items()),
         )
     )
     representative_type_rows = [
@@ -2552,6 +3196,52 @@ def build_summary_markdown(
                 "collapsed_connections",
             ],
             representative_type_rows,
+        )
+    )
+    relation_status_example_rows: list[tuple[Any, ...]] = []
+    for group in collapsed_stats["examples_by_relation_and_compatibility_status"]:
+        examples = group.get("examples") or []
+        for item in examples:
+            relation_status_example_rows.append(
+                (
+                    group.get("relation_name"),
+                    group.get("compatibility_status"),
+                    item.get("source_cui"),
+                    item.get("source_type"),
+                    item.get("target_type"),
+                    item.get("target_cui"),
+                    item.get("compatibility_reason"),
+                    item.get("traversal_policy"),
+                    item.get("materialization_decision"),
+                    item.get("materialization_decision_reason"),
+                    "; ".join(item.get("source_names") or []),
+                    "; ".join(item.get("target_names") or []),
+                )
+            )
+    lines.extend(
+        [
+            "",
+            "## Representative Examples By Relation And Compatibility Status",
+            "",
+        ]
+    )
+    lines.extend(
+        markdown_count_table(
+            [
+                "relation_name",
+                "compatibility_status",
+                "source_cui",
+                "source_type",
+                "target_type",
+                "target_cui",
+                "compatibility_reason",
+                "traversal_policy",
+                "materialization_decision",
+                "materialization_reason",
+                "example_source_names",
+                "example_target_names",
+            ],
+            relation_status_example_rows,
         )
     )
     incompatible_example_rows = [
@@ -2595,7 +3285,13 @@ def build_summary_markdown(
                 "target_representative_type",
                 "local_type_compatible",
                 "local_type_reason",
+                "compatibility_status",
+                "compatibility_reason",
+                "relation_family",
                 "traversal_policy",
+                "materialize_by_default",
+                "materialization_decision",
+                "materialization_reason",
                 "raw_rows",
                 "relation_ids",
                 "example_source_names",
@@ -2610,14 +3306,26 @@ def build_summary_markdown(
         lines.extend(
             [
                 f"- write_neo4j: `{str(bool(materialization_report.get('write_neo4j'))).lower()}`",
+                f"- materialization_mode: `{materialization_report.get('materialization_mode', DEFAULT_MATERIALIZATION_MODE)}`",
                 f"- eligible collapsed edges: {materialization_report.get('eligible_collapsed_edges', 0)}",
                 f"- relationships written/merged: {materialization_report.get('relationships_written', 0)}",
                 f"- skipped missing representative: {materialization_report.get('skipped_missing_representative', 0)}",
                 f"- skipped not whitelisted: {materialization_report.get('skipped_not_whitelisted', 0)}",
                 f"- skipped incompatible local types: {materialization_report.get('skipped_incompatible_local_types', 0)}",
+                f"- skipped not materialize-by-default: {materialization_report.get('skipped_not_materialize_by_default', 0)}",
                 f"- duplicate edge_key findings after write: {materialization_report.get('duplicate_edge_key_findings', 0)}",
                 f"- CUI mismatch findings after write: {materialization_report.get('cui_mismatch_findings', 0)}",
             ]
+        )
+        skipped_by_reason = (
+            materialization_report.get("skipped_by_materialization_reason") or {}
+        )
+        lines.extend(["", "### Skipped By Materialization Reason", ""])
+        lines.extend(
+            markdown_count_table(
+                ["materialization_reason", "collapsed_connections"],
+                sorted(skipped_by_reason.items()),
+            )
         )
         counts_by_type = materialization_report.get("counts_by_relationship_type") or {}
         lines.extend(["", "### Counts By UMLS Relationship Type", ""])
@@ -2681,7 +3389,9 @@ def write_review_exports(
     collapsed_edges: Optional[Sequence[dict[str, Any]]] = None,
     materialization_report: Optional[dict[str, Any]] = None,
     materialization_json_path: Optional[Path] = None,
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> None:
+    materialization_mode = normalize_materialization_mode(materialization_mode)
     if collapsed_edges is None:
         representatives = select_representative_concepts(concepts)
         collapsed_edges = build_collapsed_connections(
@@ -2690,6 +3400,7 @@ def write_review_exports(
             source_vocab=source_vocab,
             umls_version=umls_version,
             representatives_by_cui=representatives,
+            materialization_mode=materialization_mode,
         )
 
     write_candidate_edges_csv(csv_path, edges)
@@ -2712,6 +3423,7 @@ def write_review_exports(
         umls_version=umls_version,
         collapsed_edges=collapsed_edges,
         materialization_report=materialization_report,
+        materialization_mode=materialization_mode,
     )
     write_summary(summary_path, summary)
 
@@ -2726,7 +3438,10 @@ def fetch_local_concepts(
 
 def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[str]:
     relation_name = normalize_relation_term(edge.get("relation_name"))
-    relationship_type = RELATION_TYPE_BY_NAME.get(relation_name)
+    relationship_type = (
+        clean_text(edge.get("relationship_type"))
+        or RELATION_TYPE_BY_NAME.get(relation_name)
+    )
     if relationship_type is None:
         return None
 
@@ -2766,19 +3481,20 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
             r.relationship_family = $relationship_family,
             r.provenance_source = $provenance_source,
             r.provenance_method = $provenance_method,
+            r.compatibility_status = $compatibility_status,
+            r.compatibility_reason = $compatibility_reason,
+            r.local_type_compatible = $local_type_compatible,
+            r.local_type_compatibility_reason = $local_type_compatibility_reason,
+            r.relation_family = $relation_family,
+            r.materialize_by_default = $materialize_by_default,
             r.traversal_policy = $traversal_policy,
             r.review_needed = $review_needed,
+            r.materialization_mode = $materialization_mode,
+            r.materialization_decision = $materialization_decision,
+            r.materialization_decision_reason = $materialization_decision_reason,
             r.updated_at = datetime($now)
-        FOREACH (_ IN CASE WHEN $write_local_type_audit THEN [1] ELSE [] END |
-            SET r.local_type_compatible = $local_type_compatible,
-                r.local_type_compatibility_reason = $local_type_compatibility_reason
-        )
         RETURN elementId(r) AS relationship_id
     """
-    write_local_type_audit = (
-        relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
-        and edge.get("local_type_compatible") is True
-    )
     record = tx.run(
         query,
         edge_key=edge["edge_key"],
@@ -2800,12 +3516,21 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
         relationship_family=clean_text(relationship_metadata["relationship_family"]),
         provenance_source=clean_text(relationship_metadata["provenance_source"]),
         provenance_method=clean_text(relationship_metadata["provenance_method"]),
-        traversal_policy=clean_text(edge.get("traversal_policy")),
-        review_needed=bool(edge.get("review_needed")),
-        write_local_type_audit=write_local_type_audit,
+        compatibility_status=clean_text(edge.get("compatibility_status")),
+        compatibility_reason=clean_text(edge.get("compatibility_reason")),
         local_type_compatible=bool(edge.get("local_type_compatible")),
         local_type_compatibility_reason=clean_text(
             edge.get("local_type_compatibility_reason")
+            or edge.get("compatibility_reason")
+        ),
+        relation_family=clean_text(edge.get("relation_family")),
+        materialize_by_default=bool(edge.get("materialize_by_default")),
+        traversal_policy=clean_text(edge.get("traversal_policy")),
+        review_needed=bool(edge.get("review_needed")),
+        materialization_mode=clean_text(edge.get("materialization_mode")),
+        materialization_decision=bool(edge.get("materialization_decision")),
+        materialization_decision_reason=clean_text(
+            edge.get("materialization_decision_reason")
         ),
         now=now,
         source_concept_id=source_concept_id,
@@ -2893,45 +3618,96 @@ def fetch_umls_connection_write_sanity(tx) -> dict[str, Any]:
 def materialize_collapsed_connections(
     driver: Driver,
     collapsed_edges: Sequence[dict[str, Any]],
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> dict[str, Any]:
+    materialization_mode = normalize_materialization_mode(materialization_mode)
     now = utc_now_iso()
     report_edges: list[dict[str, Any]] = []
     representatives: dict[str, dict[str, Any]] = {}
     skipped_not_whitelisted = 0
     skipped_missing_representative = 0
     skipped_incompatible_local_types = 0
+    skipped_not_materialize_by_default = 0
+    skipped_by_materialization_reason: Counter[str] = Counter()
     eligible_collapsed_edges = 0
     relationships_written = 0
-    collapsed_connection_statistics = build_collapsed_connection_statistics(
-        collapsed_edges
-    )
+
+    if materialization_mode == "none":
+        for edge in collapsed_edges:
+            decision, reason = should_materialize_relation(
+                edge,
+                materialization_mode=materialization_mode,
+            )
+            skipped_by_materialization_reason[reason] += 1
+            report_edges.append(
+                {
+                    **edge,
+                    "materialization_mode": materialization_mode,
+                    "materialization_decision": decision,
+                    "materialization_decision_reason": reason,
+                    "materialization_status": f"skipped_{reason}",
+                }
+            )
+        collapsed_connection_statistics = build_collapsed_connection_statistics(
+            report_edges
+        )
+        return {
+            "write_neo4j": False,
+            "written_at": now,
+            "materialization_mode": materialization_mode,
+            "collapsed_edges": len(collapsed_edges),
+            "eligible_collapsed_edges": 0,
+            "relationships_written": 0,
+            "skipped_not_whitelisted": 0,
+            "skipped_missing_representative": 0,
+            "skipped_incompatible_local_types": 0,
+            "skipped_not_materialize_by_default": 0,
+            "skipped_by_materialization_reason": dict(
+                sorted(skipped_by_materialization_reason.items())
+            ),
+            "duplicate_edge_key_findings": 0,
+            "cui_mismatch_findings": 0,
+            "counts_by_relationship_type": {},
+            **collapsed_connection_statistics,
+            "collapsed_connection_statistics": collapsed_connection_statistics,
+            "representatives": representatives,
+            "relationships": report_edges,
+            "sanity": {},
+        }
 
     with driver.session() as session:
         for edge in collapsed_edges:
-            relation_name = normalize_relation_term(edge.get("relation_name"))
-            relationship_type = RELATION_TYPE_BY_NAME.get(relation_name)
             source_representative = edge.get("source_representative")
             target_representative = edge.get("target_representative")
-
-            if relationship_type is None:
-                skipped_not_whitelisted += 1
+            decision, reason = should_materialize_relation(
+                edge,
+                materialization_mode=materialization_mode,
+            )
+            edge_for_report = {
+                **edge,
+                "materialization_mode": materialization_mode,
+                "materialization_decision": decision,
+                "materialization_decision_reason": reason,
+            }
+            if not decision:
+                skipped_by_materialization_reason[reason] += 1
+                if reason in {
+                    "unsupported_relation",
+                    "legacy_relation_not_in_expanded_profile",
+                }:
+                    skipped_not_whitelisted += 1
+                elif reason == "missing_representative":
+                    skipped_missing_representative += 1
+                elif reason == "not_materialize_by_default":
+                    skipped_not_materialize_by_default += 1
+                elif reason.startswith("compatibility_status_") or reason in {
+                    "legacy_incompatible_first_extension",
+                }:
+                    skipped_incompatible_local_types += 1
                 report_edges.append(
                     {
-                        **edge,
-                        "materialization_status": "skipped_not_whitelisted",
-                    }
-                )
-                continue
-
-            if (
-                relation_name in FIRST_SNOMED_EXTENSION_RELATION_NAMES
-                and edge.get("local_type_compatible") is not True
-            ):
-                skipped_incompatible_local_types += 1
-                report_edges.append(
-                    {
-                        **edge,
-                        "materialization_status": "skipped_incompatible_local_types",
+                        **edge_for_report,
+                        "materialization_status": f"skipped_{reason}",
                     }
                 )
                 continue
@@ -2940,7 +3716,7 @@ def materialize_collapsed_connections(
                 skipped_missing_representative += 1
                 report_edges.append(
                     {
-                        **edge,
+                        **edge_for_report,
                         "materialization_status": "skipped_missing_representative",
                     }
                 )
@@ -2952,7 +3728,7 @@ def materialize_collapsed_connections(
 
             relationship_id = session.execute_write(
                 materialize_collapsed_edge,
-                edge,
+                edge_for_report,
                 now,
             )
             if relationship_id:
@@ -2964,7 +3740,7 @@ def materialize_collapsed_connections(
 
             report_edges.append(
                 {
-                    **edge,
+                    **edge_for_report,
                     "materialization_status": status,
                     "materialized_relationship_id": relationship_id,
                 }
@@ -2974,16 +3750,24 @@ def materialize_collapsed_connections(
 
     duplicate_findings = len(sanity.get("duplicate_edge_keys") or [])
     mismatch_findings = len(sanity.get("cui_mismatches") or [])
+    collapsed_connection_statistics = build_collapsed_connection_statistics(
+        report_edges
+    )
 
     return {
         "write_neo4j": True,
         "written_at": now,
+        "materialization_mode": materialization_mode,
         "collapsed_edges": len(collapsed_edges),
         "eligible_collapsed_edges": eligible_collapsed_edges,
         "relationships_written": relationships_written,
         "skipped_not_whitelisted": skipped_not_whitelisted,
         "skipped_missing_representative": skipped_missing_representative,
         "skipped_incompatible_local_types": skipped_incompatible_local_types,
+        "skipped_not_materialize_by_default": skipped_not_materialize_by_default,
+        "skipped_by_materialization_reason": dict(
+            sorted(skipped_by_materialization_reason.items())
+        ),
         "duplicate_edge_key_findings": duplicate_findings,
         "cui_mismatch_findings": mismatch_findings,
         "counts_by_relationship_type": sanity.get("counts_by_relationship_type", {}),
@@ -3002,6 +3786,7 @@ def run_umls_connections(
     cache_dir: Path = DEFAULT_RELATION_CACHE_DIR,
     dry_run: bool = True,
     write_neo4j: bool = False,
+    materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
     driver: Optional[Driver] = None,
     api_timeout: float = DEFAULT_API_TIMEOUT,
     api_rate_limit_per_second: float = DEFAULT_API_RATE_LIMIT_PER_SECOND,
@@ -3018,6 +3803,7 @@ def run_umls_connections(
     relation_profile: Optional[str] = None,
     ignore_negative_cache: bool = False,
 ) -> dict[str, Any]:
+    materialization_mode = normalize_materialization_mode(materialization_mode)
     if max_cuis is not None and max_cuis < 0:
         raise ValueError("max_cuis must be >= 0")
     if max_relations_per_cui < 1:
@@ -3036,6 +3822,16 @@ def run_umls_connections(
         strong_relations_only=strong_relations_only,
         relation_profile=relation_profile,
     )
+    if (
+        bool(write_neo4j)
+        and selected_relation_profile == "audit_all"
+        and materialization_mode != "none"
+    ):
+        raise ValueError(
+            "relation_profile=audit_all is review-only; use "
+            "--materialization-mode none to export candidates without Neo4j writes"
+        )
+    write_neo4j = bool(write_neo4j) and materialization_mode != "none"
     dry_run = bool(dry_run) and not bool(write_neo4j)
 
     owns_driver = driver is None
@@ -3079,6 +3875,7 @@ def run_umls_connections(
         "strong_relations_only": strong_relations_only,
         "relation_profile": selected_relation_profile,
         "selected_relation_profile": selected_relation_profile,
+        "materialization_mode": materialization_mode,
         "ignore_negative_cache": ignore_negative_cache,
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
@@ -3139,6 +3936,7 @@ def run_umls_connections(
             exclude_relation_names=exclude_relation_names,
             strong_relations_only=strong_relations_only,
             relation_profile=relation_profile,
+            materialization_mode=materialization_mode,
         )
         client_stats = dict(client.stats)
     else:
@@ -3151,6 +3949,7 @@ def run_umls_connections(
         source_vocab=source_vocab,
         umls_version=umls_version,
         representatives_by_cui=representatives,
+        materialization_mode=materialization_mode,
     )
     collapsed_connection_statistics = build_collapsed_connection_statistics(
         collapsed_edges
@@ -3171,11 +3970,13 @@ def run_umls_connections(
             materialization_report = materialize_collapsed_connections(
                 driver=driver,
                 collapsed_edges=collapsed_edges,
+                materialization_mode=materialization_mode,
             )
             materialization_report["selected_relation_profile"] = (
                 selected_relation_profile
             )
             materialization_report["relation_profile"] = selected_relation_profile
+            materialization_report["materialization_mode"] = materialization_mode
             materialization_report["relation_stats"] = relation_stats
 
         relation_stats["final_export_written"] = True
@@ -3197,6 +3998,7 @@ def run_umls_connections(
             materialization_json_path=(
                 materialization_json_path if materialization_report is not None else None
             ),
+            materialization_mode=materialization_mode,
         )
     finally:
         if owns_driver and driver is not None:
@@ -3226,6 +4028,7 @@ def run_umls_connections(
         "client_stats": client_stats,
         "materialization_report": materialization_report,
         "writes_to_neo4j": bool(write_neo4j),
+        "materialization_mode": materialization_mode,
     }
 
 
@@ -3274,6 +4077,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Materialize whitelisted collapsed candidate relations directly "
             "between representative Concept nodes. Defaults to off."
+        ),
+    )
+    parser.add_argument(
+        "--materialization-mode",
+        choices=MATERIALIZATION_MODE_CHOICES,
+        default=DEFAULT_MATERIALIZATION_MODE,
+        help=(
+            "Materialization decision mode: none, legacy, approved, or safe_only "
+            f"(default: {DEFAULT_MATERIALIZATION_MODE})."
         ),
     )
     parser.add_argument(
@@ -3355,9 +4167,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=RELATION_PROFILE_CHOICES,
         default=None,
         help=(
-            "Initial SNOMED relation include profile: core, first_extension, "
-            "or expanded. Explicit include names are added and excludes are "
-            "then removed."
+            "Initial SNOMED relation include profile. Explicit include names "
+            "are added and excludes are then removed."
         ),
     )
     parser.add_argument(
@@ -3402,6 +4213,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             cache_dir=args.cache_dir,
             dry_run=not args.write_neo4j,
             write_neo4j=args.write_neo4j,
+            materialization_mode=args.materialization_mode,
             api_timeout=args.api_timeout,
             api_rate_limit_per_second=args.api_rate_limit_per_second,
             umls_version=args.umls_version,
@@ -3435,10 +4247,20 @@ if __name__ == "__main__":
 
 __all__ = [
     "LocalConcept",
+    "RelationSpec",
+    "CompatibilityResult",
+    "RELATION_SPECS",
+    "MATERIALIZATION_MODE_CHOICES",
+    "DEFAULT_MATERIALIZATION_MODE",
+    "LEGACY_CORE_SNOMED_RELATION_NAMES",
     "CORE_SNOMED_RELATION_NAMES",
     "FIRST_SNOMED_EXTENSION_RELATION_NAMES",
     "EXPANDED_SNOMED_RELATION_NAMES",
+    "BALANCED_CORE_SNOMED_RELATION_NAMES",
+    "AUDIT_ONLY_RELATION_NAMES",
+    "AUDIT_ALL_SNOMED_RELATION_NAMES",
     "STRONG_RELATION_NAMES",
+    "RELATION_NAMES_BY_PROFILE",
     "RELATION_TYPE_BY_NAME",
     "UMLS_CONNECTION_RELATION_TYPES",
     "LOCAL_TYPE_RULES_BY_RELATION_NAME",
@@ -3447,12 +4269,17 @@ __all__ = [
     "UMLSRelationsClient",
     "build_collapsed_connections",
     "build_collapsed_connection_statistics",
+    "catalog_local_type_rule_rows",
+    "catalog_relationship_type_rows",
+    "evaluate_relation_compatibility",
     "evaluate_local_type_compatibility",
     "fetch_local_concepts_for_doc",
     "first_extension_local_type_rule_rows",
     "first_extension_relationship_types",
     "materialize_collapsed_connections",
+    "normalize_materialization_mode",
     "resolve_relation_name_filters",
+    "should_materialize_relation",
     "traversal_policy_for_relation",
     "run_umls_connections",
     "build_candidate_edges",

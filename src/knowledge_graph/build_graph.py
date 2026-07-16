@@ -768,6 +768,11 @@ def process_umls_connections(
     from knowledge_graph.umls_connections import run_umls_connections
 
     write_neo4j = bool(getattr(config, "umls_connections_write_neo4j", False))
+    materialization_mode = getattr(
+        config,
+        "umls_connections_materialization_mode",
+        "legacy",
+    )
     configured_output_dir = getattr(config, "umls_connections_output_dir", None)
     configured_cache_dir = getattr(config, "umls_connections_cache_dir", None)
     output_dir = (
@@ -789,6 +794,7 @@ def process_umls_connections(
         cache_dir=cache_dir,
         dry_run=not write_neo4j,
         write_neo4j=write_neo4j,
+        materialization_mode=materialization_mode,
         api_timeout=float(getattr(config, "umls_connections_api_timeout", 30.0)),
         api_rate_limit_per_second=float(
             getattr(config, "umls_connections_api_rate_limit_per_second", 5.0)
@@ -817,7 +823,7 @@ def process_umls_connections(
             None,
         ),
         strong_relations_only=bool(
-            getattr(config, "umls_connections_strong_relations_only", True)
+            getattr(config, "umls_connections_strong_relations_only", False)
         ),
         relation_profile=getattr(config, "umls_connections_relation_profile", None),
         ignore_negative_cache=bool(

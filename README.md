@@ -51,6 +51,52 @@ The `umls_connections` phase is read-only by default. Set
 `KG_UMLS_CONNECTIONS_WRITE_NEO4J=true` only when you want to materialize
 whitelisted collapsed UMLS/SNOMED candidate relationships in Neo4j.
 
+### UMLS/SNOMED relation profiles
+
+`knowledge_graph.umls_connections` keeps the original core SNOMED relation
+profile separate from the first extension so each run is reviewable:
+
+- `core`: `isa`, `inverse_isa`, `has_finding_site`, `finding_site_of`,
+  `has_associated_morphology`, `associated_morphology_of`,
+  `has_procedure_site`, `has_direct_procedure_site`.
+- `first_extension`: `has_definitional_manifestation`,
+  `definitional_manifestation_of`, `uses_device`, `device_used_by`,
+  `has_direct_device`, `direct_device_of`, `has_measured_component`,
+  `measured_component_of`.
+- `expanded`: the union of `core` and `first_extension`.
+
+Safe read-only commands:
+
+```bash
+python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile core
+python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile first_extension
+python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile expanded
+```
+
+`--include-relation-name` adds relation names to the selected profile and
+`--exclude-relation-name` removes them. `--strong-relations-only` remains for
+backward compatibility and is equivalent to `--relation-profile expanded`.
+
+First-extension collapsed candidates are audited with local canonical-type
+rules. Compatible forward relations use traversal policy `safe`; compatible
+inverse relations use `reverse_review`; incompatible first-extension candidates
+use `type_review`. Type-incompatible candidates remain reviewable in the
+collapsed JSON, Markdown summary, and materialization report, but are not
+materialized.
+
+Local type rules for the first extension:
+
+| relation_name | source representative types | target representative types |
+| --- | --- | --- |
+| `has_definitional_manifestation` | `disease`, `complication_or_comorbidity` | `clinical_finding` |
+| `definitional_manifestation_of` | `clinical_finding` | `disease`, `complication_or_comorbidity` |
+| `uses_device` | `procedure_or_intervention`, `diagnostic_test`, `imaging_modality` | `device` |
+| `device_used_by` | `device` | `procedure_or_intervention`, `diagnostic_test`, `imaging_modality` |
+| `has_direct_device` | `procedure_or_intervention`, `diagnostic_test` | `device` |
+| `direct_device_of` | `device` | `procedure_or_intervention`, `diagnostic_test` |
+| `has_measured_component` | `diagnostic_test` | `biomarker` |
+| `measured_component_of` | `biomarker` | `diagnostic_test` |
+
 For Neo4j Aura, set `NEO4J_URI=neo4j+s://...`, `NEO4J_USERNAME`, and
 `NEO4J_PASSWORD` in `.env`. For a local Neo4j server, set
 `NEO4J_URI=bolt://localhost:7687`. The standalone KG utilities load `.env`
@@ -62,4 +108,3 @@ Singularity container on the compute node. This is the expected mode on the
 cluster because compute nodes do not have internet access. Use
 `KG_NEO4J_MODE=external` only when the cluster/network environment is explicitly
 allowed to reach an external Neo4j instance such as Aura.
-

@@ -21,8 +21,8 @@ from neo4j import Driver
 from knowledge_graph.entity_schema import ALLOWED_TYPES
 from knowledge_graph.umls_connections import (
     UMLS_CONNECTION_RELATION_TYPES,
-    first_extension_local_type_rule_rows,
-    first_extension_relationship_types,
+    catalog_local_type_rule_rows,
+    catalog_relationship_type_rows,
 )
 
 
@@ -46,8 +46,18 @@ SPECIAL_CANONICAL_TYPES = {
 
 VALID_CANONICAL_TYPES = sorted(ALLOWED_TYPES | SPECIAL_CANONICAL_TYPES)
 VALID_ENTITY_TYPES = sorted(ALLOWED_TYPES)
-FIRST_EXTENSION_RELATIONSHIP_TYPES = first_extension_relationship_types()
-FIRST_EXTENSION_LOCAL_TYPE_RULES = first_extension_local_type_rule_rows()
+UMLS_CATALOG_RELATIONSHIP_ROWS = catalog_relationship_type_rows()
+UMLS_CATALOG_LOCAL_TYPE_RULES = catalog_local_type_rule_rows()
+AUDIT_ONLY_UMLS_RELATIONSHIP_TYPES = sorted(
+    row["relationship_type"]
+    for row in UMLS_CATALOG_RELATIONSHIP_ROWS
+    if not row["materialize_by_default"]
+)
+APPROVED_UMLS_RELATIONSHIP_TYPES = sorted(
+    row["relationship_type"]
+    for row in UMLS_CATALOG_RELATIONSHIP_ROWS
+    if row["materialize_by_default"]
+)
 COMMON_RELATIONSHIP_METADATA_FIELDS = [
     "relationship_family",
     "provenance",
@@ -856,17 +866,58 @@ CHECKS: List[Dict[str, Any]] = [
         """,
     },
     {
-        "name": "first_extension_umls_connections_without_compatible_local_types",
-        "title": "First-extension UMLS connections without local_type_compatible=true",
+        "name": "umls_connections_missing_compatibility_metadata",
+        "title": "Materialized UMLS connections missing compatibility metadata",
         "group": "UMLS connections",
         "phases": {"entities"},
         "level": "ERROR",
-        "params": {"relationship_types": FIRST_EXTENSION_RELATIONSHIP_TYPES},
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
         "query": """
             MATCH (source:Concept)-[r]->(target:Concept)
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-              AND coalesce(r.local_type_compatible, false) <> true
+              AND (
+                   r.compatibility_status IS NULL
+                OR r.compatibility_reason IS NULL
+                OR r.local_type_compatible IS NULL
+                OR r.local_type_compatibility_reason IS NULL
+                OR r.relation_family IS NULL
+                OR r.materialize_by_default IS NULL
+                OR r.materialization_decision IS NULL
+                OR r.materialization_decision_reason IS NULL
+              )
+            RETURN type(r) AS relationship_type,
+                   r.edge_key AS edge_key,
+                   r.relation_name AS relation_name,
+                   source.name AS source_concept,
+                   target.name AS target_concept,
+                   r.compatibility_status AS compatibility_status,
+                   r.compatibility_reason AS compatibility_reason,
+                   r.local_type_compatible AS local_type_compatible,
+                   r.local_type_compatibility_reason AS local_type_compatibility_reason,
+                   r.relation_family AS relation_family,
+                   r.materialize_by_default AS materialize_by_default,
+                   r.materialization_decision AS materialization_decision,
+                   r.materialization_decision_reason AS materialization_decision_reason
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "approved_umls_connections_without_compatible_status",
+        "title": "Approved materialized UMLS connections without compatible status",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": APPROVED_UMLS_RELATIONSHIP_TYPES},
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+              AND coalesce(r.materialize_by_default, false) = true
+              AND NOT (coalesce(toString(r.compatibility_status), '') IN [
+                  'compatible',
+                  'compatible_broad'
+              ])
             RETURN type(r) AS relationship_type,
                    r.edge_key AS edge_key,
                    r.relation_name AS relation_name,
@@ -874,18 +925,18 @@ CHECKS: List[Dict[str, Any]] = [
                    source.canonical_type AS source_canonical_type,
                    target.name AS target_concept,
                    target.canonical_type AS target_canonical_type,
-                   r.local_type_compatible AS local_type_compatible,
-                   r.local_type_compatibility_reason AS local_type_compatibility_reason
+                   r.compatibility_status AS compatibility_status,
+                   r.compatibility_reason AS compatibility_reason
             ORDER BY relationship_type, edge_key
         """,
     },
     {
-        "name": "first_extension_umls_connection_type_mismatches",
-        "title": "First-extension UMLS connections with incompatible Concept canonical types",
+        "name": "umls_connection_exact_type_rule_violations",
+        "title": "Materialized UMLS connections violating exact catalog type rules",
         "group": "UMLS connections",
         "phases": {"entities"},
         "level": "ERROR",
-        "params": {"local_type_rules": FIRST_EXTENSION_LOCAL_TYPE_RULES},
+        "params": {"local_type_rules": UMLS_CATALOG_LOCAL_TYPE_RULES},
         "query": """
             UNWIND $local_type_rules AS rule
             MATCH (source:Concept)-[r]->(target:Concept)
@@ -905,6 +956,93 @@ CHECKS: List[Dict[str, Any]] = [
                    target.name AS target_concept,
                    target_type AS target_canonical_type,
                    rule.target_types AS allowed_target_types
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "umls_connection_counts_by_compatibility_status",
+        "title": "Materialized UMLS connection counts by compatibility status",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            RETURN coalesce(toString(r.compatibility_status), '(missing)') AS compatibility_status,
+                   count(r) AS n
+            ORDER BY compatibility_status
+        """,
+    },
+    {
+        "name": "umls_connection_counts_by_traversal_policy",
+        "title": "Materialized UMLS connection counts by traversal policy",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH ()-[r]->()
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            RETURN coalesce(toString(r.traversal_policy), '(missing)') AS traversal_policy,
+                   count(r) AS n
+            ORDER BY traversal_policy
+        """,
+    },
+    {
+        "name": "review_needed_materialized_umls_connections",
+        "title": "Materialized UMLS connections marked review-needed",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+              AND (
+                   coalesce(r.review_needed, false) = true
+                OR coalesce(toString(r.traversal_policy), '') IN [
+                    'hierarchy_review',
+                    'reverse_review',
+                    'review',
+                    'type_review'
+                ]
+              )
+            RETURN type(r) AS relationship_type,
+                   r.edge_key AS edge_key,
+                   r.relation_name AS relation_name,
+                   source.name AS source_concept,
+                   target.name AS target_concept,
+                   r.compatibility_status AS compatibility_status,
+                   r.compatibility_reason AS compatibility_reason,
+                   r.traversal_policy AS traversal_policy,
+                   r.review_needed AS review_needed
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "audit_only_umls_candidates_materialized",
+        "title": "Audit-only UMLS candidate relations materialized in Neo4j",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": AUDIT_ONLY_UMLS_RELATIONSHIP_TYPES},
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            RETURN type(r) AS relationship_type,
+                   r.edge_key AS edge_key,
+                   r.relation_name AS relation_name,
+                   source.name AS source_concept,
+                   target.name AS target_concept,
+                   r.materialization_mode AS materialization_mode,
+                   r.materialization_decision_reason AS materialization_decision_reason
             ORDER BY relationship_type, edge_key
         """,
     },

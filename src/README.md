@@ -9,3 +9,6 @@ Tutti i file realtivi al knowlege graph sono stati spostati in src/knowlege_grap
 e li ho separati per funzionalità, sperando di aver reso il tutto più modulare.
 
 Per quanto riguarda l'env, dovrei aver aggiunto al template le altre variabili necessarie al momento
+
+TODO: modify to make this part clear
+
