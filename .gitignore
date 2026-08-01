@@ -110,3 +110,5 @@ inspect_recommendation_review.py
 run_recommendation_review_poc.py
 test.py
 umls_test/
+mineru_test/
+cardio_test/

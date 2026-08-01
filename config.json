@@ -15,7 +15,7 @@
     },
     "preprocessing": {
       "storage": {
-        "parent_folder": "umls_test",
+        "parent_folder": "mineru_test",
         "input_folder": "pdfdocs",
         "output_folder": "mddocs",
         "allowed_extensions": [
@@ -40,9 +40,9 @@
     },
     "knowledge_graph": {
       "pipeline": {
-        "phase": "normalization",
-        "pdf_dir": "umls_test/pdfdocs",
-        "work_root": "umls_test",
+        "phase": "preprocess",
+        "pdf_dir": "mineru_test/pdfdocs",
+        "work_root": "mineru_test",
         "clear_neo4j_before_run": false,
         "force_toc": false,
         "force_markdown": false,
@@ -52,7 +52,7 @@
       },
       "logging": {
         "enabled": true,
-        "dir": "umls_test/logs"
+        "dir": "mineru_test/logs"
       },
       "providers": {
         "chat_provider": "openai",
@@ -88,7 +88,7 @@
         "use_acronym_validation": true,
         "acronym_dir": null,
         "export_review": true,
-        "review_output_dir": "umls_test/entity_extraction_review",
+        "review_output_dir": "mineru_test/entity_extraction_review",
         "clear_previous_review": true,
         "include_source_preview_in_review": false
       },
@@ -96,29 +96,29 @@
         "delete_orphans": true
       },
       "entity_normalization": {
-      "enabled": true,
-      "doc_id": "Cardiomyopathies_2023",
-      "backend": "umls_api",
-      "model_name": "en_core_sci_sm",
-      "linker_name": "umls",
-      "threshold": 0.85,
-      "exact_threshold": 0.75,
-      "max_candidates": 3,
-      "use_acronyms": true,
-      "acronym_dir": null,
-      "force": false,
-      "dry_run": false,
-      "export_review": true,
-      "review_output_dir": "umls_test/entity_normalization_review",
-      "create_same_as_edges": true,
-      "create_fuzzy_candidate_edges": true,
-      "fuzzy_threshold": 90,
-      "api_cache_dir": "umls_test/umls_api_cache",
-      "api_timeout": 30,
-      "api_rate_limit_per_second": 2,
-      "local_files_only": false,
-      "min_available_memory_gb": 8.0
-    },
+        "enabled": true,
+        "doc_id": "Cardiomyopathies_2023",
+        "backend": "umls_api",
+        "model_name": "en_core_sci_sm",
+        "linker_name": "umls",
+        "threshold": 0.85,
+        "exact_threshold": 0.75,
+        "max_candidates": 3,
+        "use_acronyms": true,
+        "acronym_dir": null,
+        "force": false,
+        "dry_run": false,
+        "export_review": true,
+        "review_output_dir": "mineru_test/entity_normalization_review",
+        "create_same_as_edges": true,
+        "create_fuzzy_candidate_edges": true,
+        "fuzzy_threshold": 90,
+        "api_cache_dir": "mineru_test/umls_api_cache",
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+        "local_files_only": false,
+        "min_available_memory_gb": 8.0
+      },
       "umls_connections": {
         "enabled": false,
         "doc_id": "Cardiomyopathies_2023",

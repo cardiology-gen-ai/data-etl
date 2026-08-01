@@ -47,14 +47,18 @@ KG_PIPELINE_PHASE=umls_connections ../.venv/bin/python src/main_graph.py
 ../.venv/bin/python -m knowledge_graph.visualize_entities
 ```
 
-The `umls_connections` phase is read-only by default. Set
-`KG_UMLS_CONNECTIONS_WRITE_NEO4J=true` only when you want to materialize
-whitelisted collapsed UMLS/SNOMED candidate relationships in Neo4j.
+The `umls_connections` phase is read-only by default:
+`materialization_mode=none` and `write_neo4j=false`. Use
+`materialization_mode=safe_only` during discovery when you want reports to show
+the strict write-eligible subset without changing Neo4j. Set
+`KG_UMLS_CONNECTIONS_WRITE_NEO4J=true` only with
+`KG_UMLS_CONNECTIONS_MATERIALIZATION_MODE=safe_only` when you want to materialize
+strict collapsed UMLS/SNOMED candidate relationships in Neo4j.
 
 ### UMLS/SNOMED relation profiles
 
-`knowledge_graph.umls_connections` keeps the original core SNOMED relation
-profile separate from the first extension so each run is reviewable:
+`knowledge_graph.umls_connections` keeps the core SNOMED relation profile
+separate from the first extension so each run is reviewable:
 
 - `core`: `isa`, `inverse_isa`, `has_finding_site`, `finding_site_of`,
   `has_associated_morphology`, `associated_morphology_of`,
@@ -64,6 +68,10 @@ profile separate from the first extension so each run is reviewable:
   `has_direct_device`, `direct_device_of`, `has_measured_component`,
   `measured_component_of`.
 - `expanded`: the union of `core` and `first_extension`.
+- `balanced_core`: `core` plus `procedure_site_of` and
+  `direct_procedure_site_of`.
+- `audit_all`: all catalogued audit relations; export-only and never valid with
+  `write_neo4j=true`.
 
 Safe read-only commands:
 
@@ -71,11 +79,15 @@ Safe read-only commands:
 python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile core
 python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile first_extension
 python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile expanded
+python3 -m knowledge_graph.umls_connections --doc-id DOC_ID --relation-profile core --materialization-mode safe_only --run-name core_safe_only
 ```
 
 `--include-relation-name` adds relation names to the selected profile and
 `--exclude-relation-name` removes them. `--strong-relations-only` remains for
 backward compatibility and is equivalent to `--relation-profile expanded`.
+`--include-cui` may be repeated to run a targeted CUI subset before `--skip-cui`
+and `--max-cuis` are applied. `--replace-existing-connections` is valid only for
+a strict `safe_only` write with a selected `doc_id`.
 
 First-extension collapsed candidates are audited with local canonical-type
 rules. Compatible forward relations use traversal policy `safe`; compatible
