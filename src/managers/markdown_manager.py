@@ -3,7 +3,7 @@ import logging
 import pathlib
 import re
 import unicodedata
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import fitz
 import pymupdf4llm
@@ -476,6 +476,7 @@ class MarkdownManager:
     def get_page_anchors(
         self,
         cache_path: pathlib.Path | None = None,
+        cache_metadata: Dict[str, Any] | None = None,
     ) -> Dict[int, int]:
         """Load valid cached anchors or compute a fresh sequence."""
         if (
@@ -493,6 +494,23 @@ class MarkdownManager:
                     "anchors",
                     data,
                 )
+
+                if cache_metadata is not None:
+                    metadata_valid = (
+                        isinstance(data, dict)
+                        and "anchors" in data
+                        and all(
+                            data.get(key) == value
+                            for key, value in cache_metadata.items()
+                        )
+                    )
+                    if not metadata_valid:
+                        logger.warning(
+                            "Ignoring stale page-anchor cache %s: "
+                            "metadata does not match current Markdown source",
+                            cache_path,
+                        )
+                        raise ValueError("stale page-anchor metadata")
 
                 cached_anchors = {
                     int(key): int(value)
@@ -543,6 +561,7 @@ class MarkdownManager:
                 json.dumps(
                     {
                         "doc_id": self.filepath.stem,
+                        **(cache_metadata or {}),
                         "anchors": anchors,
                     },
                     indent=2,
@@ -551,4 +570,3 @@ class MarkdownManager:
             )
 
         return anchors
-

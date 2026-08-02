@@ -26,7 +26,23 @@ from typing import Any, Dict, List, Optional, Set
 from managers.table_of_contents_manager import GuidelineTOCExtractor
 from managers.markdown_conversion_manager import MarkdownConverter
 from managers.markdown_manager import MarkdownManager
+from managers.mineru_markdown_adapter import (
+    MinerUMarkdownDocument,
+    load_mineru_markdown,
+)
 from managers.hierarchical_chunking_manager import build_hierarchical_chunks
+try:
+    from managers.hierarchical_chunking_manager import validate_section_boundaries
+except ImportError:
+    def validate_section_boundaries(*args, **kwargs):
+        return {
+            "validation_status": "unavailable",
+            "reason": "validate_section_boundaries import failed",
+            "missing_chunk_section_ids": [],
+            "empty_leaf_sections": [],
+            "boundary_uncertain_sections": [],
+            "pdf_fallback_sections": [],
+        }
 from managers.acronym_extractor import load_or_extract_acronyms
 
 from knowledge_graph.neo4j_utils import get_neo4j_driver, close_driver
@@ -305,26 +321,40 @@ def load_or_convert_markdown(
     md_converter: MarkdownConverter,
     pdf_path: Path,
     doc_id: str,
-) -> str:
+) -> MinerUMarkdownDocument:
     """
-    Load cached Markdown if present, otherwise convert the PDF.
+    Load externally generated MinerU Markdown for one document.
+
+    This KG path deliberately does not invoke MinerU and does not convert PDFs
+    to Markdown.  The Markdown file is a manual input matched by doc_id.
     """
-    md_path = Path(config.markdown_dir) / f"{doc_id}.md"
+    del md_converter
+    del pdf_path
 
-    if md_path.exists() and not getattr(config, "force_markdown", False):
-        logger.info("Markdown exists, loading cached version for %s", doc_id)
-    else:
-        logger.info("Converting PDF to Markdown for %s", doc_id)
-        success, meta = md_converter(pdf_path.name)
-        del meta
+    markdown_root = optional_path(
+        getattr(config, "mineru_markdown_root", None)
+    ) or Path(config.markdown_dir)
+    markdown_path = optional_path(getattr(config, "mineru_markdown_path", None))
 
-        if not success:
-            raise RuntimeError(f"Markdown conversion failed for document {doc_id}")
+    if getattr(config, "force_markdown", False):
+        logger.info(
+            "KG_FORCE_MARKDOWN is set for %s; re-reading existing MinerU "
+            "Markdown without running conversion",
+            doc_id,
+        )
 
-    if not md_path.exists():
-        raise FileNotFoundError(f"Expected Markdown file not found: {md_path}")
+    mineru_doc = load_mineru_markdown(
+        doc_id=doc_id,
+        markdown_root=markdown_root,
+        markdown_path=markdown_path,
+    )
+    logger.info(
+        "Loaded MinerU Markdown for %s from %s",
+        doc_id,
+        mineru_doc.path,
+    )
 
-    return md_path.read_text(encoding="utf-8")
+    return mineru_doc
 
 
 def load_or_compute_anchors(
@@ -332,6 +362,8 @@ def load_or_compute_anchors(
     pdf_path: Path,
     markdown_text: str,
     doc_id: str,
+    markdown_source_path: Optional[Path] = None,
+    markdown_sha256: Optional[str] = None,
 ):
     """
     Load cached page anchors if present, otherwise compute them.
@@ -348,7 +380,15 @@ def load_or_compute_anchors(
         anchor_path.unlink()
 
     logger.info("Loading or computing page anchors for %s", doc_id)
-    anchors = markdown_manager.get_page_anchors(cache_path=anchor_path)
+    cache_metadata = {
+        "markdown_source": "mineru",
+        "markdown_path": str(markdown_source_path) if markdown_source_path else None,
+        "markdown_sha256": markdown_sha256,
+    }
+    anchors = markdown_manager.get_page_anchors(
+        cache_path=anchor_path,
+        cache_metadata=cache_metadata,
+    )
 
     return markdown_manager, anchors
 
@@ -438,6 +478,30 @@ def load_or_build_chunks(
         max_chunk_chars=getattr(config, "quality_max_chunk_chars", 50000),
     )
 
+    validation = validate_section_boundaries(
+        toc_tree=toc_tree,
+        chunks=chunks,
+        markdown=markdown_manager.text,
+        doc_id=doc_id,
+    )
+    validation_path = chunk_path.with_name(
+        f"{doc_id}_hier_chunks_validation.json"
+    )
+    validation_path.write_text(
+        json.dumps(validation, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    logger.info(
+        "Chunk boundary validation for %s written to %s | missing=%d | "
+        "empty_leaf=%d | uncertain=%d | pdf_fallback=%d",
+        doc_id,
+        validation_path,
+        len(validation.get("missing_chunk_section_ids", [])),
+        len(validation.get("empty_leaf_sections", [])),
+        len(validation.get("boundary_uncertain_sections", [])),
+        len(validation.get("pdf_fallback_sections", [])),
+    )
+
     chunk_path.write_text(
         json.dumps(chunks, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -505,13 +569,15 @@ def preprocess_single_document(
     if toc is None:
         toc = load_or_extract_toc(config, pdf_path, doc_id)
 
-    markdown_text = load_or_convert_markdown(config, md_converter, pdf_path, doc_id)
+    mineru_doc = load_or_convert_markdown(config, md_converter, pdf_path, doc_id)
 
     markdown_manager, anchors = load_or_compute_anchors(
         config=config,
         pdf_path=pdf_path,
-        markdown_text=markdown_text,
+        markdown_text=mineru_doc.text,
         doc_id=doc_id,
+        markdown_source_path=mineru_doc.path,
+        markdown_sha256=mineru_doc.sha256,
     )
 
     chunk_path = load_or_build_chunks(

@@ -29,6 +29,7 @@ class GraphPipelineConfig:
     pdf_dir: Path
     toc_dir: Path
     markdown_dir: Path
+    mineru_markdown_root: Optional[Path]
     image_dir: Path
     anchor_dir: Path
     chunk_dir: Path
@@ -532,6 +533,7 @@ def make_graph_pipeline_config(
     preprocessing_config: Any,
     pdf_dir: Path,
     work_root: Path,
+    mineru_markdown_root: Optional[Path] = None,
     run_preprocessing: bool = False,
     run_acronym_extraction: bool = True,
     force_toc: bool = False,
@@ -642,6 +644,11 @@ def make_graph_pipeline_config(
         pdf_dir=pdf_dir,
         toc_dir=(work_root / "toc").resolve(),
         markdown_dir=Path(preprocessing_config.output_folder.folder).resolve(),
+        mineru_markdown_root=(
+            mineru_markdown_root.resolve()
+            if mineru_markdown_root is not None
+            else None
+        ),
         image_dir=(work_root / "images").resolve(),
         anchor_dir=(work_root / "anchors").resolve(),
         chunk_dir=(work_root / "chunks").resolve(),
@@ -849,6 +856,7 @@ def _validate_embedding_runtime(
 def main(
     pdf_dir: Path,
     work_root: Path,
+    mineru_markdown_root: Optional[Path] = None,
     clear_neo4j_before_run: bool = False,
     run_preprocessing: bool = False,
     run_acronym_extraction: bool = True,
@@ -1013,6 +1021,7 @@ def main(
         preprocessing_config=preprocessing_config,
         pdf_dir=pdf_dir,
         work_root=work_root,
+        mineru_markdown_root=mineru_markdown_root,
         run_preprocessing=run_preprocessing,
         run_acronym_extraction=run_acronym_extraction,
         force_toc=force_toc,
@@ -1518,6 +1527,12 @@ def run_cli() -> Any:
         project_root / "test_data" / "graph_cache_test",
         project_root,
     )
+    mineru_markdown_root = _resolve_optional_project_path(
+        _get_optional_env("KG_MINERU_MARKDOWN_ROOT")
+        or pipeline_config.get("mineru_markdown_root"),
+        work_root / "mddocs",
+        project_root,
+    )
 
     phase = (
         _get_optional_env("KG_PIPELINE_PHASE")
@@ -1826,6 +1841,7 @@ def run_cli() -> Any:
     return main(
         pdf_dir=pdf_dir,
         work_root=work_root,
+        mineru_markdown_root=mineru_markdown_root,
         pipeline_phase=phase,
         log_to_file=log_to_file,
         log_dir=log_dir,
