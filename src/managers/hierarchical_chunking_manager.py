@@ -1,23 +1,24 @@
 """
-Hierarchical Chunker 
+Hierarchical chunker.
 
-- Anchor-narrowed start detection (robust)
-- TOC-order end boundaries (for leaf sections with no children)
-- Parents stop at first child (prevents parent swallowing children)
-- Skips TOC dot-leader lines as headers (or else we ingest TOC entries)
-- Preserves one structural record for every non-excluded TOC section
-- Parents stop at the first located descendant in TOC order
-- Leaf sections stop at the next located section in TOC order
-- Splits only oversized sections as a last-resort safety net
+- Uses anchor-narrowed section-start detection.
+- Parents stop at the first located descendant.
+- Leaf sections stop at the next located TOC section.
+- Preserves one structural record for every TOC section.
+- Marks excluded and empty sections as non-embeddable.
+- Flags oversized sections without splitting them.
 """
 
 from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from managers.markdown_manager import MarkdownManager
+from managers.mineru_markdown_adapter import normalize_heading_for_matching
+
+if TYPE_CHECKING:
+    from managers.markdown_manager import MarkdownManager
 
 
 logger = logging.getLogger("hierarchical_chunker")
@@ -26,20 +27,36 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 _OUT_OF_RANGE_WINDOW_WARNINGS: set[tuple[int, int, int, int]] = set()
 
 EXCLUDED_TITLE_SUBSTRINGS = [
+    #front matter
     "table of contents",
     "list of figures",
     "list of tables",
-    "references",
-    "bibliography",
     "abbreviations",
     "acronyms",
+    "preamble",
+    # Guideline-level summaries that duplicate clinical sections
+    "what is new",
+    "key messages",
+    "what to do and what not to do",
+    "'what to do' and 'what not to do'",
+    "gaps in evidence",
+    "future needs",
+    "quality indicators",
+    "evidence tables",
+
+
+    # back matter
+    "references",
+    "bibliography",
     "acknowledgements",
     "acknowledgments",
     "appendix",
+    "appendices",
     "supplementary data",
     "data availability",
     "author information",
     "disclaimer",
+    "disclaimers"
 ]
 
 # Exact-only exclusion. "Index case" is a real clinical section.
@@ -65,6 +82,11 @@ def is_excluded_section(sec: Dict[str, Any]) -> bool:
         keyword in title
         for keyword in EXCLUDED_TITLE_SUBSTRINGS
     )
+
+
+def is_effectively_excluded_section(sec: Dict[str, Any]) -> bool:
+    """Return whether a section is excluded directly or through an ancestor."""
+    return bool(sec.get("_excluded_by_policy")) or is_excluded_section(sec)
 
 def word_count(text: str) -> int:
     return len(re.findall(r"\w+", text))
@@ -100,6 +122,7 @@ def section_printed_id(sec: Dict[str, Any]) -> str:
 def clean_inline_markup(text: str) -> str:
     text = re.sub(r"!\[[^\]]*\]\([^)]+\)", " ", text or "")
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"</(?:td|th|tr|p|div|li|h[1-6])\s*>", " ", text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = text.replace("\\", " ")
     text = re.sub(r"[*_`#~]+", " ", text)
@@ -114,6 +137,9 @@ def is_effectively_empty(text: str) -> bool:
     non-content, but the section record is still preserved by the caller.
     """
     if not text or not text.strip():
+        return True
+    semantic = clean_inline_markup(text)
+    if not semantic:
         return True
     first = text.strip().split("\n", 1)[0]
     return bool(re.search(r"(?:\.\s*){5,}\d+\s*$", clean_inline_markup(first)))
@@ -366,22 +392,94 @@ def is_table_or_summary_line(line: str) -> bool:
     )
 
 
+def _looks_like_printed_toc_suffix(raw_line: str, prefix_end: int) -> bool:
+    """Return True for dot-leader TOC rows after an otherwise valid prefix."""
+    suffix = clean_inline_markup(raw_line[prefix_end:])
+    return bool(re.match(r"^(?:\.\s*){3,}\d{1,6}\s*$", suffix))
+
+
+def _header_inside_html_table(markdown: str, offset: int) -> bool:
+    before_open = markdown.rfind("<table", 0, offset)
+    if before_open == -1:
+        return False
+    before_close = markdown.rfind("</table>", 0, offset)
+    return before_close < before_open
+
+
+def _html_table_end_after(markdown: str, offset: int) -> int:
+    table_end = markdown.find("</table>", offset)
+    return -1 if table_end == -1 else table_end + len("</table>")
+
+
+def _strip_html_to_text(html_fragment: str) -> str:
+    text = re.sub(
+        r"</(?:td|th|tr|p|div|li|h[1-6])\s*>",
+        "\n",
+        html_fragment or "",
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    return text.strip()
+
+
+def _extract_false_table_text(markdown: str, start: int, end: int) -> Optional[str]:
+    """Extract narrative cells from a false MinerU HTML table region.
+
+    This is intentionally narrow: it is used only when the matched section
+    heading itself is inside a table.  Real tables elsewhere stay atomic.
+    """
+    table_end = _html_table_end_after(markdown, start)
+    if table_end == -1 or table_end > end:
+        return None
+
+    table_fragment = markdown[start:table_end]
+    rest = markdown[table_end:end]
+    cells: List[str] = []
+    cell_rx = re.compile(r"<td(?P<attrs>[^>]*)>(?P<body>.*?)</td>", re.IGNORECASE | re.DOTALL)
+    for match in cell_rx.finditer(table_fragment):
+        attrs = match.group("attrs") or ""
+        body = _strip_html_to_text(match.group("body"))
+        if not body:
+            continue
+        structural = bool(re.search(r"\b(?:colspan|rowspan)\s*=", attrs, re.IGNORECASE))
+        if structural or len(body) >= 80:
+            cells.append(body)
+
+    if not cells:
+        return None
+
+    pieces = cells
+    if rest.strip():
+        pieces.append(rest.strip())
+    return "\n\n".join(piece for piece in pieces if piece.strip()).strip()
+
+
 
 # Find all sections in TOC tree as flat list with parent references
 def collect_sections(
     toc_nodes: List[Dict[str, Any]],
     parent_id: Optional[str] = None,
+    ancestor_excluded: bool = False,
 ) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for node in toc_nodes:
+        excluded = ancestor_excluded or is_excluded_section(node)
         entry = {
             **node,
             "_parent_id": parent_id,
             "_has_children": bool(node.get("children")),
+            "_excluded_by_policy": excluded,
         }
         out.append(entry)
-        for child in node.get("children", []):
-            out.extend(collect_sections([child], node.get("id")))
+        out.extend(
+            collect_sections(
+                node.get("children", []),
+                node.get("id"),
+                ancestor_excluded=excluded,
+            )
+        )
     return out
 
 
@@ -451,7 +549,7 @@ def find_body_start(
     """Locate the first real body heading using canonical TOC order."""
     if ordered_sections:
         for sec in ordered_sections:
-            if not sec.get("id") or is_excluded_section(sec):
+            if not sec.get("id") or is_effectively_excluded_section(sec):
                 continue
             header = locate_boundary_header(markdown, sec, 0, len(markdown))
             if header is not None:
@@ -537,12 +635,12 @@ def _strip_leading_section_id(title: str, section_id: str) -> str:
     ).strip()
 
 
-def _title_prefix_content_start(
+def _title_prefix_match_end(
     raw_line: str,
     section_id: str,
     section_title: Optional[str],
 ) -> Optional[int]:
-    """Return the offset where same-line body text starts after a heading.
+    """Return the end offset of a TOC-confirmed heading prefix.
 
     This handles forms such as::
 
@@ -573,10 +671,64 @@ def _title_prefix_content_start(
     if not match:
         return None
 
-    content_start = match.end()
-    if not raw_line[content_start:].strip():
+    return match.end()
+
+
+def _title_prefix_content_start(
+    raw_line: str,
+    section_id: str,
+    section_title: Optional[str],
+) -> Optional[int]:
+    """Return where same-line body text starts after a heading, if present."""
+    content_start = _title_prefix_match_end(
+        raw_line=raw_line,
+        section_id=section_id,
+        section_title=section_title,
+    )
+    if content_start is None or not raw_line[content_start:].strip():
         return None
     return content_start
+
+
+def _iter_exact_prefix_matches(
+    raw_line: str,
+    section_id: str,
+    section_title: Optional[str],
+    allow_embedded: bool = True,
+) -> List[tuple[int, int]]:
+    """Find exact ``section_id + title`` prefixes in one Markdown block/line."""
+    if not section_id or not section_title:
+        return []
+
+    if not allow_embedded:
+        end = _title_prefix_match_end(raw_line, section_id, section_title)
+        return [(0, end)] if end is not None else []
+
+    escaped = re.escape(section_id.strip())
+    sid_rx = re.compile(
+        rf"(?<![\d.]){escaped}"
+        rf"(?:\.(?=\s|[*_`~<])|(?=[\s*_`<]|$))",
+        re.IGNORECASE,
+    )
+    matches: List[tuple[int, int]] = []
+    for sid_match in sid_rx.finditer(raw_line):
+        start = sid_match.start()
+        end = _title_prefix_match_end(
+            raw_line[start:],
+            section_id,
+            section_title,
+        )
+        if end is not None:
+            matches.append((start, start + end))
+    return matches
+
+
+def _markdown_heading_start_for_match(raw_line: str, match_start: int) -> int:
+    """Include a same-line Markdown heading prefix when it belongs to the match."""
+    prefix = re.match(r"^[ \t]{0,3}#{1,6}[ \t]+", raw_line)
+    if prefix is not None and prefix.end() == match_start:
+        return prefix.start()
+    return match_start
 
 
 def locate_header_by_title(
@@ -707,6 +859,34 @@ def locate_header(
             line_end = search_end
 
         line = markdown[pos:line_end]
+        if not line.strip():
+            pos = line_end + 1
+            continue
+
+        exact_prefixes = _iter_exact_prefix_matches(
+            raw_line=line,
+            section_id=section_id,
+            section_title=section_title,
+            allow_embedded=True,
+        )
+        for rel_start, rel_end in exact_prefixes:
+            rel_header_start = _markdown_heading_start_for_match(line, rel_start)
+            absolute_start = pos + rel_header_start
+            absolute_end = pos + rel_end
+            if absolute_start < search_start:
+                continue
+            if is_toc_entry_line(line) or _looks_like_printed_toc_suffix(line, rel_end):
+                continue
+
+            found_candidate = True
+            header_end_for_content = absolute_end
+            if not line[rel_end:].strip():
+                header_end_for_content = line_end
+
+            if 1.0 > best_score:
+                best = (absolute_start, header_end_for_content)
+                best_score = 1.0
+
         match = header_rx.match(line)
         if not match:
             pos = line_end + 1
@@ -715,10 +895,16 @@ def locate_header(
         found_candidate = True
         absolute_start = pos + match.start()
         absolute_end = pos + match.end()
-        if absolute_end < search_start:
+        if absolute_start < search_start:
             pos = line_end + 1
             continue
-        if is_toc_entry_line(line) or is_table_or_summary_line(line):
+        if (
+            is_toc_entry_line(line)
+            or (
+                is_table_or_summary_line(line)
+                and not exact_prefixes
+            )
+        ):
             pos = line_end + 1
             continue
 
@@ -801,6 +987,7 @@ def locate_section_header(
     anchors: Dict[int, int],
     sec: Dict[str, Any],
     body_start: int,
+    search_after: int = 0,
     window: int = 1,
 ) -> Dict[str, Any]:
     markdown_len = len(markdown)
@@ -811,7 +998,7 @@ def locate_section_header(
         markdown_len=markdown_len,
         window=window,
     )
-    window_start = max(window_start, body_start)
+    window_start = max(window_start, body_start, search_after)
 
     flags: List[str] = []
     matched_heading_id: Optional[str] = None
@@ -846,7 +1033,7 @@ def locate_section_header(
         header_pos = locate_boundary_header(
             markdown=markdown,
             sec=sec,
-            search_start=body_start,
+            search_start=max(body_start, search_after),
             search_end=markdown_len,
         )
         if header_pos is not None:
@@ -858,7 +1045,7 @@ def locate_section_header(
             markdown=markdown,
             expected_section_id=expected_id,
             section_title=sec.get("title"),
-            search_start=body_start,
+            search_start=max(body_start, search_after),
             search_end=markdown_len,
             min_score=0.9,
         )
@@ -871,6 +1058,11 @@ def locate_section_header(
 
     if header_pos is None:
         flags.append("header_not_found")
+    else:
+        if header_pos[0] < search_after:
+            flags.append("header_non_monotonic")
+        if _header_inside_html_table(markdown, header_pos[0]):
+            flags.append("header_in_html_table")
 
     return {
         "section_id": sec.get("id"),
@@ -885,12 +1077,93 @@ def locate_section_header(
 
 # Content extraction with TOC boundaries
 
+def _pdf_heading_pattern(section_id: str, title: Optional[str]) -> Optional[re.Pattern]:
+    title_words = re.findall(r"\w+", title or "")
+    if not section_id or not title_words:
+        return None
+    return re.compile(
+        rf"(?<![\d.]){re.escape(section_id)}(?:\.)?\s+"
+        + r"\W+".join(re.escape(word) for word in title_words),
+        re.IGNORECASE,
+    )
+
+
+def _local_pdf_fallback_text(
+    pdf_path: Optional[Any],
+    sec: Dict[str, Any],
+    later_sections: List[Dict[str, Any]],
+    max_pages: int = 3,
+) -> tuple[str, List[str]]:
+    """Extract a small PDF page-range fallback for a missing leaf heading."""
+    if pdf_path is None:
+        return "", ["pdf_fallback_unavailable"]
+
+    try:
+        import fitz  # type: ignore
+    except Exception:
+        return "", ["pdf_fallback_unavailable"]
+
+    section_id = section_match_id(sec)
+    heading_rx = _pdf_heading_pattern(section_id, sec.get("title"))
+    if heading_rx is None:
+        return "", ["pdf_fallback_unavailable"]
+
+    page_start = int(sec.get("page_start") or 1)
+    page_end = int(sec.get("page_end") or page_start)
+    if page_end < page_start:
+        page_end = page_start
+    page_end = min(page_end, page_start + max_pages - 1)
+
+    try:
+        with fitz.open(str(pdf_path)) as document:
+            page_count = document.page_count
+            parts = []
+            for page_number in range(page_start, min(page_end, page_count) + 1):
+                page = document.load_page(page_number - 1)
+                parts.append(page.get_text("text"))
+    except Exception as exc:
+        logger.warning(
+            "Local PDF fallback failed for %s %s: %s",
+            getattr(pdf_path, "name", pdf_path),
+            section_id,
+            exc,
+        )
+        return "", ["pdf_fallback_failed"]
+
+    page_text = "\n".join(parts)
+    start_match = heading_rx.search(page_text)
+    if start_match is None:
+        return "", ["pdf_fallback_heading_not_found"]
+
+    content_start = start_match.end()
+    content_end = len(page_text)
+    for candidate in later_sections:
+        candidate_rx = _pdf_heading_pattern(
+            section_match_id(candidate),
+            candidate.get("title"),
+        )
+        if candidate_rx is None:
+            continue
+        candidate_match = candidate_rx.search(page_text, content_start)
+        if candidate_match is not None:
+            content_end = candidate_match.start()
+            break
+
+    fallback_text = page_text[content_start:content_end].strip()
+    fallback_text = re.sub(r"[ \t]+", " ", fallback_text)
+    fallback_text = re.sub(r"\n{3,}", "\n\n", fallback_text)
+    if not fallback_text:
+        return "", ["pdf_fallback_empty"]
+    return fallback_text, ["pdf_fallback"]
+
+
 def extract_section_text(
     markdown: str,
     sec: Dict[str, Any],
     section_index: int,
     ordered_sections: List[Dict[str, Any]],
     header_lookup: Dict[str, Dict[str, Any]],
+    pdf_path: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Extract direct section text using the canonical TOC order.
 
@@ -908,6 +1181,21 @@ def extract_section_text(
     win_end = int(header_info.get("win_end") or md_len)
 
     if header_pos is None:
+        later_sections = ordered_sections[section_index + 1:]
+        if not sec.get("_has_children"):
+            fallback_text, fallback_flags = _local_pdf_fallback_text(
+                pdf_path=pdf_path,
+                sec=sec,
+                later_sections=later_sections,
+            )
+            if fallback_text:
+                return {
+                    "text": fallback_text,
+                    "quality_flags": sorted(set(flags + fallback_flags)),
+                    "header_found": False,
+                    "boundary_source": "local_pdf_fallback",
+                }
+            flags.extend(fallback_flags)
         return {
             "text": "",
             "quality_flags": sorted(set(flags or ["header_not_found"])),
@@ -941,7 +1229,7 @@ def extract_section_text(
     chosen: Optional[tuple[int, str]] = None
     for candidate, source in preferred + remaining:
         boundary = (header_lookup.get(candidate.get("id")) or {}).get("header_pos")
-        if boundary and boundary[0] > content_start:
+        if boundary and boundary[0] >= content_start:
             chosen = (boundary[0], source)
             break
 
@@ -961,7 +1249,11 @@ def extract_section_text(
         flags.extend(["boundary_uncertain", "boundary_char_cap"])
 
     return {
-        "text": markdown[content_start:content_end].strip(),
+        "text": (
+            _extract_false_table_text(markdown, content_start, content_end)
+            if "header_in_html_table" in flags
+            else None
+        ) or markdown[content_start:content_end].strip(),
         "quality_flags": sorted(set(flags)),
         "header_found": True,
         "boundary_source": boundary_source,
@@ -1001,6 +1293,157 @@ def split_oversized_text(text: str, max_chunk_chars: int) -> List[str]:
     return parts or [text[:max_chunk_chars]]
 
 
+def _contains_canonical_heading(
+    text: str,
+    section_id: str,
+    section_title: Optional[str],
+) -> bool:
+    if not text or not section_id or not section_title:
+        return False
+    normalized_text = normalize_heading_for_matching(text)
+    normalized_title = normalize_heading_for_matching(section_title)
+    title_tokens = re.findall(r"\w+", normalized_title)
+    if not title_tokens:
+        return False
+    pattern = (
+        rf"(?<![\d.]){re.escape(section_id)}(?:\.)?\s+"
+        + r"\W+".join(re.escape(token) for token in title_tokens)
+    )
+    return bool(re.search(pattern, normalized_text, re.IGNORECASE))
+
+
+def validate_section_boundaries(
+    toc_tree: List[Dict[str, Any]],
+    chunks: List[Dict[str, Any]],
+    markdown: str,
+    doc_id: str,
+) -> Dict[str, Any]:
+    """Build a deterministic validation report for TOC-based section chunks."""
+    sections = collect_sections(toc_tree)
+    ordered = [section for section in sections if section.get("id")]
+    expected_ids = [section["id"] for section in ordered]
+    expected_set = set(expected_ids)
+    chunk_ids = [chunk.get("section_id") for chunk in chunks]
+    chunk_set = set(chunk_id for chunk_id in chunk_ids if chunk_id)
+
+    missing_chunk_ids = [section_id for section_id in expected_ids if section_id not in chunk_set]
+    extra_chunk_ids = [section_id for section_id in chunk_ids if section_id not in expected_set]
+    duplicate_chunk_ids = sorted(
+        section_id
+        for section_id in chunk_set
+        if chunk_ids.count(section_id) > 1
+    )
+    order_matches = chunk_ids == expected_ids
+
+    body_start = find_body_start(markdown, ordered)
+    cursor = body_start
+    anchor_positions: Dict[str, int] = {}
+    anchor_missing: List[str] = []
+    anchor_non_monotonic: List[str] = []
+    for section in ordered:
+        info = locate_section_header(
+            markdown=markdown,
+            anchors={},
+            sec=section,
+            body_start=body_start,
+            search_after=cursor,
+            window=1,
+        )
+        header_pos = info.get("header_pos")
+        if header_pos is None:
+            anchor_missing.append(section["id"])
+            continue
+        if header_pos[0] < cursor:
+            anchor_non_monotonic.append(section["id"])
+        anchor_positions[section["id"]] = int(header_pos[0])
+        cursor = max(cursor, int(header_pos[1]))
+
+    chunk_by_id = {chunk.get("section_id"): chunk for chunk in chunks}
+    empty_leaf_sections: List[str] = []
+    parent_text_contains_child_heading: List[Dict[str, str]] = []
+    child_text_also_in_parent: List[Dict[str, str]] = []
+    heading_flags: Dict[str, List[str]] = {}
+
+    for section in ordered:
+        section_id = section["id"]
+        chunk = chunk_by_id.get(section_id)
+        if chunk is None:
+            continue
+        flags = chunk.get("quality_flags") or []
+        if flags:
+            heading_flags[section_id] = flags
+
+        if (
+            chunk.get("is_empty")
+            and not section.get("_has_children")
+            and not is_effectively_excluded_section(section)
+        ):
+            empty_leaf_sections.append(section_id)
+
+        text = chunk.get("text") or ""
+        if not text:
+            continue
+        descendants = [
+            candidate
+            for candidate in ordered
+            if _is_descendant_id(candidate.get("id") or "", section_id)
+        ]
+        for child in descendants:
+            child_id = child.get("id") or ""
+            if _contains_canonical_heading(text, section_match_id(child), child.get("title")):
+                parent_text_contains_child_heading.append(
+                    {"parent_section_id": section_id, "child_section_id": child_id}
+                )
+            child_text = (chunk_by_id.get(child_id) or {}).get("text") or ""
+            if (
+                child_text
+                and not is_effectively_empty(child_text)
+                and child_text in text
+            ):
+                child_text_also_in_parent.append(
+                    {"parent_section_id": section_id, "child_section_id": child_id}
+                )
+
+    boundary_uncertain = [
+        chunk["section_id"]
+        for chunk in chunks
+        if "boundary_uncertain" in (chunk.get("quality_flags") or [])
+    ]
+    pdf_fallback = [
+        chunk["section_id"]
+        for chunk in chunks
+        if "pdf_fallback" in (chunk.get("quality_flags") or [])
+    ]
+    header_not_found = [
+        chunk["section_id"]
+        for chunk in chunks
+        if "header_not_found" in (chunk.get("quality_flags") or [])
+    ]
+
+    return {
+        "doc_id": doc_id,
+        "toc_section_count": len(expected_ids),
+        "chunk_count": len(chunks),
+        "section_ids_match_toc": not missing_chunk_ids and not extra_chunk_ids,
+        "chunk_order_matches_toc": order_matches,
+        "one_chunk_per_section": not duplicate_chunk_ids and len(chunks) == len(chunk_set),
+        "anchors_monotonic": not anchor_non_monotonic,
+        "anchor_positions_found": len(anchor_positions),
+        "missing_chunk_section_ids": missing_chunk_ids,
+        "extra_chunk_section_ids": extra_chunk_ids,
+        "duplicate_chunk_section_ids": duplicate_chunk_ids,
+        "anchor_missing_section_ids": anchor_missing,
+        "anchor_non_monotonic_section_ids": anchor_non_monotonic,
+        "empty_leaf_sections": empty_leaf_sections,
+        "header_not_found_sections": header_not_found,
+        "boundary_uncertain_sections": boundary_uncertain,
+        "pdf_fallback_sections": pdf_fallback,
+        "parent_text_contains_child_heading": parent_text_contains_child_heading,
+        "child_text_also_in_parent": child_text_also_in_parent,
+        "quality_flags_by_section": heading_flags,
+    }
+
+
 
 # Chunk builder (no splitting yet)
 def build_hierarchical_chunks(
@@ -1017,16 +1460,21 @@ def build_hierarchical_chunks(
 
     ordered = [section for section in sections if section.get("id")]
     body_start = find_body_start(markdown_manager.text, ordered)
-    header_lookup = {
-        section["id"]: locate_section_header(
+    header_lookup: Dict[str, Dict[str, Any]] = {}
+    search_after = body_start
+    for section in ordered:
+        info = locate_section_header(
             markdown=markdown_manager.text,
             anchors=anchors,
             sec=section,
             body_start=body_start,
+            search_after=search_after,
             window=1,
         )
-        for section in ordered
-    }
+        header_lookup[section["id"]] = info
+        header_pos = info.get("header_pos")
+        if header_pos is not None:
+            search_after = max(search_after, int(header_pos[1]))
 
     known_titles: Dict[str, List[str]] = {}
     for section in ordered:
@@ -1038,8 +1486,6 @@ def build_hierarchical_chunks(
 
     for section_index, sec in enumerate(ordered):
         sec_id = sec["id"]
-        if is_excluded_section(sec):
-            continue
 
         extraction = extract_section_text(
             markdown=markdown_manager.text,
@@ -1047,9 +1493,13 @@ def build_hierarchical_chunks(
             section_index=section_index,
             ordered_sections=ordered,
             header_lookup=header_lookup,
+            pdf_path=markdown_manager.filepath,
         )
         raw_text = extraction["text"]
         quality_flags = list(extraction["quality_flags"])
+        excluded = is_effectively_excluded_section(sec)
+        if excluded:
+            quality_flags.append("excluded_section")
 
         raw_text, stripped = strip_leading_heading_fragment(raw_text, sec.get("title") or "")
         if stripped:
@@ -1097,9 +1547,7 @@ def build_hierarchical_chunks(
                 max_chunk_chars,
             )
 
-        text_parts = [""] if empty else split_oversized_text(raw_text, max_chunk_chars)
-        if len(text_parts) > 1:
-            quality_flags.append("split_oversized")
+        text_parts = [""] if empty else [raw_text]
 
         for part_idx, part_text in enumerate(text_parts):
             part_section_id = sec_id if part_idx == 0 else f"{sec_id}__part{part_idx + 1}"
@@ -1117,9 +1565,10 @@ def build_hierarchical_chunks(
                 "page_end": sec.get("page_end"),
                 "text": part_text,
                 "is_empty": empty,
-                # Preserve recall: every non-empty section remains embeddable.
-                # Quality flags allow strict downstream policies without data loss.
-                "embed": not empty,
+                "excluded": excluded,
+                # Preserve every TOC node; non-body/excluded sections remain
+                # structural but are not sent to embedding by default.
+                "embed": (not empty and not excluded),
                 "part_index": part_idx,
                 "part_count": len(text_parts),
                 "quality_flags": part_flags,
@@ -1128,4 +1577,3 @@ def build_hierarchical_chunks(
 
     logger.info("Built %d chunks", len(chunks))
     return chunks
-
