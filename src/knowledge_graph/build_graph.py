@@ -6,7 +6,8 @@ Flexible graph pipeline for the knowledge graph workflow.
 Main responsibilities:
 - optionally run preprocessing and chunk preparation from PDFs
 - optionally extract and cache per-document acronym dictionaries during preprocessing
-- optionally load graph structure into Neo4j from cached chunk files
+- build or reuse a validated retrieval Section view from canonical chunks
+- optionally load graph structure into Neo4j from Section-view files
 - optionally run entity extraction and embeddings on existing graph data
 - optionally use cached document-level acronyms during entity validation
 - optionally run global concept disambiguation
@@ -18,6 +19,7 @@ Main responsibilities:
 
 """
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -44,9 +46,17 @@ except ImportError:
             "pdf_fallback_sections": [],
         }
 from managers.acronym_extractor import load_or_extract_acronyms
+from managers.retrieval_unit_manager_section_view import (
+    build_retrieval_section_view_file,
+    section_view_output_path,
+    section_view_validation_path,
+)
 
 from knowledge_graph.neo4j_utils import get_neo4j_driver, close_driver
-from knowledge_graph.graph_loader import build_graph_from_chunks
+from knowledge_graph.graph_loader import (
+    build_graph_from_section_view,
+    load_and_validate_section_view,
+)
 from knowledge_graph.add_entities import add_entities_from_sections
 from knowledge_graph.entity_disambiguation import disambiguate_concepts
 from knowledge_graph.add_embeddings import add_embeddings_to_sections
@@ -159,6 +169,7 @@ def ensure_pipeline_dirs(config) -> None:
     ensure_dir(Path(config.image_dir))
     ensure_dir(Path(config.anchor_dir))
     ensure_dir(Path(config.chunk_dir))
+    ensure_dir(get_section_view_dir(config))
 
     if should_run_acronym_extraction(config):
         ensure_dir(get_acronym_dir(config))
@@ -435,6 +446,193 @@ def chunk_path_to_doc_id(chunk_path: Path) -> str:
     return name[:-len(suffix)]
 
 
+
+SECTION_VIEW_CACHE_SCHEMA_VERSION = "1"
+
+
+def get_section_view_dir(config) -> Path:
+    """
+    Return the directory containing retrieval-oriented Section views.
+
+    Prefer config.section_view_dir when provided. Otherwise use a sibling
+    directory of chunk_dir named "section_views".
+    """
+    configured = getattr(config, "section_view_dir", None)
+    if configured is not None:
+        return Path(configured)
+    return Path(config.chunk_dir).parent / "section_views"
+
+
+def get_retrieval_max_level(config) -> Optional[int]:
+    value = getattr(config, "retrieval_max_level", None)
+    if value in (None, ""):
+        return None
+
+    max_level = int(value)
+    if max_level < 1:
+        raise ValueError(
+            f"retrieval_max_level must be >= 1 or None, got {max_level}"
+        )
+    return max_level
+
+
+def get_cached_section_view_path(config, doc_id: str) -> Path:
+    return section_view_output_path(
+        output_dir=get_section_view_dir(config),
+        doc_id=doc_id,
+        max_level=get_retrieval_max_level(config),
+    )
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _expected_section_view_cache_metadata(
+    config,
+    canonical_chunk_path: Path,
+) -> Dict[str, Any]:
+    return {
+        "section_view_cache_schema_version": SECTION_VIEW_CACHE_SCHEMA_VERSION,
+        "source_chunk_sha256": _sha256_file(canonical_chunk_path),
+        "max_level": get_retrieval_max_level(config),
+        "include_descendant_titles": bool(
+            getattr(config, "retrieval_include_descendant_titles", True)
+        ),
+        "include_section_ids_in_titles": bool(
+            getattr(config, "retrieval_include_section_ids_in_titles", True)
+        ),
+    }
+
+
+def _read_json_object(path: Path) -> Optional[Dict[str, Any]]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _section_view_cache_matches(
+    validation_path: Path,
+    expected_metadata: Dict[str, Any],
+) -> bool:
+    validation = _read_json_object(validation_path)
+    if validation is None or validation.get("valid") is not True:
+        return False
+
+    return all(
+        validation.get(key) == value
+        for key, value in expected_metadata.items()
+    )
+
+
+def load_or_build_retrieval_section_view(
+    config,
+    canonical_chunk_path: Path,
+    doc_id: str,
+) -> tuple[Path, Dict[str, Any]]:
+    """
+    Build or reuse the Section view derived from one canonical chunk file.
+
+    Cache reuse requires:
+    - a valid Section-view JSON file;
+    - a valid validation sidecar;
+    - the same canonical source SHA-256;
+    - the same max_level and title-composition options.
+    """
+    canonical_chunk_path = Path(canonical_chunk_path)
+    if not canonical_chunk_path.exists():
+        raise FileNotFoundError(
+            f"Canonical chunk file not found for {doc_id}: "
+            f"{canonical_chunk_path}"
+        )
+
+    output_dir = get_section_view_dir(config)
+    ensure_dir(output_dir)
+
+    output_path = get_cached_section_view_path(config, doc_id)
+    validation_path = section_view_validation_path(output_path)
+    expected_metadata = _expected_section_view_cache_metadata(
+        config=config,
+        canonical_chunk_path=canonical_chunk_path,
+    )
+    force = bool(getattr(config, "force_retrieval_view", False))
+
+    if output_path.exists() and not force:
+        if _section_view_cache_matches(
+            validation_path=validation_path,
+            expected_metadata=expected_metadata,
+        ):
+            try:
+                _, graph_validation = load_and_validate_section_view(
+                    output_path
+                )
+            except (OSError, ValueError) as exc:
+                logger.warning(
+                    "Cached Section view is invalid for %s and will be "
+                    "rebuilt: %s",
+                    doc_id,
+                    exc,
+                )
+            else:
+                logger.info(
+                    "Using cached Section view for %s: %s",
+                    doc_id,
+                    output_path,
+                )
+                merged_report = dict(
+                    _read_json_object(validation_path) or {}
+                )
+                merged_report["graph_loader_validation"] = graph_validation
+                return output_path, merged_report
+        else:
+            logger.info(
+                "Section-view cache metadata mismatch for %s; rebuilding",
+                doc_id,
+            )
+
+    output_path, report = build_retrieval_section_view_file(
+        input_path=canonical_chunk_path,
+        output_dir=output_dir,
+        max_level=get_retrieval_max_level(config),
+        include_descendant_titles=bool(
+            getattr(config, "retrieval_include_descendant_titles", True)
+        ),
+        include_section_ids_in_titles=bool(
+            getattr(config, "retrieval_include_section_ids_in_titles", True)
+        ),
+        force=True,
+        write_validation=True,
+    )
+
+    report = dict(report)
+    report.update(expected_metadata)
+    validation_path.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    _, graph_validation = load_and_validate_section_view(output_path)
+    report["graph_loader_validation"] = graph_validation
+
+    logger.info(
+        "Section view ready for %s | path=%s | strategy=%s | "
+        "sections=%s | retrieval=%s | structural=%s",
+        doc_id,
+        output_path,
+        report.get("strategy"),
+        report.get("section_view_count"),
+        report.get("retrievable_section_count"),
+        report.get("structural_section_count"),
+    )
+    return output_path, report
+
+
 def get_graph_document_ids(driver) -> List[str]:
     """
     Return document ids currently present in Neo4j.
@@ -516,10 +714,10 @@ def preprocess_single_document(
     pdf_path: Path,
 ) -> Dict[str, Any]:
     """
-    Run preprocessing/chunk preparation for one PDF.
+    Run preprocessing/chunk preparation and produce the derived Section view.
 
-    Acronym extraction is independent from chunk creation, but it should run
-    after the TOC cache has been created/loaded, allowing TOC metadata usage.
+    Canonical hierarchical chunks remain immutable source artifacts. The
+    Section view is always built or validated before graph loading.
     """
     doc_id = pdf_path.stem
     logger.info("=== Preprocessing %s ===", doc_id)
@@ -531,7 +729,6 @@ def preprocess_single_document(
 
     if should_run_acronym_extraction(config):
         toc = load_or_extract_toc(config, pdf_path, doc_id)
-
         acronym_payload = load_or_extract_document_acronyms(
             config=config,
             pdf_path=pdf_path,
@@ -540,9 +737,19 @@ def preprocess_single_document(
 
     if chunk_path.exists() and not getattr(config, "force_chunks", False):
         logger.info("Chunk cache already available for %s", doc_id)
+        section_view_path, section_view_validation = (
+            load_or_build_retrieval_section_view(
+                config=config,
+                canonical_chunk_path=chunk_path,
+                doc_id=doc_id,
+            )
+        )
         return {
             "doc_id": doc_id,
             "chunk_path": str(chunk_path),
+            "canonical_chunk_path": str(chunk_path),
+            "section_view_path": str(section_view_path),
+            "section_view_validation": section_view_validation,
             "acronym_path": (
                 str(get_cached_acronym_path(config, doc_id))
                 if should_run_acronym_extraction(config)
@@ -587,10 +794,20 @@ def preprocess_single_document(
         anchors=anchors,
         doc_id=doc_id,
     )
+    section_view_path, section_view_validation = (
+        load_or_build_retrieval_section_view(
+            config=config,
+            canonical_chunk_path=chunk_path,
+            doc_id=doc_id,
+        )
+    )
 
     return {
         "doc_id": doc_id,
         "chunk_path": str(chunk_path),
+        "canonical_chunk_path": str(chunk_path),
+        "section_view_path": str(section_view_path),
+        "section_view_validation": section_view_validation,
         "acronym_path": (
             str(get_cached_acronym_path(config, doc_id))
             if should_run_acronym_extraction(config)
@@ -619,21 +836,24 @@ def process_document_graph_loading(
     driver,
     config,
     doc_id: str,
-    chunk_path: Optional[Path],
+    section_view_path: Optional[Path],
 ) -> Optional[str]:
-    """
-    Load graph structure for one document.
-    """
-    if chunk_path is None:
+    """Load one validated retrieval Section view into Neo4j."""
+    if section_view_path is None:
         raise ValueError(
-            f"Graph loading requested for document {doc_id}, but chunk_path is missing."
+            f"Graph loading requested for document {doc_id}, but "
+            "section_view_path is missing."
         )
 
-    logger.info("Loading graph structure into Neo4j for document %s", doc_id)
+    logger.info(
+        "Loading retrieval Section view into Neo4j for document %s: %s",
+        doc_id,
+        section_view_path,
+    )
 
-    return build_graph_from_chunks(
+    return build_graph_from_section_view(
         driver=driver,
-        chunk_file=chunk_path,
+        chunk_file=section_view_path,
         batch_size=getattr(config, "graph_loader_batch_size", 200),
         min_text_chars_to_embed=getattr(
             config,
@@ -920,14 +1140,10 @@ def process_document_graph_and_enrichment(
     driver,
     config,
     doc_id: str,
-    chunk_path: Optional[Path] = None,
+    section_view_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
-    Backward-compatible single-document helper.
-
-    The main pipeline below no longer uses this for full runs. It now runs phases
-    globally across all documents. This helper is kept in case another script
-    imports it directly.
+    Backward-compatible single-document helper using a Section-view input.
     """
     graph_result = None
     entity_stats = None
@@ -938,7 +1154,7 @@ def process_document_graph_and_enrichment(
             driver=driver,
             config=config,
             doc_id=doc_id,
-            chunk_path=chunk_path,
+            section_view_path=section_view_path,
         )
 
     if getattr(config, "run_entity_extraction", False):
@@ -968,7 +1184,11 @@ def process_document_graph_and_enrichment(
 
     return {
         "doc_id": doc_id,
-        "chunk_path": str(chunk_path) if chunk_path is not None else None,
+        "section_view_path": (
+            str(section_view_path)
+            if section_view_path is not None
+            else None
+        ),
         "graph_result": graph_result,
         "entity_stats": entity_stats,
         "embedding_stats": embedding_stats,
@@ -983,20 +1203,23 @@ def build_document_work_items(
     """
     Decide which documents should be processed for graph/enrichment work.
 
-    Modes:
-    - if preprocessing ran in this execution, use those results
-    - else if graph loading is requested, use cached chunk files
-    - else if only enrichment is requested, use documents already present in Neo4j
+    Graph loading always consumes Section-view files. When preprocessing did
+    not run in this execution, Section views are derived from cached canonical
+    chunk files before work items are returned.
     """
     if preprocessing_results:
         logger.info(
-            "Using %d preprocessing results as document source for graph/enrichment",
+            "Using %d preprocessing results as document source for "
+            "graph/enrichment",
             len(preprocessing_results),
         )
         return [
             {
                 "doc_id": row["doc_id"],
-                "chunk_path": Path(row["chunk_path"]),
+                "chunk_path": Path(
+                    row.get("canonical_chunk_path") or row["chunk_path"]
+                ),
+                "section_view_path": Path(row["section_view_path"]),
                 "source": row.get("source", "preprocessing"),
             }
             for row in preprocessing_results
@@ -1005,17 +1228,30 @@ def build_document_work_items(
     if getattr(config, "run_graph_loader", False):
         chunk_paths = list_cached_chunk_paths(config)
         logger.info(
-            "Using %d cached chunk files as document source for graph loading",
+            "Using %d cached canonical chunk files as source for graph loading",
             len(chunk_paths),
         )
-        return [
-            {
-                "doc_id": chunk_path_to_doc_id(chunk_path),
-                "chunk_path": chunk_path,
-                "source": "chunk_cache",
-            }
-            for chunk_path in chunk_paths
-        ]
+
+        items: List[Dict[str, Any]] = []
+        for chunk_path in chunk_paths:
+            doc_id = chunk_path_to_doc_id(chunk_path)
+            section_view_path, section_view_validation = (
+                load_or_build_retrieval_section_view(
+                    config=config,
+                    canonical_chunk_path=chunk_path,
+                    doc_id=doc_id,
+                )
+            )
+            items.append(
+                {
+                    "doc_id": doc_id,
+                    "chunk_path": chunk_path,
+                    "section_view_path": section_view_path,
+                    "section_view_validation": section_view_validation,
+                    "source": "chunk_cache",
+                }
+            )
+        return items
 
     doc_ids = get_graph_document_ids(driver)
     logger.info(
@@ -1026,6 +1262,7 @@ def build_document_work_items(
         {
             "doc_id": doc_id,
             "chunk_path": None,
+            "section_view_path": None,
             "source": "neo4j",
         }
         for doc_id in doc_ids
@@ -1033,14 +1270,18 @@ def build_document_work_items(
 
 
 def initialize_document_result(item: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Initialize a per-document result object that can be updated phase by phase.
-    """
+    """Initialize a per-document result object."""
     chunk_path = item.get("chunk_path")
+    section_view_path = item.get("section_view_path")
 
     return {
         "doc_id": item["doc_id"],
         "chunk_path": str(chunk_path) if chunk_path is not None else None,
+        "section_view_path": (
+            str(section_view_path)
+            if section_view_path is not None
+            else None
+        ),
         "source": item.get("source"),
         "graph_result": None,
         "entity_stats": None,
@@ -1091,14 +1332,14 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
 
     Supported usage patterns:
     - preprocessing only
-    - graph loading only from cached chunks
+    - graph loading from Section views derived from cached canonical chunks
     - entities only from existing Neo4j graph
     - embeddings only from existing Neo4j graph
     - full pipeline
 
     Execution order for combined/full runs:
     1. preprocess all documents
-    2. graph-load all documents
+    2. build/validate Section views and graph-load all documents
     3. extract entities for all documents
     4. clear chat model cache before embeddings, if needed
     5. compute embeddings for all documents
@@ -1171,7 +1412,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                 config=config,
                 driver=driver,
                 preprocessing_results=[
-                    row for row in preprocessing_results if "chunk_path" in row
+                    row for row in preprocessing_results if "section_view_path" in row
                 ],
             )
 
@@ -1199,7 +1440,7 @@ def run_graph_pipeline(config) -> Dict[str, Any]:
                             driver=driver,
                             config=config,
                             doc_id=doc_id,
-                            chunk_path=item["chunk_path"],
+                            section_view_path=item["section_view_path"],
                         )
 
                         result["graph_result"] = graph_result

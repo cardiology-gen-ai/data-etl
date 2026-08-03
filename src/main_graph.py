@@ -33,6 +33,7 @@ class GraphPipelineConfig:
     image_dir: Path
     anchor_dir: Path
     chunk_dir: Path
+    section_view_dir: Path
     acronym_dir: Path
     preprocessing_config: Any
 
@@ -42,7 +43,13 @@ class GraphPipelineConfig:
     force_markdown: bool = False
     force_anchors: bool = False
     force_chunks: bool = False
+    force_retrieval_view: bool = False
     force_acronyms: bool = False
+
+    # Retrieval Section view
+    retrieval_max_level: Optional[int] = None
+    retrieval_include_descendant_titles: bool = True
+    retrieval_include_section_ids_in_titles: bool = True
 
     # Acronym extraction
     run_acronym_extraction: bool = True
@@ -534,13 +541,18 @@ def make_graph_pipeline_config(
     pdf_dir: Path,
     work_root: Path,
     mineru_markdown_root: Optional[Path] = None,
+    section_view_dir: Optional[Path] = None,
     run_preprocessing: bool = False,
     run_acronym_extraction: bool = True,
     force_toc: bool = False,
     force_markdown: bool = False,
     force_anchors: bool = False,
     force_chunks: bool = False,
+    force_retrieval_view: bool = False,
     force_acronyms: bool = False,
+    retrieval_max_level: Optional[int] = None,
+    retrieval_include_descendant_titles: bool = True,
+    retrieval_include_section_ids_in_titles: bool = True,
     acronym_sample_size: int = 0,
     acronym_print_all: bool = False,
     run_graph_loader: bool = True,
@@ -634,6 +646,12 @@ def make_graph_pipeline_config(
     pdf_dir = pdf_dir.resolve()
     work_root = work_root.resolve()
 
+    resolved_section_view_dir = (
+        section_view_dir.resolve()
+        if section_view_dir is not None
+        else (work_root / "section_views").resolve()
+    )
+
     resolved_entity_review_output_dir = (
         entity_review_output_dir.resolve()
         if entity_review_output_dir is not None
@@ -652,6 +670,7 @@ def make_graph_pipeline_config(
         image_dir=(work_root / "images").resolve(),
         anchor_dir=(work_root / "anchors").resolve(),
         chunk_dir=(work_root / "chunks").resolve(),
+        section_view_dir=resolved_section_view_dir,
         acronym_dir=(work_root / "acronyms").resolve(),
         preprocessing_config=preprocessing_config,
         run_preprocessing=run_preprocessing,
@@ -659,7 +678,15 @@ def make_graph_pipeline_config(
         force_markdown=force_markdown,
         force_anchors=force_anchors,
         force_chunks=force_chunks,
+        force_retrieval_view=force_retrieval_view,
         force_acronyms=force_acronyms,
+        retrieval_max_level=retrieval_max_level,
+        retrieval_include_descendant_titles=(
+            retrieval_include_descendant_titles
+        ),
+        retrieval_include_section_ids_in_titles=(
+            retrieval_include_section_ids_in_titles
+        ),
         run_acronym_extraction=run_acronym_extraction,
         acronym_sample_size=acronym_sample_size,
         acronym_print_all=acronym_print_all,
@@ -857,6 +884,7 @@ def main(
     pdf_dir: Path,
     work_root: Path,
     mineru_markdown_root: Optional[Path] = None,
+    section_view_dir: Optional[Path] = None,
     clear_neo4j_before_run: bool = False,
     run_preprocessing: bool = False,
     run_acronym_extraction: bool = True,
@@ -864,7 +892,11 @@ def main(
     force_markdown: bool = False,
     force_anchors: bool = False,
     force_chunks: bool = False,
+    force_retrieval_view: bool = False,
     force_acronyms: bool = False,
+    retrieval_max_level: Optional[int] = None,
+    retrieval_include_descendant_titles: bool = True,
+    retrieval_include_section_ids_in_titles: bool = True,
     acronym_sample_size: int = 0,
     acronym_print_all: bool = False,
     run_graph_loader: bool = True,
@@ -1022,13 +1054,22 @@ def main(
         pdf_dir=pdf_dir,
         work_root=work_root,
         mineru_markdown_root=mineru_markdown_root,
+        section_view_dir=section_view_dir,
         run_preprocessing=run_preprocessing,
         run_acronym_extraction=run_acronym_extraction,
         force_toc=force_toc,
         force_markdown=force_markdown,
         force_anchors=force_anchors,
         force_chunks=force_chunks,
+        force_retrieval_view=force_retrieval_view,
         force_acronyms=force_acronyms,
+        retrieval_max_level=retrieval_max_level,
+        retrieval_include_descendant_titles=(
+            retrieval_include_descendant_titles
+        ),
+        retrieval_include_section_ids_in_titles=(
+            retrieval_include_section_ids_in_titles
+        ),
         acronym_sample_size=acronym_sample_size,
         acronym_print_all=acronym_print_all,
         run_graph_loader=run_graph_loader,
@@ -1508,6 +1549,7 @@ def run_cli() -> Any:
     provider_config = kg_config.get("providers", {})
     model_config = kg_config.get("models", {})
     graph_loader_config = kg_config.get("graph_loader", {})
+    retrieval_view_config = kg_config.get("retrieval_view", {})
     entity_config = kg_config.get("entities", {})
     embedding_config = kg_config.get("section_embeddings", {})
     section_vector_index_config = kg_config.get("section_vector_index", {})
@@ -1531,6 +1573,12 @@ def run_cli() -> Any:
         _get_optional_env("KG_MINERU_MARKDOWN_ROOT")
         or pipeline_config.get("mineru_markdown_root"),
         work_root / "mddocs",
+        project_root,
+    )
+    section_view_dir = _resolve_project_path(
+        _get_optional_env("KG_RETRIEVAL_VIEW_OUTPUT_DIR")
+        or retrieval_view_config.get("output_dir"),
+        work_root / "section_views",
         project_root,
     )
 
@@ -1758,6 +1806,29 @@ def run_cli() -> Any:
         ),
     }
 
+    retrieval_view_kwargs = {
+        "section_view_dir": section_view_dir,
+        "retrieval_max_level": _get_env_or_config_optional_int(
+            "KG_RETRIEVAL_MAX_LEVEL",
+            retrieval_view_config.get("max_level"),
+        ),
+        "retrieval_include_descendant_titles": _get_env_or_config_bool(
+            "KG_RETRIEVAL_INCLUDE_DESCENDANT_TITLES",
+            retrieval_view_config.get("include_descendant_titles"),
+            True,
+        ),
+        "retrieval_include_section_ids_in_titles": _get_env_or_config_bool(
+            "KG_RETRIEVAL_INCLUDE_SECTION_IDS_IN_TITLES",
+            retrieval_view_config.get("include_section_ids_in_titles"),
+            True,
+        ),
+        "force_retrieval_view": _get_env_or_config_bool(
+            "KG_FORCE_RETRIEVAL_VIEW",
+            retrieval_view_config.get("force"),
+            False,
+        ),
+    }
+
     cache_kwargs = {
         "force_toc": _get_env_or_config_bool(
             "KG_FORCE_TOC", pipeline_config.get("force_toc"), False
@@ -1837,6 +1908,16 @@ def run_cli() -> Any:
         embedding_model or "-",
         embedding_dimensions if embedding_dimensions is not None else "default",
     )
+    logger.info(
+        "Resolved retrieval Section view | max_level=%s | output_dir=%s | "
+        "include_descendant_titles=%s | include_section_ids_in_titles=%s | "
+        "force=%s",
+        retrieval_view_kwargs["retrieval_max_level"],
+        retrieval_view_kwargs["section_view_dir"],
+        retrieval_view_kwargs["retrieval_include_descendant_titles"],
+        retrieval_view_kwargs["retrieval_include_section_ids_in_titles"],
+        retrieval_view_kwargs["force_retrieval_view"],
+    )
 
     return main(
         pdf_dir=pdf_dir,
@@ -1848,6 +1929,7 @@ def run_cli() -> Any:
         **runtime_kwargs,
         **processing_kwargs,
         **cache_kwargs,
+        **retrieval_view_kwargs,
         **acronym_kwargs,
         **entity_review_kwargs,
         **normalization_kwargs,

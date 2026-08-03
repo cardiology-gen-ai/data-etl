@@ -44,7 +44,7 @@
         "pdf_dir": "mineru_test/pdfdocs",
         "work_root": "mineru_test",
         "mineru_markdown_root": "mineru_test/mddocs",
-        "clear_neo4j_before_run": false,
+        "clear_neo4j_before_run": true,
         "force_toc": false,
         "force_markdown": false,
         "force_anchors": false,
@@ -72,6 +72,13 @@
         "enabled": true,
         "sample_size": 0,
         "print_all": false
+      },
+      "retrieval_view": {
+        "max_level": 4,
+        "include_descendant_titles": true,
+        "include_section_ids_in_titles": true,
+        "force": false,
+        "output_dir": null
       },
       "graph_loader": {
         "batch_size": 200,
