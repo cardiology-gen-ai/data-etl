@@ -28,9 +28,10 @@ Main notes:
   normalized long-form concept while raw_name preserves the original acronym.
 - Entity validation decisions are optionally exported to JSONL review files so
   accepted/rejected candidates can be inspected outside Neo4j.
-- When use_section_text=True, title-only sections with empty body text are skipped:
-  they remain useful as hierarchy/navigation nodes, but they should not create
-  normal body-grounded entity mentions.
+- Only retrieval-role, embeddable, non-excluded Section-view nodes are processed;
+  structural hierarchy nodes are never sent to the LLM or marked as skipped.
+- Oversized retrieval Sections are segmented without dropping text; segment-level
+  concepts are merged and validated against the original full Section before write.
 - Orphan Concept nodes with no incoming MENTIONS edges are removed after the run.
 """
 
@@ -239,10 +240,200 @@ def build_source_text(row: Dict[str, Any], use_section_text: bool) -> str:
     return "\n\n".join(parts).strip()
 
 
-def emergency_truncate(text: str, max_chars: int) -> str:
-    if len(text) <= max_chars:
-        return text
-    return text[:max_chars].rstrip() + "\n...[truncated]"
+DEFAULT_ENTITY_SEGMENT_OVERLAP_CHARS = 500
+RETRIEVAL_ROLE = "retrieval"
+
+
+def split_text_for_llm(
+    text: str,
+    max_chars: int,
+    overlap_chars: int = DEFAULT_ENTITY_SEGMENT_OVERLAP_CHARS,
+) -> List[str]:
+    """
+    Split text deterministically into overlapping, boundary-aware segments.
+
+    This function never drops source text. It prefers paragraph, line, and
+    sentence boundaries near the end of the available window and falls back to
+    a hard character boundary only when no suitable separator is available.
+    """
+    if max_chars < 1:
+        raise ValueError("max_chars must be >= 1")
+    if overlap_chars < 0:
+        raise ValueError("overlap_chars must be >= 0")
+    if overlap_chars >= max_chars:
+        raise ValueError("overlap_chars must be smaller than max_chars")
+
+    normalized = (text or "").strip()
+    if not normalized:
+        return []
+    if len(normalized) <= max_chars:
+        return [normalized]
+
+    segments: List[str] = []
+    start = 0
+    text_len = len(normalized)
+
+    while start < text_len:
+        hard_end = min(start + max_chars, text_len)
+        end = hard_end
+
+        if hard_end < text_len:
+            minimum_boundary = start + max(1, int(max_chars * 0.60))
+            boundary_candidates: List[int] = []
+
+            for separator in ("\n\n", "\n", ". ", "; ", ", "):
+                position = normalized.rfind(
+                    separator,
+                    minimum_boundary,
+                    hard_end,
+                )
+                if position >= minimum_boundary:
+                    boundary_candidates.append(position + len(separator))
+
+            if boundary_candidates:
+                end = max(boundary_candidates)
+
+        segment = normalized[start:end].strip()
+        if not segment:
+            end = hard_end
+            segment = normalized[start:end].strip()
+
+        if not segment:
+            raise RuntimeError(
+                "Unable to create a non-empty entity-extraction segment"
+            )
+
+        segments.append(segment)
+
+        if end >= text_len:
+            break
+
+        next_start = max(start + 1, end - overlap_chars)
+
+        # Avoid restarting in the middle of a word when a nearby whitespace
+        # boundary is available.
+        if (
+            0 < next_start < text_len
+            and normalized[next_start - 1].isalnum()
+            and normalized[next_start].isalnum()
+        ):
+            whitespace = normalized.find(
+                " ",
+                next_start,
+                min(end, next_start + 120),
+            )
+            if whitespace != -1:
+                next_start = whitespace + 1
+
+        if next_start <= start:
+            raise RuntimeError(
+                "Entity-extraction segmentation made no forward progress"
+            )
+
+        start = next_start
+
+    return segments
+
+
+def build_llm_units(
+    rows: List[Dict[str, Any]],
+    max_segment_chars: int,
+    overlap_chars: int = DEFAULT_ENTITY_SEGMENT_OVERLAP_CHARS,
+) -> List[Dict[str, Any]]:
+    """
+    Convert retrieval Sections into LLM request units.
+
+    Normal Sections produce one request unit. Oversized Sections are split into
+    multiple overlapping units while retaining the original Section UID. The
+    title is repeated in every body segment so each request remains grounded in
+    the same section context.
+
+    The original full ``source_text`` remains on the Section row and is used for
+    deterministic validation after concepts from all segments are merged.
+    """
+    if max_segment_chars < 1:
+        raise ValueError("max_segment_chars must be >= 1")
+
+    effective_overlap = min(
+        max(0, overlap_chars),
+        max(0, max_segment_chars - 1),
+    )
+
+    units: List[Dict[str, Any]] = []
+
+    for row in rows:
+        full_source = (row.get("source_text") or "").strip()
+        if not full_source:
+            continue
+
+        if len(full_source) <= max_segment_chars:
+            unit = dict(row)
+            unit["llm_uid"] = row["uid"]
+            unit["segment_index"] = 1
+            unit["segment_count"] = 1
+            units.append(unit)
+            continue
+
+        title = (row.get("title") or "").strip()
+        body = (row.get("text") or "").strip()
+
+        prefix_parts: List[str] = []
+        if title:
+            prefix_parts.append(f"Title: {title}")
+        if body:
+            prefix_parts.append("Body:")
+
+        prefix = "\n\n".join(prefix_parts)
+        if prefix:
+            prefix += "\n"
+
+        body_budget = max_segment_chars - len(prefix)
+
+        if body and body_budget >= 256:
+            body_overlap = min(
+                effective_overlap,
+                max(0, body_budget - 1),
+            )
+            body_segments = split_text_for_llm(
+                body,
+                max_chars=body_budget,
+                overlap_chars=body_overlap,
+            )
+            segment_texts = [
+                f"{prefix}{body_segment}".strip()
+                for body_segment in body_segments
+            ]
+        else:
+            # Extremely long titles or title-only inputs are split as a last
+            # deterministic fallback, still without dropping text.
+            segment_texts = split_text_for_llm(
+                full_source,
+                max_chars=max_segment_chars,
+                overlap_chars=effective_overlap,
+            )
+
+        segment_count = len(segment_texts)
+
+        for segment_index, segment_text in enumerate(segment_texts, start=1):
+            if len(segment_text) > max_segment_chars:
+                raise RuntimeError(
+                    "Entity-extraction segment exceeds configured limit | "
+                    f"uid={row['uid']} | segment={segment_index}/"
+                    f"{segment_count} | chars={len(segment_text)} | "
+                    f"limit={max_segment_chars}"
+                )
+
+            unit = dict(row)
+            unit["source_text"] = segment_text
+            unit["llm_uid"] = (
+                f"{row['uid']}::segment::{segment_index:04d}"
+                f"-of-{segment_count:04d}"
+            )
+            unit["segment_index"] = segment_index
+            unit["segment_count"] = segment_count
+            units.append(unit)
+
+    return units
 
 
 def pack_rows_for_llm(
@@ -252,14 +443,21 @@ def pack_rows_for_llm(
     emergency_max_single_chars: Optional[int] = None,
 ) -> Iterable[List[Dict[str, Any]]]:
     """
-    Pack rows into batches without cutting sections apart just to make a batch fit.
+    Pack already-sized LLM request units into batches.
 
-    Policy:
-    - keep sections intact when building batches
-    - if adding the next section would exceed the batch budget, move it to the next batch
-    - only truncate as a last resort if a single section is too large on its own
+    No truncation is performed here. Oversized Sections must first be converted
+    into bounded request units with ``build_llm_units``. The historical
+    ``emergency_max_single_chars`` parameter is retained for API compatibility
+    but is no longer used to discard source text.
     """
-    batch = []
+    del emergency_max_single_chars
+
+    if max_sections_per_batch < 1:
+        raise ValueError("max_sections_per_batch must be >= 1")
+    if max_batch_chars < 1:
+        raise ValueError("max_batch_chars must be >= 1")
+
+    batch: List[Dict[str, Any]] = []
     current_chars = 0
 
     for row in rows:
@@ -267,43 +465,11 @@ def pack_rows_for_llm(
         row_chars = len(row_text)
 
         if row_chars > max_batch_chars:
-            logger.warning(
-                "Single section exceeds batch budget | uid=%s | chars=%d | budget=%d",
-                row["uid"],
-                row_chars,
-                max_batch_chars,
+            raise ValueError(
+                "LLM request unit exceeds max_batch_chars after segmentation | "
+                f"uid={row.get('llm_uid', row.get('uid'))} | "
+                f"chars={row_chars} | budget={max_batch_chars}"
             )
-
-            oversized_row = dict(row)
-
-            if emergency_max_single_chars is not None:
-                effective_single_limit = min(emergency_max_single_chars, max_batch_chars)
-                oversized_row["source_text"] = emergency_truncate(
-                    oversized_row["source_text"],
-                    effective_single_limit,
-                )
-                logger.warning(
-                    "Emergency truncation applied to oversized section | uid=%s | new_chars=%d | effective_limit=%d",
-                    oversized_row["uid"],
-                    len(oversized_row["source_text"]),
-                    effective_single_limit,
-                )
-
-            if len(oversized_row["source_text"]) > max_batch_chars:
-                logger.warning(
-                    "Oversized section still exceeds batch budget after truncation | uid=%s | chars=%d | budget=%d",
-                    oversized_row["uid"],
-                    len(oversized_row["source_text"]),
-                    max_batch_chars,
-                )
-
-            if batch:
-                yield batch
-                batch = []
-                current_chars = 0
-
-            yield [oversized_row]
-            continue
 
         would_exceed_count = len(batch) >= max_sections_per_batch
         would_exceed_chars = (current_chars + row_chars) > max_batch_chars
@@ -374,12 +540,19 @@ def extract_concepts_single(text: str) -> Optional[List[Dict[str, Any]]]:
 def extract_concepts_batch(
     batch_rows: List[Dict[str, Any]],
 ) -> Optional[Dict[str, List[Dict[str, Any]]]]:
+    """
+    Extract concepts for one batch of LLM request units.
+
+    ``llm_uid`` is used when present so multiple segments originating from the
+    same Section can coexist in the same overall extraction run without UID
+    collisions. The returned mapping is keyed by that request UID.
+    """
     if not batch_rows:
         return {}
 
     sections_payload = [
         {
-            "uid": row["uid"],
+            "uid": row.get("llm_uid", row["uid"]),
             "text": row["source_text"],
         }
         for row in batch_rows
@@ -389,7 +562,9 @@ def extract_concepts_batch(
         {"role": "system", "content": ENTITY_EXTRACTION_BATCH_SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": build_entity_extraction_batch_user_prompt(sections_payload),
+            "content": build_entity_extraction_batch_user_prompt(
+                sections_payload
+            ),
         },
     ]
 
@@ -418,7 +593,10 @@ def extract_concepts_batch(
         if not isinstance(data, list):
             raise ValueError("Batch LLM output is not a list")
 
-        expected_uids = {row["uid"] for row in batch_rows}
+        expected_uids = {
+            row.get("llm_uid", row["uid"])
+            for row in batch_rows
+        }
         out: Dict[str, List[Dict[str, Any]]] = {}
 
         for item in data:
@@ -438,7 +616,9 @@ def extract_concepts_batch(
             concepts: List[Dict[str, Any]] = []
 
             for concept_raw in concepts_raw:
-                normalized = normalize_llm_concept_preserving_raw(concept_raw)
+                normalized = normalize_llm_concept_preserving_raw(
+                    concept_raw
+                )
                 if normalized is not None:
                     concepts.append(normalized)
 
@@ -472,6 +652,22 @@ def setup_entity_schema(tx) -> None:
         CREATE INDEX section_entity_extracted IF NOT EXISTS
         FOR (s:Section)
         ON (s.entity_extracted)
+        """
+    )
+
+    tx.run(
+        """
+        CREATE INDEX section_view_role IF NOT EXISTS
+        FOR (s:Section)
+        ON (s.section_view_role)
+        """
+    )
+
+    tx.run(
+        """
+        CREATE INDEX section_doc_retrieval_order IF NOT EXISTS
+        FOR (s:Section)
+        ON (s.doc_id, s.retrieval_order)
         """
     )
 
@@ -1062,35 +1258,59 @@ def add_entities_from_sections(
     use_acronym_validation: bool = True,
 ) -> Dict[str, int]:
     """
-    Extract concepts from section titles and optionally section text,
-    validate them against the section source text,
-    optionally export accepted/rejected validation decisions for review,
-    then attach the accepted concepts to the Neo4j graph.
+    Extract, validate, and write concepts for retrievable Section-view nodes.
 
-    Acronym validation:
-    - if acronym_dir is provided and use_acronym_validation=True, this loads
-      cached per-document acronym JSON files;
-    - validate_entities.py can then accept a concept when its long form is
-      supported by an acronym short form present in the section text;
-    - validate_entities.py can also expand a raw acronym short form extracted by
-      the LLM into its cached long form before graph writing.
+    Eligibility is intentionally strict:
+    - section_view_role must be ``retrieval``;
+    - embed must be true;
+    - excluded must be false.
 
-    Empty-body policy:
-    - when use_section_text=True, title-only sections with empty body text are
-      skipped and marked as skipped_empty;
-    - when use_section_text=False, title-only extraction is still allowed.
+    Structural Section nodes are never sent to the LLM and are not marked as
+    skipped. They remain pure hierarchy/navigation nodes.
+
+    Oversized retrieval Sections are segmented deterministically without dropping
+    source text. Concepts from every successful segment are merged, deduplicated,
+    validated against the original full Section text, and then written back to
+    the single owner Section. If any segment fails, the whole Section is marked
+    failed rather than writing a partial concept set.
+
+    ``emergency_max_single_chars`` is retained for configuration compatibility,
+    but now acts as the maximum size of one LLM segment instead of a truncation
+    threshold.
     """
     if max_sections_per_batch < 1:
         raise ValueError("max_sections_per_batch must be >= 1")
+    if max_batch_chars < 1:
+        raise ValueError("max_batch_chars must be >= 1")
+    if (
+        emergency_max_single_chars is not None
+        and emergency_max_single_chars < 1
+    ):
+        raise ValueError("emergency_max_single_chars must be >= 1 or None")
+    if max_sections is not None and max_sections < 1:
+        raise ValueError("max_sections must be >= 1 or None")
+
+    max_segment_chars = min(
+        max_batch_chars,
+        (
+            emergency_max_single_chars
+            if emergency_max_single_chars is not None
+            else max_batch_chars
+        ),
+    )
 
     model_name = get_chat_model_name()
     entity_review_run_id = f"entity_extraction::{utc_now_iso()}"
 
     stats = {
+        "eligible_retrieval_sections": 0,
         "processed_sections": 0,
         "successful_sections": 0,
         "failed_sections": 0,
         "skipped_sections": 0,
+        "segmented_sections": 0,
+        "llm_segments": 0,
+        "failed_segments": 0,
         "sections_with_concepts": 0,
         "concepts_written": 0,
         "concepts_rejected_by_validation": 0,
@@ -1110,6 +1330,9 @@ def add_entities_from_sections(
         query = """
         MATCH (s:Section)
         WHERE ($doc_id IS NULL OR s.doc_id = $doc_id)
+          AND s.section_view_role = $retrieval_role
+          AND coalesce(s.embed, false) = true
+          AND coalesce(s.excluded, false) = false
         """
 
         if skip_processed:
@@ -1123,8 +1346,14 @@ def add_entities_from_sections(
             s.doc_id AS doc_id,
             s.section_id AS section_id,
             s.title AS title,
-            s.text AS text
-        ORDER BY s.uid
+            s.text AS text,
+            s.retrieval_order AS retrieval_order,
+            coalesce(s.is_aggregated, false) AS is_aggregated,
+            coalesce(s.source_count, 0) AS source_count
+        ORDER BY
+            s.doc_id,
+            coalesce(s.retrieval_order, s.section_view_order, 0),
+            s.uid
         """
 
         if max_sections is not None:
@@ -1133,6 +1362,7 @@ def add_entities_from_sections(
         result = session.run(
             query,
             doc_id=doc_id,
+            retrieval_role=RETRIEVAL_ROLE,
             max_sections=max_sections,
         )
 
@@ -1145,7 +1375,12 @@ def add_entities_from_sections(
                 "section_id": record["section_id"],
                 "title": record["title"],
                 "text": record["text"],
+                "retrieval_order": record["retrieval_order"],
+                "is_aggregated": bool(record["is_aggregated"]),
+                "source_count": int(record["source_count"] or 0),
             }
+
+            stats["eligible_retrieval_sections"] += 1
 
             if use_section_text and not has_section_body(row):
                 stats["skipped_sections"] += 1
@@ -1154,8 +1389,9 @@ def add_entities_from_sections(
                     row["uid"],
                     replace_section_mentions,
                 )
-                logger.info(
-                    "Skipping section with empty body | doc=%s section=%s title=%r",
+                logger.error(
+                    "Retrieval Section unexpectedly has empty body; skipping | "
+                    "doc=%s section=%s title=%r",
                     row["doc_id"],
                     row["section_id"],
                     row["title"],
@@ -1174,8 +1410,9 @@ def add_entities_from_sections(
                     row["uid"],
                     replace_section_mentions,
                 )
-                logger.info(
-                    "Skipping empty section | doc=%s section=%s",
+                logger.error(
+                    "Retrieval Section produced empty entity source text; "
+                    "skipping | doc=%s section=%s",
                     row["doc_id"],
                     row["section_id"],
                 )
@@ -1204,11 +1441,13 @@ def add_entities_from_sections(
                 1 for acronyms in acronyms_by_doc_id.values() if acronyms
             )
             stats["acronyms_loaded"] = sum(
-                len(acronyms) for acronyms in acronyms_by_doc_id.values()
+                len(acronyms)
+                for acronyms in acronyms_by_doc_id.values()
             )
 
             logger.info(
-                "Acronym validation enabled | docs_with_acronyms=%d/%d | acronyms_loaded=%d | acronym_dir=%s",
+                "Acronym validation enabled | docs_with_acronyms=%d/%d | "
+                "acronyms_loaded=%d | acronym_dir=%s",
                 stats["documents_with_acronym_cache"],
                 len(review_doc_ids),
                 stats["acronyms_loaded"],
@@ -1217,7 +1456,8 @@ def add_entities_from_sections(
 
         elif use_acronym_validation and acronym_dir is None:
             logger.info(
-                "Acronym validation requested but acronym_dir is None; using direct source validation only"
+                "Acronym validation requested but acronym_dir is None; "
+                "using direct source validation only"
             )
 
         else:
@@ -1229,133 +1469,170 @@ def add_entities_from_sections(
                 output_dir=entity_review_output_dir,
             )
 
+        llm_units = build_llm_units(
+            prepared_rows,
+            max_segment_chars=max_segment_chars,
+            overlap_chars=DEFAULT_ENTITY_SEGMENT_OVERLAP_CHARS,
+        )
+
+        segmented_section_uids = {
+            unit["uid"]
+            for unit in llm_units
+            if int(unit.get("segment_count", 1)) > 1
+        }
+        stats["segmented_sections"] = len(segmented_section_uids)
+        stats["llm_segments"] = len(llm_units)
+
         logger.info(
-            "Preparing entity extraction for %d sections%s | skipped_empty=%d | model=%s | max_sections_per_batch=%d",
+            "Preparing entity extraction | eligible_retrieval=%d | "
+            "prepared=%d | skipped=%d | segmented_sections=%d | "
+            "llm_segments=%d | model=%s | max_sections_per_batch=%d | "
+            "max_batch_chars=%d | max_segment_chars=%d",
+            stats["eligible_retrieval_sections"],
             len(prepared_rows),
-            f" in document {doc_id}" if doc_id else "",
             stats["skipped_sections"],
+            stats["segmented_sections"],
+            stats["llm_segments"],
             model_name,
             max_sections_per_batch,
+            max_batch_chars,
+            max_segment_chars,
         )
 
         if export_entity_review:
             logger.info(
-                "Entity review exports enabled | docs=%d | output_dir=%s | include_source_preview=%s",
+                "Entity review exports enabled | docs=%d | output_dir=%s | "
+                "include_source_preview=%s",
                 len(review_doc_ids),
                 entity_review_output_dir or "default",
                 include_source_preview_in_review,
             )
 
+        concepts_by_section_uid: Dict[str, List[Dict[str, Any]]] = {
+            row["uid"]: []
+            for row in prepared_rows
+        }
+        failed_section_uids: set[str] = set()
+
         batch_count = 0
 
         for batch in pack_rows_for_llm(
-            prepared_rows,
+            llm_units,
             max_sections_per_batch=max_sections_per_batch,
             max_batch_chars=max_batch_chars,
             emergency_max_single_chars=emergency_max_single_chars,
         ):
             batch_count += 1
             logger.info(
-                "Extracting entities for batch %d of size %d sections",
+                "Extracting entities for LLM batch %d | units=%d | "
+                "source_sections=%d",
                 batch_count,
                 len(batch),
+                len({unit["uid"] for unit in batch}),
             )
 
-            # Direct single-section path: no fake "batch failed" warning when batch size is 1.
             if len(batch) == 1:
-                row = batch[0]
-                stats["processed_sections"] += 1
-
-                concepts = extract_concepts_single(row["source_text"])
+                unit = batch[0]
+                concepts = extract_concepts_single(unit["source_text"])
 
                 if concepts is None:
-                    stats["failed_sections"] += 1
-                    session.execute_write(
-                        mark_section_extraction_failed,
-                        row["uid"],
-                        replace_section_mentions,
-                    )
+                    stats["failed_segments"] += 1
+                    failed_section_uids.add(unit["uid"])
                     logger.warning(
-                        "Skipping section after failed extraction | doc=%s section=%s",
-                        row["doc_id"],
-                        row["section_id"],
+                        "Entity extraction failed for segment | "
+                        "doc=%s section=%s segment=%d/%d",
+                        unit["doc_id"],
+                        unit["section_id"],
+                        unit.get("segment_index", 1),
+                        unit.get("segment_count", 1),
                     )
-                    continue
+                else:
+                    concepts_by_section_uid[unit["uid"]].extend(concepts)
 
-                process_extracted_concepts(
-                    session=session,
-                    row=row,
-                    concepts=concepts,
-                    stats=stats,
-                    replace_section_mentions=replace_section_mentions,
-                    export_entity_review=export_entity_review,
-                    entity_review_output_dir=entity_review_output_dir,
-                    entity_review_run_id=entity_review_run_id,
-                    include_source_preview_in_review=include_source_preview_in_review,
-                    acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
-                )
                 continue
 
-            # True multi-section batch path.
             batch_result = extract_concepts_batch(batch)
 
             if batch_result is not None:
-                for row in batch:
-                    stats["processed_sections"] += 1
-                    concepts = batch_result.get(row["uid"], [])
-
-                    process_extracted_concepts(
-                        session=session,
-                        row=row,
-                        concepts=concepts,
-                        stats=stats,
-                        replace_section_mentions=replace_section_mentions,
-                        export_entity_review=export_entity_review,
-                        entity_review_output_dir=entity_review_output_dir,
-                        entity_review_run_id=entity_review_run_id,
-                        include_source_preview_in_review=include_source_preview_in_review,
-                        acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
-                    )
-
-            else:
-                logger.warning(
-                    "Batch extraction failed; falling back to single-section extraction for %d sections",
-                    len(batch),
-                )
-
-                for row in batch:
-                    stats["processed_sections"] += 1
-
-                    concepts = extract_concepts_single(row["source_text"])
+                for unit in batch:
+                    request_uid = unit.get("llm_uid", unit["uid"])
+                    concepts = batch_result.get(request_uid)
 
                     if concepts is None:
-                        stats["failed_sections"] += 1
-                        session.execute_write(
-                            mark_section_extraction_failed,
-                            row["uid"],
-                            replace_section_mentions,
-                        )
+                        stats["failed_segments"] += 1
+                        failed_section_uids.add(unit["uid"])
                         logger.warning(
-                            "Skipping section after failed extraction | doc=%s section=%s",
-                            row["doc_id"],
-                            row["section_id"],
+                            "Batch result missing segment despite successful "
+                            "parse | request_uid=%s",
+                            request_uid,
                         )
                         continue
 
-                    process_extracted_concepts(
-                        session=session,
-                        row=row,
-                        concepts=concepts,
-                        stats=stats,
-                        replace_section_mentions=replace_section_mentions,
-                        export_entity_review=export_entity_review,
-                        entity_review_output_dir=entity_review_output_dir,
-                        entity_review_run_id=entity_review_run_id,
-                        include_source_preview_in_review=include_source_preview_in_review,
-                        acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
-                    )
+                    concepts_by_section_uid[unit["uid"]].extend(concepts)
+
+            else:
+                logger.warning(
+                    "Batch extraction failed; falling back to single-unit "
+                    "extraction for %d units",
+                    len(batch),
+                )
+
+                for unit in batch:
+                    concepts = extract_concepts_single(unit["source_text"])
+
+                    if concepts is None:
+                        stats["failed_segments"] += 1
+                        failed_section_uids.add(unit["uid"])
+                        logger.warning(
+                            "Entity extraction failed for fallback segment | "
+                            "doc=%s section=%s segment=%d/%d",
+                            unit["doc_id"],
+                            unit["section_id"],
+                            unit.get("segment_index", 1),
+                            unit.get("segment_count", 1),
+                        )
+                        continue
+
+                    concepts_by_section_uid[unit["uid"]].extend(concepts)
 
         logger.info("Processed %d LLM batches", batch_count)
+
+        for row in prepared_rows:
+            stats["processed_sections"] += 1
+
+            if row["uid"] in failed_section_uids:
+                stats["failed_sections"] += 1
+                session.execute_write(
+                    mark_section_extraction_failed,
+                    row["uid"],
+                    replace_section_mentions,
+                )
+                logger.warning(
+                    "Section marked failed because at least one segment failed | "
+                    "doc=%s section=%s",
+                    row["doc_id"],
+                    row["section_id"],
+                )
+                continue
+
+            merged_concepts = deduplicate_concepts(
+                concepts_by_section_uid.get(row["uid"], [])
+            )
+
+            process_extracted_concepts(
+                session=session,
+                row=row,
+                concepts=merged_concepts,
+                stats=stats,
+                replace_section_mentions=replace_section_mentions,
+                export_entity_review=export_entity_review,
+                entity_review_output_dir=entity_review_output_dir,
+                entity_review_run_id=entity_review_run_id,
+                include_source_preview_in_review=(
+                    include_source_preview_in_review
+                ),
+                acronyms=acronyms_by_doc_id.get(row["doc_id"], {}),
+            )
 
         if export_entity_review and review_doc_ids:
             write_entity_review_summaries_safely(
@@ -1374,11 +1651,24 @@ def add_entities_from_sections(
             )
 
         logger.info(
-            "Entity extraction completed | processed=%d | successful=%d | failed=%d | skipped=%d | sections_with_concepts=%d | concepts_written=%d | concepts_rejected_by_validation=%d | acronym_supported_concepts=%d | sections_with_acronym_supported_concepts=%d | docs_with_acronym_cache=%d | acronyms_loaded=%d | review_accepted=%d | review_rejected=%d | review_export_failures=%d | orphan_concepts_deleted=%d",
+            "Entity extraction completed | eligible_retrieval=%d | "
+            "processed=%d | successful=%d | failed=%d | skipped=%d | "
+            "segmented_sections=%d | llm_segments=%d | failed_segments=%d | "
+            "sections_with_concepts=%d | concepts_written=%d | "
+            "concepts_rejected_by_validation=%d | "
+            "acronym_supported_concepts=%d | "
+            "sections_with_acronym_supported_concepts=%d | "
+            "docs_with_acronym_cache=%d | acronyms_loaded=%d | "
+            "review_accepted=%d | review_rejected=%d | "
+            "review_export_failures=%d | orphan_concepts_deleted=%d",
+            stats["eligible_retrieval_sections"],
             stats["processed_sections"],
             stats["successful_sections"],
             stats["failed_sections"],
             stats["skipped_sections"],
+            stats["segmented_sections"],
+            stats["llm_segments"],
+            stats["failed_segments"],
             stats["sections_with_concepts"],
             stats["concepts_written"],
             stats["concepts_rejected_by_validation"],

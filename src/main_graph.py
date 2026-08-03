@@ -1888,7 +1888,7 @@ def run_cli() -> Any:
     clear_neo4j = _get_env_or_config_bool(
         "KG_CLEAR_NEO4J_BEFORE_RUN",
         pipeline_config.get("clear_neo4j_before_run"),
-        True,
+        False,
     )
 
     phase_kwargs = resolve_phase_kwargs(

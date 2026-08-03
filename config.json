@@ -44,7 +44,7 @@
         "pdf_dir": "mineru_test/pdfdocs",
         "work_root": "mineru_test",
         "mineru_markdown_root": "mineru_test/mddocs",
-        "clear_neo4j_before_run": true,
+        "clear_neo4j_before_run": false,
         "force_toc": false,
         "force_markdown": false,
         "force_anchors": false,
