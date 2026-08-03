@@ -66,16 +66,33 @@ EXCLUDED_TITLE_EXACT = {
 
 
 def is_excluded_section(sec: Dict[str, Any]) -> bool:
+    """Return True when a section must be excluded from downstream retrieval."""
+
+    title = (sec.get("title") or "").translate(
+        str.maketrans({
+            "‘": "'",
+            "’": "'",
+            "“": '"',
+            "”": '"',
+            "`": "'",
+        })
+    )
+
     title = re.sub(
         r"\s+",
         " ",
-        (sec.get("title") or "").strip().lower(),
+        title.strip().lower(),
     )
 
     if sec.get("type") in {"front_matter", "back_matter", "toc"}:
         return True
 
     if title in EXCLUDED_TITLE_EXACT:
+        return True
+
+    # Robust to quotation marks, capitalization and trailing wording such as
+    # "messages from the Guidelines".
+    if "what to do" in title and "what not to do" in title:
         return True
 
     return any(
