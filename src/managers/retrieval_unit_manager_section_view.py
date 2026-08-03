@@ -1,22 +1,35 @@
 """
-Build retrieval units from canonical hierarchical section chunks.
+Build a retrieval-oriented Section view from canonical hierarchical chunks.
 
-The canonical ``*_hier_chunks.json`` files are never modified. This module
-creates a derived retrieval representation in which sections deeper than an
-optional maximum level are merged into their nearest ancestor at that level.
+The canonical ``*_hier_chunks.json`` files are never modified. The module
+first derives retrieval units and then emits the exact ``Section`` records that
+should be loaded by retrieval systems and by the knowledge graph.
+
+The resulting view contains only:
+
+1. retrievable sections, one for each effective retrieval chunk;
+2. empty structural ancestors required to preserve ``HAS_CHILD`` paths.
+
+Excluded sections are omitted. Sections absorbed by an aggregation are omitted
+as nodes because their content is represented by the owner section through
+``source_section_ids`` and related provenance fields.
 
 Semantics
 ---------
-- max_level=None:
-    No aggregation. Every canonical chunk with ``embed=True`` remains a
-    separate retrieval unit.
-- max_level=N:
-    Every embeddable section with ``section_level <= N`` remains separate.
-    Every embeddable section with ``section_level > N`` is assigned to its
-    nearest ancestor whose ``section_level == N``.
+- ``max_level=None``:
+    No aggregation. Every non-excluded canonical chunk with ``embed=True``
+    remains a separate retrievable Section. Empty non-excluded ancestors needed
+    to connect those Sections are retained as structural Sections.
 
-The output keeps the canonical chunk fields used by downstream consumers and
-adds provenance fields describing the source sections represented by each unit.
+- ``max_level=N``:
+    Every embeddable section with ``section_level <= N`` remains separate.
+    Every embeddable section with ``section_level > N`` is merged into its
+    nearest ancestor at level ``N``. The absorbed descendants are not emitted
+    as nodes. Necessary ancestors above the retained retrieval roots remain as
+    empty structural Sections.
+
+All emitted records keep the ``Section`` schema expected by downstream
+consumers and add provenance fields describing the active retrieval strategy.
 """
 
 from __future__ import annotations
@@ -211,9 +224,14 @@ def _resolve_root_section_id(
     chunk_by_section_id: Mapping[str, Mapping[str, Any]],
     max_level: Optional[int],
 ) -> str:
-    """Resolve the retrieval root for one embeddable source chunk."""
+    """Resolve the retrieval owner for one embeddable source chunk."""
     section_id = str(source_chunk["section_id"])
     source_level = int(source_chunk["section_level"])
+
+    if bool(source_chunk.get("excluded")):
+        raise ValueError(
+            f"Excluded section cannot be a retrieval source: {section_id}"
+        )
 
     if max_level is None or source_level <= max_level:
         return section_id
@@ -240,6 +258,12 @@ def _resolve_root_section_id(
             raise ValueError(
                 f"Missing ancestor {parent_id!r} for {section_id!r}"
             )
+        if bool(parent.get("excluded")):
+            raise ValueError(
+                f"Retrieval source {section_id!r} is below excluded "
+                f"section {parent_id!r}"
+            )
+
         current = parent
 
     root_level = int(current["section_level"])
@@ -248,11 +272,6 @@ def _resolve_root_section_id(
             f"Section {section_id!r} has no ancestor exactly at level "
             f"{max_level}; resolved {current['section_id']!r} at "
             f"level {root_level}"
-        )
-    if bool(current.get("excluded")):
-        raise ValueError(
-            "Embeddable descendant resolved to an excluded root: "
-            f"{current['section_id']}"
         )
 
     return str(current["section_id"])
@@ -282,6 +301,12 @@ def _path_below_root(
         current = chunk_by_section_id.get(current_id)
         if current is None:
             raise ValueError(f"Missing section in path: {current_id}")
+        if bool(current.get("excluded")):
+            raise ValueError(
+                f"Path from {root_section_id!r} to "
+                f"{source_section_id!r} crosses excluded section "
+                f"{current_id!r}"
+            )
 
         parent_id = current.get("parent_section_id")
         if parent_id is None:
@@ -728,7 +753,595 @@ def validate_retrieval_units(
     }
 
 
-def retrieval_units_output_path(
+
+def _collect_required_ancestor_ids(
+    content_root_ids: Sequence[str],
+    chunk_by_section_id: Mapping[str, Mapping[str, Any]],
+) -> set[str]:
+    """
+    Return every non-excluded ancestor required to connect retained roots.
+
+    The returned set may contain other content roots. Excluded ancestors are
+    rejected because silently re-parenting around them would alter the
+    canonical document hierarchy.
+    """
+    required: set[str] = set()
+
+    for root_id in content_root_ids:
+        current_id = str(root_id)
+        visited = {current_id}
+
+        while True:
+            current = chunk_by_section_id.get(current_id)
+            if current is None:
+                raise ValueError(
+                    f"Missing section while resolving ancestors: {current_id}"
+                )
+
+            parent_id = current.get("parent_section_id")
+            if parent_id is None:
+                break
+
+            parent_id = str(parent_id)
+            if parent_id in visited:
+                raise ValueError(
+                    f"Cycle detected while resolving ancestors of {root_id}"
+                )
+            visited.add(parent_id)
+
+            parent = chunk_by_section_id.get(parent_id)
+            if parent is None:
+                raise ValueError(
+                    f"Missing ancestor {parent_id!r} for {root_id!r}"
+                )
+            if bool(parent.get("excluded")):
+                raise ValueError(
+                    f"Retained retrieval section {root_id!r} is below "
+                    f"excluded ancestor {parent_id!r}"
+                )
+
+            required.add(parent_id)
+            current_id = parent_id
+
+    return required
+
+
+def _build_structural_view_section(
+    canonical_chunk: Mapping[str, Any],
+    max_level: Optional[int],
+) -> Dict[str, Any]:
+    """Create one empty structural Section for the derived view."""
+    section_id = str(canonical_chunk["section_id"])
+    chunk_id = str(canonical_chunk["chunk_id"])
+    strategy = _strategy_name(max_level)
+    canonical_text = str(canonical_chunk.get("text") or "")
+
+    record = dict(canonical_chunk)
+    record.update(
+        {
+            "text": "",
+            "is_empty": True,
+            "excluded": False,
+            "embed": False,
+            "retrieval_unit_id": None,
+            "retrieval_strategy": strategy,
+            "aggregation_mode": (
+                "none" if max_level is None else "merge_below_level"
+            ),
+            "aggregation_max_level": max_level,
+            "is_aggregated": False,
+            "root_has_local_text": False,
+            "root_section_id": section_id,
+            "root_chunk_id": chunk_id,
+            "root_page_start": canonical_chunk.get("page_start"),
+            "root_page_end": canonical_chunk.get("page_end"),
+            "root_quality_flags": list(
+                canonical_chunk.get("quality_flags") or []
+            ),
+            "source_section_ids": [],
+            "source_chunk_ids": [],
+            "source_sections": [],
+            "represented_section_ids": [],
+            "structural_context_section_ids": [],
+            "source_count": 0,
+            "represented_section_count": 0,
+            "text_chars": 0,
+            "text_words": 0,
+            "source_text_chars": 0,
+            "section_view_role": "structural",
+            "content_owner_section_id": None,
+            "absorbed_section_ids": [],
+            "absorbed_source_section_ids": [],
+            "canonical_text_chars": len(canonical_text),
+            "canonical_is_empty": bool(
+                canonical_chunk.get("is_empty")
+            ),
+            "canonical_embed": bool(canonical_chunk.get("embed")),
+        }
+    )
+    return record
+
+
+def _build_retrieval_view_section(
+    unit: Mapping[str, Any],
+    canonical_root: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Enrich one retrieval unit as the retained content Section."""
+    root_section_id = str(unit["root_section_id"])
+    represented = [
+        str(value)
+        for value in (unit.get("represented_section_ids") or [])
+    ]
+    source_ids = [
+        str(value)
+        for value in (unit.get("source_section_ids") or [])
+    ]
+
+    record = dict(canonical_root)
+    record.update(dict(unit))
+    record.update(
+        {
+            "section_view_role": "retrieval",
+            "content_owner_section_id": root_section_id,
+            "absorbed_section_ids": [
+                section_id
+                for section_id in represented
+                if section_id != root_section_id
+            ],
+            "absorbed_source_section_ids": [
+                section_id
+                for section_id in source_ids
+                if section_id != root_section_id
+            ],
+            "canonical_text_chars": len(
+                str(canonical_root.get("text") or "")
+            ),
+            "canonical_is_empty": bool(
+                canonical_root.get("is_empty")
+            ),
+            "canonical_embed": bool(canonical_root.get("embed")),
+        }
+    )
+    return record
+
+
+def build_retrieval_section_view(
+    chunks: Sequence[Mapping[str, Any]],
+    max_level: Optional[int] = None,
+    include_descendant_titles: bool = True,
+    include_section_ids_in_titles: bool = True,
+    validate: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Build the complete Section view used by retrieval and graph loading.
+
+    The output contains one content Section per effective retrieval unit plus
+    only the empty ancestors required to preserve parent-child paths.
+    Excluded sections and absorbed descendants are omitted.
+    """
+    _validate_max_level(max_level)
+    canonical_chunks = [dict(chunk) for chunk in chunks]
+
+    doc_id, chunk_by_section_id, _ = _validate_canonical_chunks(
+        canonical_chunks
+    )
+
+    units = build_retrieval_units(
+        chunks=canonical_chunks,
+        max_level=max_level,
+        include_descendant_titles=include_descendant_titles,
+        include_section_ids_in_titles=include_section_ids_in_titles,
+        validate=True,
+    )
+    unit_by_root_id = {
+        str(unit["root_section_id"]): unit
+        for unit in units
+    }
+    content_root_ids = list(unit_by_root_id)
+
+    required_ancestor_ids = _collect_required_ancestor_ids(
+        content_root_ids=content_root_ids,
+        chunk_by_section_id=chunk_by_section_id,
+    )
+    retained_ids = set(content_root_ids) | required_ancestor_ids
+
+    section_view: List[Dict[str, Any]] = []
+
+    for canonical_chunk in canonical_chunks:
+        section_id = str(canonical_chunk["section_id"])
+
+        if section_id not in retained_ids:
+            continue
+        if bool(canonical_chunk.get("excluded")):
+            raise ValueError(
+                f"Excluded section unexpectedly retained: {section_id}"
+            )
+
+        unit = unit_by_root_id.get(section_id)
+        if unit is not None:
+            section_view.append(
+                _build_retrieval_view_section(
+                    unit=unit,
+                    canonical_root=canonical_chunk,
+                )
+            )
+        else:
+            section_view.append(
+                _build_structural_view_section(
+                    canonical_chunk=canonical_chunk,
+                    max_level=max_level,
+                )
+            )
+
+    if validate:
+        report = validate_retrieval_section_view(
+            chunks=canonical_chunks,
+            section_view=section_view,
+            max_level=max_level,
+        )
+        if not report["valid"]:
+            raise ValueError(
+                "Retrieval Section-view validation failed: "
+                + "; ".join(report["errors"])
+            )
+
+    logger.info(
+        "Built Section view for %s: sections=%d, retrieval=%d, "
+        "structural=%d, strategy=%s",
+        doc_id,
+        len(section_view),
+        sum(
+            1
+            for section in section_view
+            if section.get("section_view_role") == "retrieval"
+        ),
+        sum(
+            1
+            for section in section_view
+            if section.get("section_view_role") == "structural"
+        ),
+        _strategy_name(max_level),
+    )
+    return section_view
+
+
+def validate_retrieval_section_view(
+    chunks: Sequence[Mapping[str, Any]],
+    section_view: Sequence[Mapping[str, Any]],
+    max_level: Optional[int],
+) -> Dict[str, Any]:
+    """
+    Validate coverage, parent closure, pruning, ordering, and node roles.
+    """
+    _validate_max_level(max_level)
+    errors: List[str] = []
+
+    canonical_chunks = [dict(chunk) for chunk in chunks]
+    try:
+        doc_id, chunk_by_section_id, order_by_section_id = (
+            _validate_canonical_chunks(canonical_chunks)
+        )
+    except (TypeError, ValueError) as exc:
+        return {"valid": False, "errors": [str(exc)]}
+
+    expected_sources = [
+        chunk
+        for chunk in canonical_chunks
+        if bool(chunk.get("embed"))
+    ]
+
+    source_to_owner: Dict[str, str] = {}
+    owner_to_sources: Dict[str, List[str]] = defaultdict(list)
+
+    for source in expected_sources:
+        source_section_id = str(source["section_id"])
+        try:
+            owner_id = _resolve_root_section_id(
+                source_chunk=source,
+                chunk_by_section_id=chunk_by_section_id,
+                max_level=max_level,
+            )
+        except (TypeError, ValueError) as exc:
+            errors.append(str(exc))
+            continue
+
+        source_to_owner[source_section_id] = owner_id
+        owner_to_sources[owner_id].append(source_section_id)
+
+    expected_root_ids: List[str] = []
+    seen_roots: set[str] = set()
+    for source in expected_sources:
+        source_section_id = str(source["section_id"])
+        owner_id = source_to_owner.get(source_section_id)
+        if owner_id is None or owner_id in seen_roots:
+            continue
+        seen_roots.add(owner_id)
+        expected_root_ids.append(owner_id)
+
+    try:
+        required_ancestor_ids = _collect_required_ancestor_ids(
+            content_root_ids=expected_root_ids,
+            chunk_by_section_id=chunk_by_section_id,
+        )
+    except (TypeError, ValueError) as exc:
+        errors.append(str(exc))
+        required_ancestor_ids = set()
+
+    expected_root_set = set(expected_root_ids)
+    expected_structural_ids = required_ancestor_ids - expected_root_set
+    expected_view_ids = expected_root_set | required_ancestor_ids
+
+    expected_ordered_view_ids = [
+        str(chunk["section_id"])
+        for chunk in canonical_chunks
+        if str(chunk["section_id"]) in expected_view_ids
+    ]
+
+    observed_section_ids: List[str] = []
+    observed_chunk_ids: List[str] = []
+    observed_retrieval_ids: List[str] = []
+    observed_structural_ids: List[str] = []
+    retrieval_sections: List[Mapping[str, Any]] = []
+
+    for index, section in enumerate(section_view):
+        section_id = str(section.get("section_id") or "")
+        chunk_id = str(section.get("chunk_id") or "")
+        role = str(section.get("section_view_role") or "")
+
+        observed_section_ids.append(section_id)
+        observed_chunk_ids.append(chunk_id)
+
+        if not section_id:
+            errors.append(f"Section-view record at index {index} has no id")
+            continue
+
+        canonical = chunk_by_section_id.get(section_id)
+        if canonical is None:
+            errors.append(f"Unknown Section-view id: {section_id}")
+            continue
+
+        if bool(section.get("excluded")):
+            errors.append(
+                f"Excluded section present in Section view: {section_id}"
+            )
+        if str(section.get("retrieval_strategy")) != _strategy_name(
+            max_level
+        ):
+            errors.append(
+                f"Wrong retrieval strategy on section {section_id}"
+            )
+
+        parent_id = section.get("parent_section_id")
+        if parent_id is not None:
+            parent_id = str(parent_id)
+            if parent_id not in expected_view_ids:
+                errors.append(
+                    f"Section {section_id} has missing retained parent "
+                    f"{parent_id}"
+                )
+
+        if max_level is not None:
+            level = int(section.get("section_level") or 0)
+            if level > max_level:
+                errors.append(
+                    f"Section {section_id} exceeds max_level={max_level}"
+                )
+
+        if role == "retrieval":
+            observed_retrieval_ids.append(section_id)
+            retrieval_sections.append(section)
+
+            if not bool(section.get("embed")):
+                errors.append(
+                    f"Retrieval Section is not embeddable: {section_id}"
+                )
+            if bool(section.get("is_empty")):
+                errors.append(
+                    f"Retrieval Section is marked empty: {section_id}"
+                )
+            if not str(section.get("text") or "").strip():
+                errors.append(
+                    f"Retrieval Section has no text: {section_id}"
+                )
+            if str(section.get("root_section_id") or "") != section_id:
+                errors.append(
+                    f"Retrieval Section root mismatch: {section_id}"
+                )
+            if str(
+                section.get("content_owner_section_id") or ""
+            ) != section_id:
+                errors.append(
+                    f"Content owner mismatch on Section {section_id}"
+                )
+
+        elif role == "structural":
+            observed_structural_ids.append(section_id)
+
+            if bool(section.get("embed")):
+                errors.append(
+                    f"Structural Section is embeddable: {section_id}"
+                )
+            if not bool(section.get("is_empty")):
+                errors.append(
+                    f"Structural Section is not empty: {section_id}"
+                )
+            if str(section.get("text") or ""):
+                errors.append(
+                    f"Structural Section contains text: {section_id}"
+                )
+            if section.get("source_section_ids"):
+                errors.append(
+                    f"Structural Section has source ids: {section_id}"
+                )
+
+        else:
+            errors.append(
+                f"Unknown section_view_role={role!r} on {section_id}"
+            )
+
+    if len(observed_section_ids) != len(set(observed_section_ids)):
+        errors.append("Duplicate section_id values in Section view")
+    if len(observed_chunk_ids) != len(set(observed_chunk_ids)):
+        errors.append("Duplicate chunk_id values in Section view")
+
+    if observed_section_ids != expected_ordered_view_ids:
+        errors.append("Section-view order does not match canonical TOC order")
+
+    if set(observed_retrieval_ids) != expected_root_set:
+        missing = sorted(expected_root_set - set(observed_retrieval_ids))
+        extra = sorted(set(observed_retrieval_ids) - expected_root_set)
+        if missing:
+            errors.append(
+                f"Missing retrieval Sections: {missing[:20]}"
+            )
+        if extra:
+            errors.append(
+                f"Unexpected retrieval Sections: {extra[:20]}"
+            )
+
+    if set(observed_structural_ids) != expected_structural_ids:
+        missing = sorted(
+            expected_structural_ids - set(observed_structural_ids)
+        )
+        extra = sorted(
+            set(observed_structural_ids) - expected_structural_ids
+        )
+        if missing:
+            errors.append(
+                f"Missing structural Sections: {missing[:20]}"
+            )
+        if extra:
+            errors.append(
+                f"Unexpected structural Sections: {extra[:20]}"
+            )
+
+    observed_id_set = set(observed_section_ids)
+    for section in section_view:
+        parent_id = section.get("parent_section_id")
+        if parent_id is None:
+            continue
+        if str(parent_id) not in observed_id_set:
+            errors.append(
+                f"Parent closure failed for {section.get('section_id')}: "
+                f"{parent_id}"
+            )
+
+    retrieval_report = validate_retrieval_units(
+        chunks=canonical_chunks,
+        retrieval_units=retrieval_sections,
+        max_level=max_level,
+    )
+    errors.extend(
+        f"Retrieval-unit check: {message}"
+        for message in retrieval_report.get("errors", [])
+    )
+
+    absorbed_source_ids = {
+        source_id
+        for source_id, owner_id in source_to_owner.items()
+        if source_id != owner_id
+    }
+    absorbed_node_ids = {
+        str(section_id)
+        for section in retrieval_sections
+        for section_id in (
+            section.get("absorbed_section_ids") or []
+        )
+    }
+
+    absorbed_sources_still_present = sorted(
+        absorbed_source_ids & observed_id_set
+    )
+    if absorbed_sources_still_present:
+        errors.append(
+            "Absorbed source Sections are still present as nodes: "
+            f"{absorbed_sources_still_present[:20]}"
+        )
+
+    excluded_ids = {
+        str(chunk["section_id"])
+        for chunk in canonical_chunks
+        if bool(chunk.get("excluded"))
+    }
+    excluded_present = sorted(excluded_ids & observed_id_set)
+    if excluded_present:
+        errors.append(
+            f"Excluded Sections present in view: {excluded_present[:20]}"
+        )
+
+    if max_level is None:
+        if absorbed_source_ids:
+            errors.append(
+                "max_level=None unexpectedly absorbed source Sections"
+            )
+        if any(
+            bool(section.get("is_aggregated"))
+            for section in retrieval_sections
+        ):
+            errors.append(
+                "max_level=None produced aggregated retrieval Sections"
+            )
+
+    non_excluded_ids = {
+        str(chunk["section_id"])
+        for chunk in canonical_chunks
+        if not bool(chunk.get("excluded"))
+    }
+    pruned_non_required_ids = (
+        non_excluded_ids
+        - observed_id_set
+        - absorbed_node_ids
+    )
+
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "doc_id": doc_id,
+        "strategy": _strategy_name(max_level),
+        "max_level": max_level,
+        "canonical_chunk_count": len(canonical_chunks),
+        "canonical_excluded_chunk_count": len(excluded_ids),
+        "embeddable_source_chunk_count": len(expected_sources),
+        "section_view_count": len(section_view),
+        "retrievable_section_count": len(retrieval_sections),
+        "structural_section_count": len(observed_structural_ids),
+        "aggregated_retrievable_section_count": sum(
+            1
+            for section in retrieval_sections
+            if bool(section.get("is_aggregated"))
+        ),
+        "absorbed_source_section_count": len(absorbed_source_ids),
+        "absorbed_node_count": len(absorbed_node_ids),
+        "pruned_non_required_section_count": len(
+            pruned_non_required_ids
+        ),
+        "source_coverage_complete": bool(
+            retrieval_report.get("source_coverage_complete")
+        ),
+        "source_order_preserved": bool(
+            retrieval_report.get("source_order_preserved")
+        ),
+        "toc_order_preserved": (
+            observed_section_ids == expected_ordered_view_ids
+        ),
+        "parent_closure_complete": all(
+            section.get("parent_section_id") is None
+            or str(section.get("parent_section_id")) in observed_id_set
+            for section in section_view
+        ),
+        "source_to_owner_section_id": source_to_owner,
+        "owner_to_source_section_ids": {
+            owner_id: source_ids
+            for owner_id, source_ids in owner_to_sources.items()
+        },
+        "pruned_non_required_section_ids": sorted(
+            pruned_non_required_ids,
+            key=lambda section_id: order_by_section_id[section_id],
+        ),
+    }
+
+
+def section_view_output_path(
     output_dir: Path | str,
     doc_id: str,
     max_level: Optional[int],
@@ -736,18 +1349,18 @@ def retrieval_units_output_path(
     _validate_max_level(max_level)
     return (
         Path(output_dir)
-        / f"{doc_id}_retrieval_units_{_strategy_suffix(max_level)}.json"
+        / f"{doc_id}_section_view_{_strategy_suffix(max_level)}.json"
     )
 
 
-def retrieval_units_validation_path(output_path: Path | str) -> Path:
+def section_view_validation_path(output_path: Path | str) -> Path:
     output_path = Path(output_path)
     return output_path.with_name(
         f"{output_path.stem}_validation.json"
     )
 
 
-def build_retrieval_units_file(
+def build_retrieval_section_view_file(
     input_path: Path | str,
     output_dir: Path | str,
     max_level: Optional[int] = None,
@@ -756,7 +1369,7 @@ def build_retrieval_units_file(
     force: bool = False,
     write_validation: bool = True,
 ) -> Tuple[Path, Dict[str, Any]]:
-    """Load canonical chunks, build units, write units and validation."""
+    """Load canonical chunks, build the Section view, and write its audit."""
     input_path = Path(input_path)
     chunks = load_hierarchical_chunks(input_path)
 
@@ -769,31 +1382,35 @@ def build_retrieval_units_file(
         raise ValueError(f"Could not determine one doc_id from {input_path}")
     doc_id = next(iter(doc_ids))
 
-    output_path = retrieval_units_output_path(
+    output_path = section_view_output_path(
         output_dir=output_dir,
         doc_id=doc_id,
         max_level=max_level,
     )
     if output_path.exists() and not force:
         raise FileExistsError(
-            f"Output already exists: {output_path}. Use --force to replace it."
+            f"Output already exists: {output_path}. "
+            "Use --force to replace it."
         )
 
-    units = build_retrieval_units(
+    section_view = build_retrieval_section_view(
         chunks=chunks,
         max_level=max_level,
         include_descendant_titles=include_descendant_titles,
         include_section_ids_in_titles=include_section_ids_in_titles,
         validate=True,
     )
-    report = validate_retrieval_units(chunks, units, max_level)
+    report = validate_retrieval_section_view(
+        chunks=chunks,
+        section_view=section_view,
+        max_level=max_level,
+    )
 
-    # Plain list, matching the current hierarchical-chunk artifact style.
-    write_json_atomic(units, output_path)
+    write_json_atomic(section_view, output_path)
     if write_validation:
         write_json_atomic(
             report,
-            retrieval_units_validation_path(output_path),
+            section_view_validation_path(output_path),
         )
 
     return output_path, report
@@ -821,15 +1438,18 @@ def _parse_max_level(raw_value: str) -> Optional[int]:
 def _default_output_dir(input_path: Path) -> Path:
     # Expected layout:
     #   <work_root>/chunks/<doc>_hier_chunks.json
-    #   <work_root>/retrieval_units/
+    #   <work_root>/section_views/
     if input_path.parent.name == "chunks":
-        return input_path.parent.parent / "retrieval_units"
-    return input_path.parent / "retrieval_units"
+        return input_path.parent.parent / "section_views"
+    return input_path.parent / "section_views"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build retrieval units from *_hier_chunks.json."
+        description=(
+            "Build the retrieval-oriented Section view from "
+            "*_hier_chunks.json."
+        )
     )
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-dir", type=Path, default=None)
@@ -840,7 +1460,10 @@ def main() -> None:
         help="none for baseline, otherwise an integer such as 4 or 5",
     )
     parser.add_argument("--no-descendant-titles", action="store_true")
-    parser.add_argument("--no-section-ids-in-titles", action="store_true")
+    parser.add_argument(
+        "--no-section-ids-in-titles",
+        action="store_true",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-validation-file", action="store_true")
     parser.add_argument(
@@ -862,7 +1485,7 @@ def main() -> None:
         else _default_output_dir(input_path).resolve()
     )
 
-    output_path, report = build_retrieval_units_file(
+    output_path, report = build_retrieval_section_view_file(
         input_path=input_path,
         output_dir=output_dir,
         max_level=args.max_level,
@@ -874,13 +1497,15 @@ def main() -> None:
         write_validation=not args.no_validation_file,
     )
 
-    logger.info("Retrieval units written to %s", output_path)
+    logger.info("Section view written to %s", output_path)
     logger.info(
-        "Validation: valid=%s | units=%d | aggregated=%d | "
-        "coverage=%s | order=%s",
+        "Validation: valid=%s | sections=%d | retrieval=%d | "
+        "structural=%d | aggregated=%d | coverage=%s | order=%s",
         report["valid"],
-        report["retrieval_unit_count"],
-        report["aggregated_retrieval_unit_count"],
+        report["section_view_count"],
+        report["retrievable_section_count"],
+        report["structural_section_count"],
+        report["aggregated_retrievable_section_count"],
         report["source_coverage_complete"],
         report["source_order_preserved"],
     )

@@ -59,6 +59,25 @@ SHORT_SHAPE_RX = re.compile(
     r"[%A-Za-z0-9Α-Ωα-ω/\.\-+\(\)′']{0,31}$"
 )
 
+# Narrow exceptions for legitimate glossary labels that the generic shape
+# rules intentionally reject. Keep these patterns strict: broad acceptance of
+# one-letter or mixed-case words would create many false row boundaries.
+SYMBOL_MARKED_SHORT_RX = re.compile(
+    r"^(?:"
+    r"[A-Za-zΑ-Ωα-ω][′']"
+    r"|"
+    r"[↑↓][A-Za-zΑ-Ωα-ω][A-Za-z0-9Α-Ωα-ω.\-]{1,15}"
+    r")$"
+)
+
+BIOMEDICAL_MIXED_HYPHEN_SHORT_RX = re.compile(
+    r"^(?:"
+    r"[a-z]{1,3}-[a-z]?[A-Z][A-Za-z0-9]{0,4}"
+    r"|"
+    r"[A-Z][a-z]{2,6}-[A-Z]"
+    r")$"
+)
+
 LINE_NOISE_RX = re.compile(
     r"(?i)(downloaded from|academic\.oup\.com|oup\.com|https?://|www\.|"
     r"\bdoi\b|permissions|copyright|eur heart j|esc guidelines|"
@@ -711,6 +730,54 @@ def clean_long_definition(long: str) -> str:
     return long.strip(" -–:;")
 
 
+def clean_definition_fragment(text: str) -> str:
+    """
+    Clean one wrapped-definition fragment while preserving a final hyphen.
+
+    This keeps the old protection against isolated footer tokens such as a
+    trailing ``from`` but avoids the destructive ``strip(" -–:;")`` used by
+    final definition cleanup.
+    """
+    text = strip_footer_bleed(text).strip()
+
+    for _ in range(8):
+        parts = text.split()
+        if not parts:
+            break
+
+        last = parts[-1].strip(".,;:()[]").lower()
+        if last in TRAILING_FOOTER_TOKENS:
+            text = " ".join(parts[:-1]).rstrip()
+        else:
+            break
+
+    return normalize_spaces(text)
+
+
+def merge_definition_continuation(current: str, continuation: str) -> str:
+    """
+    Join a wrapped definition without applying final cleanup too early.
+
+    In particular, a line-final hyphen may be a real intra-word hyphen split
+    across PDF lines (for example, ``Weight-`` + ``Related``). Removing it
+    before the next line is attached causes both truncation and spacing errors.
+    Final cleanup is still performed during post-validation.
+    """
+    current = clean_definition_fragment(current).rstrip()
+    continuation = clean_definition_fragment(continuation).lstrip()
+
+    if not current:
+        return normalize_spaces(continuation)
+
+    if not continuation:
+        return normalize_spaces(current)
+
+    if current.endswith(("-", "–")):
+        return normalize_spaces(current + continuation)
+
+    return normalize_spaces(f"{current} {continuation}")
+
+
 def contains_greek_letter(text: str) -> bool:
     return any("Α" <= ch <= "Ω" or "α" <= ch <= "ω" for ch in text)
 
@@ -755,6 +822,11 @@ def is_false_positive_short_word(token: str) -> bool:
     token = clean_short_token(token)
     if not token:
         return True
+
+    # Prime- and arrow-marked glossary labels are explicit notation, not
+    # ordinary stop words (for example a′, e′, s′, and ↑QTc).
+    if SYMBOL_MARKED_SHORT_RX.fullmatch(token):
+        return False
 
     if is_all_caps_like(token):
         return False
@@ -1158,6 +1230,11 @@ def is_generic_mixed_case_short(token: str) -> bool:
 def looks_like_short(short: str) -> bool:
     s = clean_short_token(short)
 
+    # ``↑QTc`` is outside the generic character class, while ``a′``, ``e′``,
+    # and ``s′`` are deliberately rejected by the generic single-letter rule.
+    if SYMBOL_MARKED_SHORT_RX.fullmatch(s):
+        return True
+
     if not SHORT_SHAPE_RX.fullmatch(s):
         return False
 
@@ -1182,6 +1259,11 @@ def looks_like_short(short: str) -> bool:
     # Important: lowercase hyphenated real short forms must be accepted before
     # the generic hyphenated-phrase rejection below.
     if is_lowercase_hyphen_short(s):
+        return True
+
+    # Narrow biomedical forms such as hs-cTn, Peric-E, and Pleu-E. This check
+    # must happen before the generic hyphenated-phrase rejection below.
+    if BIOMEDICAL_MIXED_HYPHEN_SHORT_RX.fullmatch(s):
         return True
 
     if is_upper_prefix_lowercase_hyphen_phrase(s):
@@ -1543,10 +1625,56 @@ def is_confident_post_validation_embedded_row_boundary(
     return True
 
 
+def candidate_is_component_of_parent_short(
+    parent_short: str,
+    candidate_short: str,
+) -> bool:
+    """
+    Reject an embedded split when the candidate is already part of the current
+    short form.
+
+    Examples:
+      X-ECG -> Exercise ECG testing
+      QTc   -> Corrected QT interval
+      QTcF  -> Corrected QT interval using Fridericia correction
+
+    Without this guard, ECG or QT can be mistaken for a second acronym row on
+    the same extracted PDF line.
+    """
+    parent_short = clean_short_token(parent_short)
+    candidate_short = clean_short_token(candidate_short)
+
+    parent_letters = short_alpha_letters(parent_short)
+    candidate_letters = short_alpha_letters(candidate_short)
+
+    if len(candidate_letters) < 2:
+        return False
+
+    components = {
+        short_alpha_letters(part)
+        for part in re.split(
+            r"[^A-Za-zΑ-Ωα-ω0-9]+",
+            parent_short,
+        )
+        if part
+    }
+
+    if candidate_letters in components:
+        return True
+
+    # Covers suffix-marked forms such as QTc and QTcF without broadly blocking
+    # unrelated acronyms that happen to share a long prefix.
+    return (
+        parent_letters.startswith(candidate_letters)
+        and 0 < len(parent_letters) - len(candidate_letters) <= 2
+    )
+
+
 def find_next_row_boundary(
     parts: List[str],
     long_start_idx: int,
     search_start_idx: int,
+    current_short: str,
 ) -> Optional[Tuple[int, int, str]]:
     for idx in range(search_start_idx, len(parts) - 1):
         candidate = find_short_sequence_at(parts, idx)
@@ -1555,6 +1683,10 @@ def find_next_row_boundary(
             continue
 
         short, n_tokens = candidate
+
+        if candidate_is_component_of_parent_short(current_short, short):
+            continue
+
         current_long_tokens = parts[long_start_idx:idx]
         after_tokens = parts[idx + n_tokens:]
 
@@ -1606,6 +1738,7 @@ def parse_acronym_rows(line: str) -> List[Tuple[str, str]]:
             parts=parts,
             long_start_idx=long_start,
             search_start_idx=long_start + 1,
+            current_short=short,
         )
 
         if boundary is None:
@@ -1687,25 +1820,12 @@ def short_contains_component(parent_short: str, embedded_short: str) -> bool:
     short form.
 
     This suppresses false diagnostics when a parent acronym naturally contains
-    a component acronym separated by punctuation.
+    a component acronym separated by punctuation or followed by a short suffix.
     """
-    parent_short = clean_short_token(parent_short)
-    embedded_short = clean_short_token(embedded_short)
-
-    if not parent_short or not embedded_short:
-        return False
-
-    parent_parts = [
-        short_alpha_letters(p)
-        for p in re.split(r"[^A-Za-zΑ-Ωα-ω0-9]+", parent_short)
-        if p
-    ]
-    embedded_letters = short_alpha_letters(embedded_short)
-
-    if not embedded_letters:
-        return False
-
-    return embedded_letters in parent_parts
+    return candidate_is_component_of_parent_short(
+        parent_short=parent_short,
+        candidate_short=embedded_short,
+    )
 
 
 def definition_looks_suspicious(short: str, long: str) -> bool:
@@ -1899,6 +2019,8 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
     acronyms: Dict[str, str] = {}
 
     current_short: Optional[str] = None
+    current_row_x0: Optional[float] = None
+    current_column: Optional[str] = None
     pending_short: Optional[str] = None
     prev_line: Optional[PDFLine] = None
 
@@ -1911,11 +2033,30 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
 
         parsed_rows = parse_acronym_rows(text)
 
+        # A continuation line may begin with an acronym-shaped token. In ESC
+        # glossaries it is usually visibly indented into the definition column.
+        # Prefer geometry over lexical guessing in this high-confidence case.
+        if (
+            parsed_rows
+            and current_short is not None
+            and current_row_x0 is not None
+            and current_column == line.column
+            and line.x0 >= current_row_x0 + 20.0
+        ):
+            acronyms[current_short] = merge_definition_continuation(
+                acronyms[current_short],
+                text,
+            )
+            prev_line = line
+            continue
+
         if parsed_rows:
             for short, long in parsed_rows:
                 add_or_update_acronym(acronyms, short, long)
 
             current_short = parsed_rows[-1][0]
+            current_row_x0 = line.x0
+            current_column = line.column
             pending_short = None
             prev_line = line
             continue
@@ -1931,6 +2072,8 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
                 if len(long) >= 3 and row_definition_is_plausible(pending_short, long):
                     add_or_update_acronym(acronyms, pending_short, long)
                     current_short = pending_short
+                    current_row_x0 = prev_line.x0 if prev_line is not None else line.x0
+                    current_column = line.column
                     pending_short = None
                     prev_line = line
                     continue
@@ -1940,6 +2083,8 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
         if looks_like_standalone_short_line(text):
             pending_short = clean_short_token(text)
             current_short = None
+            current_row_x0 = None
+            current_column = None
             prev_line = line
             continue
 
@@ -1948,12 +2093,16 @@ def extract_acronyms_from_lines(lines: List[PDFLine]) -> Dict[str, str]:
             current_long=acronyms[current_short],
             prev_line=prev_line,
         ):
-            merged = clean_long_definition(acronyms[current_short] + " " + text)
-            acronyms[current_short] = merged
+            acronyms[current_short] = merge_definition_continuation(
+                acronyms[current_short],
+                text,
+            )
             prev_line = line
             continue
 
         current_short = None
+        current_row_x0 = None
+        current_column = None
         prev_line = line
 
     return acronyms
