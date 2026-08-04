@@ -5,7 +5,8 @@ This module defines phase-aware Neo4j checks used to validate:
 - graph structure after loading
 - entity extraction outputs
 - concept type-resolution outputs
-- acronym-supported entity-validation metadata
+- acronym-supported entity-validation metadata and expansion integrity
+- invalid legacy entity types preserved during schema migration
 - embedding outputs
 
 Each check is tagged by phase so the pipeline can run only the
@@ -669,6 +670,81 @@ CHECKS: List[Dict[str, Any]] = [
                    c.type_support_pairs AS type_support_pairs,
                    c.type_resolution_status AS type_resolution_status
             ORDER BY name
+        """,
+    },
+    {
+        "name": "concept_invalid_observed_type_summary",
+        "title": "Concept invalid_observed_types summary",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "INFO",
+        "is_summary": True,
+        "query": """
+            MATCH (c:Concept)
+            UNWIND coalesce(c.invalid_observed_types, []) AS invalid_type
+            RETURN invalid_type, count(c) AS n
+            ORDER BY n DESC, invalid_type ASC
+        """,
+    },
+    {
+        "name": "concepts_with_invalid_types_not_flagged_for_review",
+        "title": "Concepts with invalid observed types not flagged for review",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (c:Concept)
+            WHERE size(coalesce(c.invalid_observed_types, [])) > 0
+              AND coalesce(c.needs_type_review, false) = false
+            RETURN c.name AS name,
+                   c.canonical_type AS canonical_type,
+                   c.observed_types AS observed_types,
+                   c.invalid_observed_types AS invalid_observed_types,
+                   c.type_resolution_status AS type_resolution_status
+            ORDER BY name
+        """,
+    },
+    {
+        "name": "allowed_types_stored_as_invalid_observed_types",
+        "title": "Allowed entity types incorrectly stored as invalid_observed_types",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "allowed_entity_types": VALID_ENTITY_TYPES,
+        },
+        "query": """
+            MATCH (c:Concept)
+            UNWIND coalesce(c.invalid_observed_types, []) AS invalid_type
+            WITH c, invalid_type
+            WHERE invalid_type IN $allowed_entity_types
+            RETURN c.name AS name,
+                   invalid_type,
+                   c.invalid_observed_types AS invalid_observed_types
+            ORDER BY name, invalid_type
+        """,
+    },
+    {
+        "name": "invalid_types_remaining_in_concept_observed_types",
+        "title": "Invalid entity types remaining in Concept.observed_types",
+        "group": "Concept type resolution",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "allowed_entity_types": VALID_ENTITY_TYPES,
+        },
+        "query": """
+            MATCH (c:Concept)
+            UNWIND coalesce(c.observed_types, []) AS observed_type
+            WITH c, observed_type
+            WHERE observed_type IS NOT NULL
+              AND observed_type <> ''
+              AND NOT (observed_type IN $allowed_entity_types)
+            RETURN c.name AS name,
+                   observed_type,
+                   c.observed_types AS observed_types,
+                   c.invalid_observed_types AS invalid_observed_types
+            ORDER BY name, observed_type
         """,
     },
     {
@@ -1367,6 +1443,100 @@ CHECKS: List[Dict[str, Any]] = [
                    mention_props['support_method'] AS support_method,
                    mention_props['raw_name'] AS raw_name,
                    mention_props['acronym_short'] AS acronym_short
+            ORDER BY section_uid, concept
+        """,
+    },
+
+    {
+        "name": "acronym_supported_mentions_short_not_in_section",
+        "title": "Acronym-supported mentions whose short form is absent from the Section",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WITH s, r, c, properties(r) AS mention_props,
+                 toLower(
+                     coalesce(s.title, '') + ' ' + coalesce(s.text, '')
+                 ) AS section_source
+            WHERE mention_props['support_method'] = 'acronym'
+              AND mention_props['acronym_short'] IS NOT NULL
+              AND trim(toString(mention_props['acronym_short'])) <> ''
+              AND NOT section_source CONTAINS
+                  toLower(trim(toString(mention_props['acronym_short'])))
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   mention_props['acronym_short'] AS acronym_short,
+                   mention_props['acronym_definition'] AS acronym_definition,
+                   mention_props['acronym_match_method'] AS acronym_match_method
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "expanded_acronym_mentions_still_named_as_short_form",
+        "title": "Expanded acronym mentions whose Concept name is still the short form",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WITH s, r, c, properties(r) AS mention_props
+            WHERE coalesce(mention_props['expanded_from_acronym'], false) = true
+              AND mention_props['acronym_short'] IS NOT NULL
+              AND toLower(trim(c.name)) =
+                  toLower(trim(toString(mention_props['acronym_short'])))
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   mention_props['raw_name'] AS raw_name,
+                   mention_props['acronym_short'] AS acronym_short,
+                   mention_props['acronym_definition'] AS acronym_definition
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "expanded_acronym_raw_name_mismatches_short_form",
+        "title": "Expanded acronym mentions whose raw_name differs from acronym_short",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WITH s, r, c, properties(r) AS mention_props
+            WHERE coalesce(mention_props['expanded_from_acronym'], false) = true
+              AND mention_props['raw_name'] IS NOT NULL
+              AND mention_props['acronym_short'] IS NOT NULL
+              AND toUpper(trim(toString(mention_props['raw_name']))) <>
+                  toUpper(trim(toString(mention_props['acronym_short'])))
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   mention_props['raw_name'] AS raw_name,
+                   mention_props['acronym_short'] AS acronym_short,
+                   mention_props['acronym_definition'] AS acronym_definition
+            ORDER BY section_uid, concept
+        """,
+    },
+    {
+        "name": "likely_unexpanded_uppercase_acronym_mentions",
+        "title": "Likely uppercase acronym mentions not expanded through acronym validation",
+        "group": "Acronym validation",
+        "phases": {"entities"},
+        "level": "WARNING",
+        "query": """
+            MATCH (s:Section)-[r:MENTIONS]->(c:Concept)
+            WITH s, r, c, properties(r) AS mention_props
+            WHERE mention_props['raw_name'] IS NOT NULL
+              AND trim(toString(mention_props['raw_name'])) =~
+                  '^[A-Z][A-Z0-9-]{1,7}$'
+              AND toLower(trim(c.name)) =
+                  toLower(trim(toString(mention_props['raw_name'])))
+              AND coalesce(mention_props['expanded_from_acronym'], false) = false
+              AND coalesce(toString(mention_props['support_method']), '') <>
+                  'acronym'
+            RETURN s.uid AS section_uid,
+                   c.name AS concept,
+                   mention_props['raw_name'] AS raw_name,
+                   mention_props['support_method'] AS support_method,
+                   mention_props['validation_reason'] AS validation_reason
             ORDER BY section_uid, concept
         """,
     },

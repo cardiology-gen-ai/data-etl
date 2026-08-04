@@ -36,6 +36,19 @@
         "splitter": "recursive",
         "chunk_size": 1000,
         "chunk_overlap": 200
+      },
+      "tables": {
+        "enabled": true,
+        "source_dir": "mineru_test/content_list",
+        "chunk_dir": "mineru_test/clean_chunks",
+        "catalog_dir": "mineru_test/table_catalogs/raw",
+        "processed_dir": "mineru_test/table_catalogs/processed",
+        "source_format": "auto",
+        "link_to_chunks": true,
+        "parse_recommendations": true,
+        "render_mode": "conservative",
+        "write_back_to_chunks": false,
+        "force": false
       }
     },
     "knowledge_graph": {

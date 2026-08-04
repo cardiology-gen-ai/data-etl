@@ -50,12 +50,17 @@ MAX_EVIDENCE_TEXT_CHARS = 500
 # Extra fields that may be produced by validate_entities.py and are useful
 # for debugging accepted/rejected decisions.
 REVIEW_EVIDENCE_FIELDS = [
+    "raw_name",
+    "raw_type",
     "validation_reason",
     "support_method",
     "matched_text",
     "matched_pattern",
     "acronym_short",
     "acronym_definition",
+    "acronym_match_method",
+    "expanded_from_acronym",
+    "quality_flags",
 ]
 
 
@@ -193,6 +198,18 @@ def normalize_review_concept(
 
         if field in {"matched_text", "matched_pattern", "acronym_definition"}:
             normalized[field] = truncate_text(value, MAX_EVIDENCE_TEXT_CHARS)
+        elif field == "quality_flags":
+            if isinstance(value, (list, tuple, set)):
+                flags = [
+                    str(flag).strip()
+                    for flag in value
+                    if str(flag).strip()
+                ]
+            else:
+                flags = [str(value).strip()] if str(value).strip() else []
+
+            if flags:
+                normalized[field] = list(dict.fromkeys(flags))
         else:
             normalized[field] = value
 
@@ -358,6 +375,46 @@ def count_by_field(records: List[Dict[str, Any]], field: str) -> Dict[str, int]:
     return dict(sorted(counter.items(), key=lambda item: (-item[1], item[0])))
 
 
+
+def count_list_field(records: List[Dict[str, Any]], field: str) -> Dict[str, int]:
+    """
+    Count each distinct item contained in a list-valued record field.
+    """
+    counter = Counter()
+
+    for record in records:
+        value = record.get(field)
+
+        if value in (None, "", []):
+            continue
+
+        values = value if isinstance(value, (list, tuple, set)) else [value]
+
+        for item in values:
+            text = str(item or "").strip()
+            if text:
+                counter[text] += 1
+
+    return dict(sorted(counter.items(), key=lambda item: (-item[1], item[0])))
+
+
+def collect_run_id_summary(
+    records: List[Dict[str, Any]],
+) -> Tuple[List[str], Dict[str, int]]:
+    """
+    Return sorted run ids and record counts grouped by run id.
+    """
+    counter = Counter()
+
+    for record in records:
+        run_id = str(record.get("run_id") or "UNKNOWN").strip() or "UNKNOWN"
+        counter[run_id] += 1
+
+    run_ids = sorted(counter)
+    counts = dict(sorted(counter.items(), key=lambda item: item[0]))
+    return run_ids, counts
+
+
 def write_entity_review_summary(
     doc_id: Any,
     output_dir: Optional[Path] = None,
@@ -375,11 +432,15 @@ def write_entity_review_summary(
     accepted_records = read_jsonl(accepted_path)
     rejected_records = read_jsonl(rejected_path)
 
+    all_records = accepted_records + rejected_records
+
     section_ids = {
         record.get("section_uid")
-        for record in accepted_records + rejected_records
+        for record in all_records
         if record.get("section_uid")
     }
+
+    run_ids, record_count_by_run_id = collect_run_id_summary(all_records)
 
     summary = {
         "doc_id": doc_id,
@@ -394,6 +455,10 @@ def write_entity_review_summary(
         "accepted_by_reason": count_by_field(accepted_records, "reason"),
         "rejected_by_reason": count_by_field(rejected_records, "reason"),
         "accepted_by_support_method": count_by_field(accepted_records, "support_method"),
+        "accepted_by_quality_flag": count_list_field(accepted_records, "quality_flags"),
+        "rejected_by_quality_flag": count_list_field(rejected_records, "quality_flags"),
+        "run_ids": run_ids,
+        "record_count_by_run_id": record_count_by_run_id,
     }
 
     summary_path.parent.mkdir(parents=True, exist_ok=True)

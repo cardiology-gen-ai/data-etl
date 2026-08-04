@@ -63,6 +63,164 @@ _DASH_TRANSLATION = str.maketrans({
 
 # Conservative spelling equivalences useful in cardiology guideline text.
 # These are NOT used to rewrite concept names, only to support source matching.
+
+
+# High-precision semantic review rules.
+#
+# These rules do not attempt to replace the LLM classifier. They either:
+# - reject a very narrow class of clearly generic causal descriptions; or
+# - attach quality flags to grounded concepts that deserve later review.
+_GENERIC_CAUSAL_HEADS = {
+    "cause",
+    "aetiology",
+    "etiology",
+    "mechanism",
+    "origin",
+    "basis",
+}
+
+_GENERIC_CAUSAL_MODIFIERS = {
+    "genetic",
+    "monogenic",
+    "polygenic",
+    "familial",
+    "inherited",
+    "molecular",
+    "biological",
+    "pathogenic",
+    "pathophysiological",
+    "underlying",
+    "environmental",
+    "multifactorial",
+    "complex",
+    "disease",
+}
+
+_RESULT_LIKE_HEADS = {
+    "abnormality",
+    "abnormalities",
+    "damage",
+    "defect",
+    "defects",
+    "dysfunction",
+    "enhancement",
+    "finding",
+    "findings",
+    "impairment",
+    "measurement",
+    "measurements",
+    "pattern",
+    "patterns",
+    "result",
+    "results",
+    "value",
+    "values",
+}
+
+_EXPOSURE_LIKE_HEADS = {
+    "abuse",
+    "carbonyl",
+    "consumption",
+    "emission",
+    "emissions",
+    "exposure",
+    "particulate",
+    "particle",
+    "particles",
+    "pollutant",
+    "pollutants",
+    "smoking",
+    "use",
+    "vaping",
+}
+
+_NONMEDICAL_DEVICE_TERMS = {
+    "cigarette",
+    "cigarettes",
+    "e-cigarette",
+    "e-cigarettes",
+    "vape",
+    "vapes",
+    "vaporizer",
+    "vaporizers",
+}
+
+_GENERIC_THERAPEUTIC_HEADS = {
+    "drug",
+    "drugs",
+    "medication",
+    "medications",
+    "medicine",
+    "medicines",
+    "therapy",
+    "therapies",
+    "treatment",
+    "treatments",
+}
+
+_GENERIC_THERAPEUTIC_MODIFIERS = {
+    "background",
+    "cardiac",
+    "cardiovascular",
+    "chronic",
+    "concomitant",
+    "medical",
+    "other",
+    "pharmacological",
+    "pharmacologic",
+    "prescribed",
+    "standard",
+}
+
+_PROGRAMMATIC_TESTING_TERMS = {
+    "cascade",
+    "coordinated",
+    "family",
+    "familial",
+    "longitudinal",
+    "pathway",
+    "programme",
+    "program",
+    "strategy",
+    "structured",
+    "systematic",
+}
+
+
+_MEASUREMENT_LIKE_HEADS = {
+    "diameter",
+    "dimension",
+    "flow",
+    "fraction",
+    "function",
+    "index",
+    "interval",
+    "mass",
+    "pressure",
+    "ratio",
+    "rate",
+    "strain",
+    "thickness",
+    "velocity",
+    "volume",
+    "work",
+}
+
+_PROCESS_LIKE_HEADS = {
+    "assessment",
+    "counselling",
+    "counseling",
+    "diagnosis",
+    "evaluation",
+    "management",
+    "monitoring",
+    "screening",
+    "selection",
+    "surveillance",
+    "testing",
+    "treatment",
+}
+
 _MEDICAL_SPELLING_EQUIVALENTS: Tuple[Tuple[str, str], ...] = (
     ("ischaemic", "ischemic"),
     ("ischaemia", "ischemia"),
@@ -586,6 +744,16 @@ def build_rejected_concept_record(
         if value not in (None, ""):
             rejected[field] = value
 
+    quality_flags = normalized_concept.get("quality_flags")
+    if isinstance(quality_flags, (list, tuple, set)):
+        normalized_flags = [
+            str(flag).strip()
+            for flag in quality_flags
+            if str(flag).strip()
+        ]
+        if normalized_flags:
+            rejected["quality_flags"] = list(dict.fromkeys(normalized_flags))
+
     return rejected
 
 
@@ -620,6 +788,158 @@ def deduplicate_validated_concepts(
                 existing[field] = value
 
     return list(deduped.values())
+
+
+
+def _normalized_name_tokens(name: Any) -> List[str]:
+    """
+    Return conservative lowercase tokens for semantic review rules.
+    """
+    normalized = normalize_text_for_matching(name)
+    return [
+        token
+        for token in re.split(r"[\s\-/]+", normalized)
+        if token
+    ]
+
+
+def _quality_flag_token_variants(tokens: List[str]) -> Set[str]:
+    """
+    Build token variants for non-blocking semantic quality checks.
+
+    Both the observed token and a conservative singular form are included.
+    This lets rules recognize plural forms such as "carbonyls",
+    "particulates", or "measurements" without rewriting the concept name.
+    """
+    variants: Set[str] = set(tokens)
+
+    for token in tokens:
+        singular = singularize_token(token)
+        if singular:
+            variants.add(singular)
+
+    return variants
+
+
+def is_generic_causal_description(name: Any) -> bool:
+    """
+    Detect a narrow class of generic causal or aetiological descriptions.
+
+    Examples of the intended pattern are phrases whose semantic head is only
+    "cause", "aetiology", "mechanism", "basis", or a similar generic term,
+    and whose preceding words merely describe the kind of causation.
+
+    This deliberately does not reject phrases that contain a named gene,
+    pathway, disease, exposure, or other specific reusable entity.
+    """
+    tokens = _normalized_name_tokens(name)
+
+    if not tokens or len(tokens) > 4:
+        return False
+
+    if tokens[-1] not in _GENERIC_CAUSAL_HEADS:
+        return False
+
+    modifiers = tokens[:-1]
+    return not modifiers or all(token in _GENERIC_CAUSAL_MODIFIERS for token in modifiers)
+
+
+def is_generic_therapeutic_term(name: Any) -> bool:
+    """
+    Flag broad therapeutic phrases that do not identify a reusable drug,
+    drug class, named intervention, or care process.
+    """
+    tokens = _normalized_name_tokens(name)
+
+    if not tokens or len(tokens) > 4:
+        return False
+
+    if tokens[-1] not in _GENERIC_THERAPEUTIC_HEADS:
+        return False
+
+    modifiers = tokens[:-1]
+    return not modifiers or all(
+        token in _GENERIC_THERAPEUTIC_MODIFIERS
+        for token in modifiers
+    )
+
+
+def build_semantic_quality_flags(
+    name: str,
+    concept_type: str,
+    source_text: str,
+) -> List[str]:
+    """
+    Attach conservative semantic review flags to an already grounded concept.
+
+    Quality flags do not change the concept name or type and do not reject the
+    concept. They make potentially inconsistent classifications visible in
+    review exports and on MENTIONS relationships when the caller preserves the
+    returned metadata.
+    """
+    del source_text  # Reserved for future context-window checks.
+
+    tokens = _normalized_name_tokens(name)
+    token_set = _quality_flag_token_variants(tokens)
+    flags: List[str] = []
+
+    if is_generic_therapeutic_term(name):
+        flags.append("generic_therapeutic_term")
+
+    if concept_type == "diagnostic_test" and token_set.intersection(_RESULT_LIKE_HEADS):
+        flags.append("possible_result_test_mismatch")
+
+    if concept_type == "disease" and token_set.intersection(_RESULT_LIKE_HEADS):
+        flags.append("possible_disease_finding_mismatch")
+
+    if concept_type == "biomarker" and token_set.intersection(_EXPOSURE_LIKE_HEADS):
+        flags.append("possible_exposure_biomarker_mismatch")
+
+    if concept_type == "biomarker" and token_set.intersection(_MEASUREMENT_LIKE_HEADS):
+        flags.append("possible_measurement_biomarker_mismatch")
+
+    if concept_type == "clinical_outcome" and token_set.intersection(_PROCESS_LIKE_HEADS):
+        flags.append("possible_process_outcome_mismatch")
+
+    if concept_type == "device" and token_set.intersection(_NONMEDICAL_DEVICE_TERMS):
+        flags.append("possible_nonmedical_device")
+
+    if (
+        concept_type == "clinical_finding"
+        and token_set.intersection({"abuse", "consumption", "smoking", "use", "vaping"})
+    ):
+        flags.append("possible_exposure_finding_mismatch")
+
+    if (
+        concept_type == "care_strategy"
+        and tokens
+        and tokens[-1] == "testing"
+        and not token_set.intersection(_PROGRAMMATIC_TESTING_TERMS)
+    ):
+        flags.append("possible_testing_strategy_mismatch")
+
+    # Preserve stable order and avoid duplicates.
+    return list(dict.fromkeys(flags))
+
+
+def attach_quality_flags(
+    concept: Dict[str, Any],
+    source_text: str,
+) -> Dict[str, Any]:
+    """
+    Return a copy of a concept with semantic quality flags when applicable.
+    """
+    out = dict(concept)
+    flags = build_semantic_quality_flags(
+        name=str(out.get("name") or ""),
+        concept_type=str(out.get("type") or ""),
+        source_text=source_text,
+    )
+
+    if flags:
+        out["quality_flags"] = flags
+
+    return out
 
 
 def validate_single_concept(
@@ -713,6 +1033,11 @@ def validate_single_concept(
                 "reason": "expanded_acronym_blocklisted_name",
             }
 
+        expanded_acronym_concept = attach_quality_flags(
+            concept=expanded_acronym_concept,
+            source_text=source_text,
+        )
+
         return {
             "accepted": True,
             "concept": expanded_acronym_concept,
@@ -745,6 +1070,14 @@ def validate_single_concept(
             "reason": "blocklisted_name",
         }
 
+    if is_generic_causal_description(name):
+        normalized_concept["quality_flags"] = ["generic_causal_phrase"]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "generic_causal_description",
+        }
+
     support_evidence = get_support_evidence(
         name=name,
         source_text=source_text,
@@ -761,6 +1094,10 @@ def validate_single_concept(
     accepted_concept = build_accepted_concept(
         normalized_concept=normalized_concept,
         support_evidence=support_evidence,
+    )
+    accepted_concept = attach_quality_flags(
+        concept=accepted_concept,
+        source_text=source_text,
     )
 
     return {

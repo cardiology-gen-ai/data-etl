@@ -44,63 +44,81 @@ ENTITY_SCHEMA_VERSION = "2.1"
 # - stroke remains a disease even when it is an outcome to prevent
 TYPE_DEFINITIONS: Dict[str, str] = {
     "disease": (
-        "A named disease, syndrome, disorder, or pathological condition."
+        "A named disease, syndrome, disorder, or established pathological "
+        "condition. A descriptive observation such as isolated damage, "
+        "dysfunction, impairment, or abnormality is usually a clinical_finding "
+        "unless the complete phrase is an established disease or syndrome."
     ),
     "clinical_finding": (
         "A symptom, sign, phenotype, physiological or pathological state, "
-        "ECG/imaging/laboratory finding, measured result, or other clinical "
-        "observation that is not itself a named disease."
+        "ECG/imaging/laboratory finding, measured result, functional index, "
+        "pressure, fraction, value, or other patient-level clinical observation "
+        "that is not itself a named disease."
     ),
     "exposure_or_lifestyle_factor": (
-        "A behavioural, lifestyle, environmental, or occupational exposure "
-        "such as smoking, alcohol use, physical inactivity, diet, or air "
-        "pollution. Diseases and clinical findings do not change to this type "
-        "merely because they act as risk factors in context."
+        "A behavioural, lifestyle, environmental, occupational, substance-use, "
+        "or pollutant exposure, such as smoking, alcohol use, physical "
+        "inactivity, unhealthy diet, drug abuse, air pollution, emissions, or "
+        "particulate exposure. Diseases and clinical findings do not change to "
+        "this type merely because they act as risk factors in context."
     ),
     "genetic_factor": (
         "A gene, mutation, genetic variant, genotype, inherited molecular "
         "factor, or explicitly described genetic status."
     ),
     "biomarker": (
-        "A measurable biological or laboratory analyte or marker, rather than "
-        "the test used to measure it or the resulting measured value."
+        "A biological analyte, molecule, cellular marker, or measurable "
+        "biological substance assessed in blood, tissue, urine, or another "
+        "biological specimen. Imaging-derived measurements, physiological "
+        "measurements, functional indices, pressures, fractions, scores, "
+        "environmental pollutants, and exposure constituents are not biomarkers."
     ),
     "diagnostic_test": (
-        "A diagnostic, monitoring, imaging, laboratory, functional, genetic, "
-        "or clinical examination or investigation performed on a patient."
+        "A named diagnostic or monitoring examination, assay, imaging method, "
+        "laboratory test, functional test, genetic test, electrophysiological "
+        "study, or clinical investigation. The result, measurement, pattern, "
+        "or finding produced by the examination is not itself a diagnostic_test."
     ),
     "score_or_risk_model": (
         "A named clinical score, calculator, prediction rule, staging system, "
         "or risk-estimation model."
     ),
     "drug_or_drug_class": (
-        "A specific medication, medicinal product, or named pharmacological "
-        "class."
+        "A named medication, medicinal product, therapeutic agent, or clinically "
+        "meaningful pharmacological class. Generic phrases such as medication, "
+        "drug treatment, or pharmacological therapy are not sufficient."
     ),
     "procedure_or_intervention": (
         "A therapeutic, invasive, surgical, catheter-based, "
-        "electrophysiological, or other clinical procedure or intervention."
+        "electrophysiological, supportive, or other performed clinical procedure "
+        "or intervention."
     ),
     "device": (
-        "A medical device, prosthesis, lead, implant, valve system, monitor, "
-        "or mechanical support system."
+        "A clinical or medical device, prosthesis, lead, implant, valve system, "
+        "monitor, or mechanical support system. Consumer products and exposure "
+        "sources are not medical devices merely because they are physical objects."
     ),
     "care_strategy": (
-        "A specific and reusable care process or management strategy, such as "
-        "family screening, genetic counselling, structured follow-up, cardiac "
-        "rehabilitation, surveillance, patient education, or shared "
-        "decision-making. Generic words such as management or treatment are "
-        "not sufficient."
+        "A specific reusable care process, programme, pathway, or coordinated "
+        "management strategy, such as family screening, cascade testing, genetic "
+        "counselling, structured follow-up, cardiac rehabilitation, surveillance, "
+        "patient education, or shared decision-making. It may determine whom to "
+        "test, how testing is propagated through a family, when it is repeated, "
+        "or how results guide longitudinal care. A single examination and generic "
+        "words such as management or treatment are not sufficient."
     ),
     "anatomical_structure": (
         "An anatomical body structure, organ, chamber, vessel, valve, tissue, "
         "or other anatomical site."
     ),
     "clinical_outcome": (
-        "An outcome-like endpoint such as mortality, hospitalization, "
-        "rehospitalization, quality of life, functional improvement, or symptom "
-        "improvement. A disease does not change to this type merely because it "
-        "is described as an outcome."
+        "An endpoint describing what happens to a patient or population, such "
+        "as death, mortality, hospitalization, recurrence, quality of life, "
+        "functional improvement, or symptom improvement. Decisions, diagnostic "
+        "labels, management activities, treatment selection, counselling, "
+        "testing, screening, and surveillance are not clinical outcomes. A "
+        "disease does not change to this type merely because it is evaluated as "
+        "an outcome."
     ),
     "microorganism_or_pathogen": (
         "A named bacterium, virus, fungus, parasite, other microorganism, or "
@@ -108,10 +126,13 @@ TYPE_DEFINITIONS: Dict[str, str] = {
     ),
     "population_or_patient_group": (
         "An explicitly named demographic, life-stage, familial, reproductive, "
-        "occupational, or clinically defined group of people relevant to care, "
-        "such as children, older adults, pregnant women, athletes, first-degree "
-        "relatives, neonates, fetuses, or foetuses. Generic words such as patient, "
-        "patients, population, or selected patients are not sufficient."
+        "occupational, survivorship, genotype-defined, or otherwise clinically "
+        "meaningful group of people relevant to care, such as children, older "
+        "adults, pregnant women, athletes, first-degree relatives, childhood "
+        "cancer survivors, neonates, fetuses, or foetuses. Generic patient "
+        "references and a disease name or acronym followed only by patient or "
+        "patients are not sufficient unless the phrase adds an independent group "
+        "distinction."
     ),
 }
 
