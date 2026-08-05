@@ -26,8 +26,15 @@ Main policy:
   written as ambiguous short-form nodes
 - uppercase gene symbols extracted as genetic_factor are treated as canonical
   gene symbols, not clinical acronyms; exact source capitalization is preserved
-- obvious care settings misclassified as population_or_patient_group are
-  rejected because the schema has no care-setting entity type
+- obvious care settings, organizations, and generic population labels are
+  rejected because the schema has no corresponding intrinsic entity type
+- medical disciplines, research designs, generic variables, isolated clinical
+  adjectives, and broad therapeutic or biomarker categories are omitted
+- treatment modalities cannot be written as lifestyle/environmental exposures
+- phrases containing an acronym plus ordinary words, such as "12-lead ECG" or
+  "HAS-BLED score", may be grounded directly
+- a cached acronym may support one explicit component inside a longer phrase,
+  for example "CV surveillance" supporting "cardiovascular surveillance"
 - tiny lowercase surface names such as "as" are rejected by direct source
   matching, because they can be ordinary words rather than clinical concepts
 - support checking is intentionally strict, with only small matching tolerance
@@ -41,6 +48,8 @@ from collections import Counter
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from knowledge_graph.acronym_utils import (
+    clean_acronym_definition,
+    clean_acronym_short,
     get_acronym_expansion_for_short,
     get_acronym_support_for_concept,
     is_likely_acronym_short_form,
@@ -111,6 +120,193 @@ _HUMAN_GROUP_MARKERS = {
     "survivors",
     "woman",
     "women",
+}
+
+_ORGANIZATION_HEADS = {
+    "association",
+    "college",
+    "committee",
+    "consortium",
+    "council",
+    "federation",
+    "foundation",
+    "group",
+    "organisation",
+    "organization",
+    "society",
+}
+
+_ORGANIZATION_PHRASE_MARKERS = {
+    "association of",
+    "college of",
+    "committee on",
+    "consortium of",
+    "council of",
+    "society of",
+    "task force",
+    "working group",
+}
+
+_GENERIC_POPULATION_NAMES = {
+    "patient population",
+    "patient populations",
+    "selected patient",
+    "selected patients",
+    "special population",
+    "special populations",
+}
+
+_NON_ENTITY_DISCIPLINE_NAMES = {
+    "cardio oncology",
+    "cardiology",
+    "haematology",
+    "hematology",
+    "oncology",
+}
+
+_NON_ANATOMICAL_ADJECTIVE_NAMES = {
+    "cardiac",
+    "cardiovascular",
+    "coronary",
+    "myocardial",
+    "vascular",
+}
+
+_NONCLINICAL_RESEARCH_PHRASES = {
+    "genome wide association studies",
+    "genome wide association study",
+    "meta analyses",
+    "meta analysis",
+    "randomised clinical trial",
+    "randomised controlled trial",
+    "randomized clinical trial",
+    "randomized controlled trial",
+}
+
+_NONCLINICAL_RESEARCH_HEADS = {
+    "registries",
+    "registry",
+    "studies",
+    "study",
+    "trial",
+    "trials",
+}
+
+_GENERIC_VARIABLE_NAMES = {
+    "cancer type",
+    "clinical syndrome",
+    "disease type",
+    "sex category",
+    "tumor type",
+    "tumour type",
+}
+
+_GENERIC_PROCESS_HEADS = {
+    "assessment",
+    "diagnosis",
+    "evaluation",
+    "management",
+    "monitoring",
+    "screening",
+    "surveillance",
+}
+
+_GENERIC_PROCESS_MODIFIERS = {
+    "baseline",
+    "cancer",
+    "clinical",
+    "general",
+    "initial",
+    "oncological",
+    "oncology",
+    "patient",
+    "pre",
+    "pretreatment",
+    "routine",
+    "treatment",
+}
+
+_GENERIC_BIOMARKER_HEADS = {
+    "biomarker",
+    "biomarkers",
+    "marker",
+    "markers",
+}
+
+_GENERIC_BIOMARKER_MODIFIERS = {
+    "biological",
+    "blood",
+    "cardiac",
+    "cardiovascular",
+    "circulating",
+    "plasma",
+    "serum",
+}
+
+_TREATMENT_MODALITY_TOKENS = {
+    "chemotherapy",
+    "radiotherapy",
+    "therapy",
+    "treatment",
+}
+
+_EXPOSURE_CONTEXT_TOKENS = {
+    "abuse",
+    "consumption",
+    "emission",
+    "emissions",
+    "exposure",
+    "particulate",
+    "particle",
+    "particles",
+    "pollutant",
+    "pollutants",
+    "smoking",
+    "use",
+    "vaping",
+}
+
+_NON_DRUG_TREATMENT_MODALITIES = {
+    "immunosuppression",
+    "radiation therapy",
+    "radiotherapy",
+}
+
+# Known cache corruption observed in the Cardio-oncology acronym artifact.
+# Unsafe definitions are ignored rather than written as malformed concepts.
+_UNSAFE_ACRONYM_DEFINITION_EXACT = {
+    (
+        "ECG",
+        "electrocardiogram echo echocardiography",
+    ),
+}
+
+_EMBEDDED_SOURCE_NAME_CLASS_HEADS = {
+    "agonist",
+    "agonists",
+    "antagonist",
+    "antagonists",
+    "inhibitor",
+    "inhibitors",
+}
+
+_EMBEDDED_ASSOCIATED_DISEASE_HEADS = {
+    "arthritis",
+    "colitis",
+    "hepatitis",
+    "myocarditis",
+    "nephritis",
+    "pneumonitis",
+    "thyroiditis",
+}
+
+_EMBEDDED_THERAPEUTIC_DEFINITION_HEADS = {
+    "agonist",
+    "agonists",
+    "antagonist",
+    "antagonists",
+    "inhibitor",
+    "inhibitors",
 }
 
 
@@ -212,17 +408,28 @@ _GENERIC_THERAPEUTIC_HEADS = {
 }
 
 _GENERIC_THERAPEUTIC_MODIFIERS = {
+    "adjuvant",
+    "anticancer",
     "background",
+    "cancer",
     "cardiac",
     "cardiovascular",
     "chronic",
     "concomitant",
     "medical",
+    "neoadjuvant",
+    "oncological",
+    "oncology",
     "other",
     "pharmacological",
     "pharmacologic",
     "prescribed",
+    "preventive",
+    "prevention",
+    "primary",
+    "secondary",
     "standard",
+    "systemic",
 }
 
 _PROGRAMMATIC_TESTING_TERMS = {
@@ -568,6 +775,7 @@ def get_support_evidence(
     name: str,
     source_text: str,
     acronyms: Optional[Dict[str, str]] = None,
+    concept_type: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Return deterministic support evidence for a concept name.
@@ -600,6 +808,16 @@ def get_support_evidence(
                 "support_reason": "accepted_by_acronym_support",
                 **acronym_support,
             }
+
+        embedded_support = get_embedded_acronym_support(
+            name=name,
+            source_text=source_text,
+            acronyms=acronyms,
+            concept_type=concept_type,
+        )
+
+        if embedded_support is not None:
+            return embedded_support
 
     return None
 
@@ -726,6 +944,539 @@ def is_non_population_care_setting(
     return tokens[-1] in _CARE_SETTING_HEADS
 
 
+def is_organization_like_name(name: Any) -> bool:
+    """Detect organizations and scientific bodies outside the entity schema."""
+    tokens = _normalized_name_tokens(name)
+
+    if not tokens:
+        return False
+
+    normalized = " ".join(tokens)
+
+    if tokens[-1] in _ORGANIZATION_HEADS:
+        return True
+
+    return any(
+        marker in normalized
+        for marker in _ORGANIZATION_PHRASE_MARKERS
+    )
+
+
+def is_generic_population_name(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    if concept_type != "population_or_patient_group":
+        return False
+
+    normalized = " ".join(_normalized_name_tokens(name))
+    return normalized in _GENERIC_POPULATION_NAMES
+
+
+def is_non_entity_discipline(name: Any) -> bool:
+    normalized = " ".join(_normalized_name_tokens(name))
+    return normalized in _NON_ENTITY_DISCIPLINE_NAMES
+
+
+def is_non_anatomical_adjective(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    if concept_type != "anatomical_structure":
+        return False
+
+    normalized = " ".join(_normalized_name_tokens(name))
+    return normalized in _NON_ANATOMICAL_ADJECTIVE_NAMES
+
+
+def is_nonclinical_research_or_variable(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    """Detect study-design and generic-variable phrases outside the schema."""
+    tokens = _normalized_name_tokens(name)
+
+    if not tokens:
+        return False
+
+    normalized = " ".join(tokens)
+
+    if normalized in _NONCLINICAL_RESEARCH_PHRASES:
+        return True
+
+    if normalized in _GENERIC_VARIABLE_NAMES:
+        return True
+
+    return (
+        concept_type in {"clinical_finding", "diagnostic_test"}
+        and tokens[-1] in _NONCLINICAL_RESEARCH_HEADS
+    )
+
+
+def is_generic_process_entity(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    """Detect broad process labels such as ``cancer diagnosis``."""
+    if concept_type not in {
+        "care_strategy",
+        "clinical_finding",
+        "clinical_outcome",
+        "diagnostic_test",
+        "disease",
+        "procedure_or_intervention",
+    }:
+        return False
+
+    tokens = _normalized_name_tokens(name)
+
+    if not tokens or tokens[-1] not in _GENERIC_PROCESS_HEADS:
+        return False
+
+    modifiers = tokens[:-1]
+
+    return not modifiers or all(
+        token in _GENERIC_PROCESS_MODIFIERS
+        for token in modifiers
+    )
+
+
+def is_generic_biomarker_category(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    if concept_type != "biomarker":
+        return False
+
+    tokens = _normalized_name_tokens(name)
+
+    if not tokens or tokens[-1] not in _GENERIC_BIOMARKER_HEADS:
+        return False
+
+    modifiers = tokens[:-1]
+
+    return not modifiers or all(
+        token in _GENERIC_BIOMARKER_MODIFIERS
+        for token in modifiers
+    )
+
+
+def is_treatment_misclassified_as_exposure(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    if concept_type != "exposure_or_lifestyle_factor":
+        return False
+
+    token_set = set(_normalized_name_tokens(name))
+
+    return (
+        bool(token_set.intersection(_TREATMENT_MODALITY_TOKENS))
+        and not bool(token_set.intersection(_EXPOSURE_CONTEXT_TOKENS))
+    )
+
+
+def is_procedure_or_modality_misclassified_as_drug(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    if concept_type != "drug_or_drug_class":
+        return False
+
+    normalized = " ".join(_normalized_name_tokens(name))
+    return normalized in _NON_DRUG_TREATMENT_MODALITIES
+
+
+def is_generic_therapeutic_entity(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    return (
+        concept_type
+        in {
+            "care_strategy",
+            "drug_or_drug_class",
+            "procedure_or_intervention",
+        }
+        and is_generic_therapeutic_term(name)
+    )
+
+
+def is_unsafe_acronym_definition(
+    short: Any,
+    definition: Any,
+) -> bool:
+    """Return True for a narrowly recognized malformed cache definition."""
+    clean_short = clean_acronym_short(short)
+    clean_definition = normalize_text_for_matching(
+        clean_acronym_definition(definition)
+    )
+
+    if (clean_short, clean_definition) in _UNSAFE_ACRONYM_DEFINITION_EXACT:
+        return True
+
+    # Defensive version of the observed corruption: ECG must not merge
+    # electrocardiography and echocardiography into one definition.
+    if clean_short == "ECG":
+        padded = f" {clean_definition} "
+        return (
+            "electrocardiogram" in clean_definition
+            and (
+                "echocardiography" in clean_definition
+                or " echocardiogram " in padded
+                or " echo " in padded
+            )
+        )
+
+    return False
+
+
+def filter_safe_acronyms(
+    acronyms: Optional[Dict[str, str]],
+) -> Dict[str, str]:
+    """Return a copy of the acronym map without unsafe definitions."""
+    safe: Dict[str, str] = {}
+
+    for raw_short, raw_definition in (acronyms or {}).items():
+        short = clean_acronym_short(raw_short)
+        definition = clean_acronym_definition(raw_definition)
+
+        if not short or not definition:
+            continue
+
+        if is_unsafe_acronym_definition(short, definition):
+            continue
+
+        safe[short] = definition
+
+    return safe
+
+
+def raw_short_has_unsafe_cached_definition(
+    raw_short: Any,
+    acronyms: Optional[Dict[str, str]],
+) -> bool:
+    """Check whether the raw short maps to a known-unsafe definition."""
+    wanted = clean_acronym_short(raw_short)
+
+    if not wanted:
+        return False
+
+    for raw_key, raw_definition in (acronyms or {}).items():
+        key = clean_acronym_short(raw_key)
+
+        if key != wanted:
+            continue
+
+        return is_unsafe_acronym_definition(
+            short=key,
+            definition=raw_definition,
+        )
+
+    return False
+
+
+def canonicalize_embedded_source_name(
+    matched_text: str,
+    acronym_short: str,
+) -> str:
+    """Lowercase ordinary words while preserving the acronym short form."""
+    text = normalize_text_preserve_case(matched_text)
+    short = clean_acronym_short(acronym_short)
+
+    if not text or not short:
+        return text
+
+    pattern = _mixed_phrase_acronym_body(short)
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+
+    if match is None:
+        return text
+
+    return (
+        text[:match.start()].casefold()
+        + short
+        + text[match.end():].casefold()
+    ).strip()
+
+
+def should_preserve_embedded_source_name(
+    definition: str,
+    prefix: str,
+    suffix: str,
+    concept_type: Optional[str],
+) -> bool:
+    """
+    Preserve the source phrase when literal expansion creates an unnatural
+    classifier construction such as ``RAF inhibitor`` or ``ICI myocarditis``.
+    """
+    del prefix
+
+    suffix_tokens = _normalized_name_tokens(suffix)
+    definition_tokens = _normalized_name_tokens(definition)
+
+    if not suffix_tokens:
+        return False
+
+    suffix_head = suffix_tokens[-1]
+    definition_head = definition_tokens[-1] if definition_tokens else ""
+
+    if suffix_head in _EMBEDDED_SOURCE_NAME_CLASS_HEADS:
+        return True
+
+    return (
+        concept_type == "disease"
+        and suffix_head in _EMBEDDED_ASSOCIATED_DISEASE_HEADS
+        and definition_head in _EMBEDDED_THERAPEUTIC_DEFINITION_HEADS
+    )
+
+
+def normalize_text_preserve_case(text: Any) -> str:
+    """Normalize PDF whitespace and dashes while retaining acronym case."""
+    text = str(text or "").translate(_DASH_TRANSLATION)
+    text = re.sub(r"([A-Za-z])-\s*\n\s*([A-Za-z])", r"\1\2", text)
+
+    return normalize_whitespace(text)
+
+
+def _mixed_phrase_surface_body(surface: str) -> str:
+    tokens = [
+        re.escape(token)
+        for token in re.split(r"[\s\-]+", surface)
+        if token
+    ]
+
+    return r"[\s\-]+".join(tokens)
+
+
+def _mixed_phrase_acronym_body(short: str) -> str:
+    pieces: List[str] = []
+    previous_separator = False
+
+    for char in short:
+        if char.isspace() or char == "-":
+            if not previous_separator:
+                pieces.append(r"[\s\-]+")
+                previous_separator = True
+
+            continue
+
+        pieces.append(re.escape(char))
+        previous_separator = False
+
+    return "".join(pieces)
+
+
+def get_embedded_acronym_support(
+    name: str,
+    source_text: str,
+    acronyms: Optional[Dict[str, str]],
+    concept_type: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Support a longer phrase when one cached acronym replaces one explicit
+    long-form component in the source.
+
+    This remains equality-based and does not use fuzzy semantic matching.
+    """
+    if not name or not source_text or not acronyms:
+        return None
+
+    concept_surface = normalize_text_for_matching(name)
+    source_surface = normalize_text_preserve_case(source_text)
+
+    if not concept_surface or not source_surface:
+        return None
+
+    for raw_short, raw_definition in sorted(acronyms.items()):
+        short = clean_acronym_short(raw_short)
+        definition = clean_acronym_definition(raw_definition)
+
+        if not short or not definition:
+            continue
+
+        if is_unsafe_acronym_definition(short, definition):
+            continue
+
+        short_body = _mixed_phrase_acronym_body(short)
+
+        if not short_body:
+            continue
+
+        for definition_surface in build_surface_variants(definition):
+            definition_pattern = concept_surface_to_pattern(
+                definition_surface
+            )
+
+            if not definition_pattern:
+                continue
+
+            match = re.search(definition_pattern, concept_surface)
+
+            if match is None:
+                continue
+
+            prefix = concept_surface[:match.start()].strip(" -")
+            suffix = concept_surface[match.end():].strip(" -")
+            parts: List[str] = []
+
+            if prefix:
+                prefix_body = _mixed_phrase_surface_body(prefix)
+
+                if prefix_body:
+                    parts.append(f"(?i:{prefix_body})")
+
+            parts.append(short_body)
+
+            if suffix:
+                suffix_body = _mixed_phrase_surface_body(suffix)
+
+                if suffix_body:
+                    parts.append(f"(?i:{suffix_body})")
+
+            body = r"[\s\-]+".join(parts)
+            pattern = (
+                rf"(?<![A-Za-z0-9]){body}"
+                rf"(?![A-Za-z0-9])"
+            )
+            source_match = re.search(pattern, source_surface)
+
+            if source_match is None:
+                continue
+
+            matched_text = source_match.group(0)
+            preferred_name: Optional[str] = None
+
+            if should_preserve_embedded_source_name(
+                definition=definition_surface,
+                prefix=prefix,
+                suffix=suffix,
+                concept_type=concept_type,
+            ):
+                preferred_name = canonicalize_embedded_source_name(
+                    matched_text=matched_text,
+                    acronym_short=short,
+                )
+
+            return {
+                "support_method": "acronym",
+                "support_reason": (
+                    "accepted_by_embedded_acronym_support"
+                ),
+                "matched_text": matched_text,
+                "matched_pattern": pattern,
+                "preferred_name": preferred_name,
+                "acronym_short": short,
+                "acronym_definition": definition,
+                "acronym_match_method": (
+                    "embedded_definition_replaced_by_short"
+                ),
+                "expanded_from_acronym": False,
+            }
+
+    return None
+
+
+def get_cached_definition_for_short(
+    raw_short: Any,
+    acronyms: Optional[Dict[str, str]],
+) -> Optional[str]:
+    """Return an exact cleaned cache definition for one acronym short."""
+    wanted = clean_acronym_short(raw_short)
+
+    if not wanted:
+        return None
+
+    for raw_key, raw_definition in (acronyms or {}).items():
+        key = clean_acronym_short(raw_key)
+        definition = clean_acronym_definition(raw_definition)
+
+        if key == wanted and definition:
+            return definition
+
+    return None
+
+
+def try_accept_named_acronym_score_concept(
+    concept: Dict[str, Any],
+    source_text: str,
+    concept_type: str,
+    acronyms: Optional[Dict[str, str]],
+) -> Optional[Dict[str, Any]]:
+    """
+    Accept ``<ACRONYM> score`` when the source contains the acronym short,
+    even if the literal word ``score`` is absent.
+    """
+    if concept_type != "score_or_risk_model":
+        return None
+
+    raw_surface = normalize_whitespace(
+        str(get_raw_name_for_acronym_check(concept) or "")
+    ).strip()
+
+    # Prefer ordinary direct grounding when the complete phrase is explicitly
+    # present. The acronym-only fallback is used only when the source contains
+    # the short form but omits the literal word "score".
+    if get_direct_source_support(
+        name=raw_surface,
+        source_text=source_text,
+    ) is not None:
+        return None
+
+    match = re.fullmatch(
+        r"(?P<short>.+?)\s+score",
+        raw_surface,
+        flags=re.IGNORECASE,
+    )
+
+    if match is None:
+        return None
+
+    short = clean_acronym_short(match.group("short"))
+
+    if not is_likely_acronym_short_form(short):
+        return None
+
+    source_support = get_exact_case_source_support(
+        surface=short,
+        source_text=source_text,
+    )
+
+    if source_support is None:
+        return None
+
+    definition = get_cached_definition_for_short(
+        raw_short=short,
+        acronyms=acronyms,
+    )
+
+    if definition and is_unsafe_acronym_definition(short, definition):
+        definition = None
+
+    accepted = copy_raw_fields(
+        normalized_concept={
+            "name": f"{short} score",
+            "type": concept_type,
+        },
+        source_concept=concept,
+    )
+
+    return build_accepted_concept(
+        normalized_concept=accepted,
+        support_evidence={
+            **source_support,
+            "support_method": "acronym",
+            "support_reason": "accepted_named_score_from_acronym",
+            "acronym_short": short,
+            "acronym_definition": definition,
+            "acronym_match_method": (
+                "acronym_short_in_source_with_score_suffix"
+            ),
+            "expanded_from_acronym": False,
+        },
+    )
+
+
 def try_expand_raw_acronym_concept(
     concept: Dict[str, Any],
     source_text: str,
@@ -794,14 +1545,29 @@ def try_expand_raw_acronym_concept(
 
 def raw_name_is_unexpanded_acronym_short_form(concept: Dict[str, Any]) -> bool:
     """
-    Return True when the original LLM surface looks like an acronym short form.
+    Return True only when the whole original surface is acronym-like.
 
-    This is used only after acronym expansion has failed. In that case, we avoid
-    writing ambiguous short-form Concept nodes such as "AS", "LV", or "CMR".
+    Phrases containing an acronym plus ordinary words, such as ``12-lead ECG``
+    or ``HAS-BLED score``, are not acronym-only concepts and can be grounded by
+    their complete explicit source surface.
     """
     raw_name_for_acronym = get_raw_name_for_acronym_check(concept)
+    raw_surface = normalize_whitespace(
+        str(raw_name_for_acronym or "")
+    ).strip()
 
-    return is_likely_acronym_short_form(raw_name_for_acronym)
+    if not raw_surface:
+        return False
+
+    tokens = raw_surface.split()
+
+    if len(tokens) > 1 and any(
+        re.search(r"[a-z]{2,}", token)
+        for token in tokens
+    ):
+        return False
+
+    return is_likely_acronym_short_form(raw_surface)
 
 
 def is_unsafe_short_surface_name_for_direct_match(name: Any) -> bool:
@@ -840,6 +1606,11 @@ def build_accepted_concept(
         "validation_reason": support_evidence.get("support_reason", "accepted"),
         "support_method": support_evidence.get("support_method", "unknown"),
     }
+
+    preferred_name = support_evidence.get("preferred_name")
+
+    if preferred_name:
+        accepted_concept["name"] = str(preferred_name)
 
     evidence_keys = [
         "matched_text",
@@ -1150,6 +1921,8 @@ def validate_single_concept(
             "reason": "non_allowed_type",
         }
 
+    safe_acronyms = filter_safe_acronyms(acronyms)
+
     # Gene symbols are canonical genetic entities, not clinical acronyms.
     accepted_gene_symbol = try_accept_raw_gene_symbol_concept(
         concept=concept,
@@ -1167,6 +1940,24 @@ def validate_single_concept(
             "reason": accepted_gene_symbol["validation_reason"],
         }
 
+    named_score_concept = try_accept_named_acronym_score_concept(
+        concept=concept,
+        source_text=source_text,
+        concept_type=concept_type,
+        acronyms=safe_acronyms,
+    )
+
+    if named_score_concept is not None:
+        named_score_concept = attach_quality_flags(
+            concept=named_score_concept,
+            source_text=source_text,
+        )
+        return {
+            "accepted": True,
+            "concept": named_score_concept,
+            "reason": named_score_concept["validation_reason"],
+        }
+
     # Next, try to expand raw acronym-only LLM outputs before normal direct
     # source matching. This prevents "AS" from becoming a written Concept
     # called "as".
@@ -1174,7 +1965,7 @@ def validate_single_concept(
         concept=concept,
         source_text=source_text,
         concept_type=concept_type,
-        acronyms=acronyms,
+        acronyms=safe_acronyms,
     )
 
     if expanded_acronym_concept is not None:
@@ -1196,6 +1987,24 @@ def validate_single_concept(
             "accepted": True,
             "concept": expanded_acronym_concept,
             "reason": expanded_acronym_concept["validation_reason"],
+        }
+
+    # Surface malformed cache definitions explicitly rather than writing a
+    # corrupted long-form Concept.
+    if (
+        raw_name_is_unexpanded_acronym_short_form(concept)
+        and raw_short_has_unsafe_cached_definition(
+            raw_short=get_raw_name_for_acronym_check(concept),
+            acronyms=acronyms,
+        )
+    ):
+        normalized_concept["quality_flags"] = [
+            "unsafe_acronym_definition"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "unsafe_acronym_definition",
         }
 
     # If the LLM gave only an acronym-like short form and no safe cached
@@ -1245,10 +2054,135 @@ def validate_single_concept(
             "reason": "care_setting_not_population",
         }
 
+    if is_organization_like_name(name):
+        normalized_concept["quality_flags"] = [
+            "organization_outside_entity_schema"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "organization_not_supported_entity_type",
+        }
+
+    if is_generic_population_name(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "generic_population_reference"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "generic_population_reference",
+        }
+
+    if is_non_entity_discipline(name):
+        normalized_concept["quality_flags"] = [
+            "medical_discipline_not_entity"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "medical_discipline_not_entity",
+        }
+
+    if is_non_anatomical_adjective(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "isolated_anatomical_adjective"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "anatomical_adjective_not_structure",
+        }
+
+    if is_nonclinical_research_or_variable(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "nonclinical_research_or_variable"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "nonclinical_research_or_variable",
+        }
+
+    if is_generic_process_entity(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "generic_process_term"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "generic_process_term",
+        }
+
+    if is_treatment_misclassified_as_exposure(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "treatment_exposure_type_mismatch"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "treatment_not_exposure",
+        }
+
+    if is_procedure_or_modality_misclassified_as_drug(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "procedure_drug_type_mismatch"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "treatment_modality_not_drug",
+        }
+
+    if is_generic_therapeutic_entity(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "generic_therapeutic_term"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "generic_therapeutic_term",
+        }
+
+    if is_generic_biomarker_category(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "generic_biomarker_category"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "generic_biomarker_category",
+        }
+
     support_evidence = get_support_evidence(
         name=name,
         source_text=source_text,
-        acronyms=acronyms,
+        acronyms=safe_acronyms,
+        concept_type=concept_type,
     )
 
     if support_evidence is None:

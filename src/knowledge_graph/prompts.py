@@ -51,16 +51,19 @@ ENTITY_DISAMBIGUATION_GUIDANCE = """Disambiguation guidance:
 - Environmental constituents, emissions, particulate matter, and inhaled pollutants are exposures, not biomarkers. A biomarker must be a biological analyte or marker measured in a patient or biological sample.
 - Use population_or_patient_group for an explicitly named demographic, life-stage, familial, reproductive, occupational, survivorship, genotype-defined, or otherwise clinically meaningful group of people. Examples include children, adolescents, older adults, neonates, fetuses or foetuses, pregnant women, athletes, first-degree relatives, and childhood cancer survivors. Do not extract generic patient references or a disease name or acronym followed only by patient or patients when the disease itself is the reusable concept.
 - Care settings and service locations such as primary care, secondary care, intensive care, outpatient clinics, hospitals, wards, practices, and care units are not population_or_patient_group. Omit them because the current schema has no care-setting entity type.
+- Scientific societies, councils, associations, colleges, committees, task forces, working groups, professional organizations, and care teams are not patient populations and have no entity type in the current schema. Omit names such as European Society of Cardiology, Heart Failure Association, or ESC Council of Cardio-Oncology.
+- Medical disciplines and specialties such as cardiology, oncology, haematology, and cardio-oncology are not diseases, populations, or care strategies. Omit the discipline itself; a specific service, programme, test, disease, or treatment may still be extracted.
 - Distinguish an entity type from a future contextual role: a group may have intrinsic type population_or_patient_group and later receive the role target_population in a separate recommendation or assertion extraction stage.
 - A physiological state is not automatically a population. Pregnancy may be clinical_finding when the state itself is the concept, whereas pregnant women is population_or_patient_group.
 - Use diagnostic_test for a named diagnostic or monitoring examination, including imaging, laboratory, functional, electrophysiological, and genetic tests.
-- Research-only methods, study designs, database concepts, and population-level statistics are not clinical diagnostic tests or patient findings. Omit association-study methods and allele-frequency statistics unless the section explicitly presents a named examination or patient-level measurement used in clinical care.
+- Research-only methods, study designs, evidence-source labels, database concepts, and population-level statistics are not clinical diagnostic tests or patient findings. Omit randomized controlled trials, observational studies, registries, meta-analyses, genome-wide association studies, allele-frequency statistics, and generic variables such as tumour type or sex category.
 - Distinguish an examination from its result. The examination or acquisition method is diagnostic_test; an observation, pattern, enhancement, defect, abnormality, measurement, value, or result produced by it is clinical_finding.
 - Distinguish a test from a care process. A named examination or testing method is diagnostic_test; an organized programme or longitudinal strategy that determines whom to test, when to repeat testing, or how to extend testing through a family or population is care_strategy.
-- Use procedure_or_intervention for a performed therapeutic or supportive intervention, including anaesthesia, sedation, surgery, catheter procedures, ablation, and other clinical procedures. Do not classify an intervention as clinical_finding.
+- Use procedure_or_intervention for a performed therapeutic or supportive intervention, including chemotherapy or radiotherapy as treatment modalities, anaesthesia, sedation, surgery, catheter procedures, ablation, and other clinical procedures. Do not classify an intervention as clinical_finding.
+- A treatment modality is not exposure_or_lifestyle_factor. Do not classify chemotherapy, radiotherapy, anticancer therapy, or cardiotoxic therapy as a lifestyle or environmental exposure merely because the treatment exposes the patient to toxicity.
 - Use clinical_finding for patient-level symptoms, signs, phenotypes, physiological or pathological states, measured results, and ECG/imaging/laboratory findings. Technical artefacts, equipment limitations, acquisition problems, and image-quality defects are not patient findings and should normally not be extracted as clinical entities.
 - Use disease only for a named disease, syndrome, or disorder. Descriptive damage, dysfunction, impairment, abnormality, defect, reduced function, or altered function is generally clinical_finding unless the complete phrase is an established named disease or syndrome in the section.
-- Use biomarker only for a biological analyte, molecule, cellular marker, or measurable biological substance assessed in a biological specimen. Imaging-derived measurements, physiological measurements, functional indices, pressures, fractions, scores, environmental pollutants, and exposure constituents are not biomarkers. Use diagnostic_test for the examination that measures a biomarker, and clinical_finding for an explicitly stated patient-level result or value.
+- Use biomarker only for a specific biological analyte, molecule, cellular marker, or measurable biological substance assessed in a biological specimen. Generic category phrases such as cardiac biomarker, serum biomarker, circulating marker, or cardiac biomarkers are not sufficiently specific and should be omitted. Imaging-derived measurements, physiological measurements, functional indices, pressures, fractions, scores, environmental pollutants, and exposure constituents are not biomarkers. Use diagnostic_test for the examination that measures a biomarker, and clinical_finding for an explicitly stated patient-level result or value.
 - Use anatomical_structure only for body structures, organs, chambers, vessels, valves, tissues, and anatomical sites. People, patient groups, life stages, fetuses, and neonates are not anatomical structures.
 - Use clinical_outcome only for endpoints describing what happens to a patient or population, such as mortality, hospitalization, recurrence, quality of life, functional improvement, or symptom improvement. Decisions, diagnostic labels, management activities, treatment selection, counselling, testing, screening, and surveillance are not clinical outcomes. A disease does not change type merely because it is evaluated as an outcome.
 - Use care_strategy only for a specific reusable programme, pathway, or coordinated care process such as family screening, cascade testing, genetic counselling, structured follow-up, rehabilitation, surveillance, patient education, shared decision-making, or a strategy that determines whom to test, how testing is propagated through a family, when it is repeated, or how results guide longitudinal care. A single examination remains diagnostic_test. Do not use care_strategy for generic management, treatment, therapy, care, monitoring, screening, or follow-up alone.
@@ -69,7 +72,7 @@ ENTITY_DISAMBIGUATION_GUIDANCE = """Disambiguation guidance:
 - Canonical gene symbols such as SCN5A, MYBPC3, TTN, TTR, or TMEM43 are genetic_factor entities, not clinical acronyms. Return the exact uppercase symbol from the source and do not replace it with a guessed gene or protein long form.
 - Never classify a generic causal or aetiological description as disease. Disease is reserved for a named disease, syndrome, or disorder. Phrases whose semantic head is only cause, aetiology, etiology, mechanism, origin, or basis normally describe an explanation rather than a reusable clinical entity and should be omitted unless they contain a separately named entity that can be extracted on its own.
 - Use device only for a clinical or medical device. Consumer products, exposure sources, and substance-delivery products are not medical devices merely because they are physical objects.
-- Use drug_or_drug_class for a named drug, therapeutic agent, or clinically meaningful drug class. Do not extract generic phrases such as medication, cardiovascular medication, pharmacological therapy, or drug treatment.
+- Use drug_or_drug_class for a named drug, therapeutic agent, or clinically meaningful drug class. Do not extract generic phrases such as medication, cardiovascular medication, cancer therapy, anticancer treatment, pharmacological therapy, immunosuppression, or drug treatment. A treatment modality such as radiotherapy is procedure_or_intervention, not a drug.
 - Use procedure_or_intervention for a performed therapeutic procedure or intervention, and device for the physical medical device itself.
 """
 
@@ -87,9 +90,11 @@ ENTITY_EXTRACTION_GENERAL_RULES = """General rules:
 - Do NOT split one meaningful concept into smaller fragments when the longer expression is the true concept.
 - Do NOT add generic parent concepts unless they are separately and explicitly meaningful in the text.
 - Do NOT extract generic or trivial words such as management, treatment, therapy, recommendation, patient, population, disease, condition, risk, test, procedure, intervention, medication, care, finding, outcome, event, score, model, pathogen, or microorganism.
+- Do NOT extract scientific organizations, professional bodies, medical disciplines, research designs, evidence-source labels, generic categories, or isolated adjectives as clinical entities.
 - Do NOT extract broad organizational headings such as diagnosis, management, follow-up, screening, prognosis, risk stratification, imaging, genetics, prevention, pregnancy, or therapy unless the title itself names a specific reusable clinical concept.
 - Do NOT extract abstract actions or care verbs such as evaluate, consider, recommend, screen, monitor, assess, manage, or treat unless they are part of a specific named concept.
 - Do NOT extract broad process phrases headed by diagnosis, management, selection, treatment, medication, testing, screening, surveillance, monitoring, counselling, assessment, or evaluation unless the complete phrase identifies a specific reusable examination, programme, pathway, or care strategy.
+- In particular, omit generic "clinical evaluation", "clinical assessment", "general evaluation", and "routine assessment". Keep specific examinations such as physical examination, electrocardiography, echocardiography, or genetic testing.
 - Do NOT extract recommendation or evidence labels such as Class I, Class IIa, Class IIb, Class III, Level A, Level B, or Level C.
 - Do NOT extract standalone modifiers such as mild, moderate, severe, symptomatic, asymptomatic, primary, secondary, advanced, acute, chronic, recurrent, persistent, isolated, or familial.
 - Omit contextual severity or status modifiers from the canonical concept name when the base concept remains clinically meaningful. Retain a modifier only when it is part of an established named disease, subtype, population, or other reusable concept.
@@ -101,6 +106,9 @@ ENTITY_EXTRACTION_GENERAL_RULES = """General rules:
 - Merge synonyms only when their equivalence is explicit in the same section.
 - Do NOT guess an abbreviation or acronym expansion that is absent from the current section.
 - If only a clinically meaningful acronym appears, return the exact source short form with its original capitalization, such as "CMR", rather than a lowercased form or a guessed expansion. Deterministic validation may later expand it through the document acronym cache when safe.
+- Preserve an undefined acronym when it is embedded inside a larger explicit phrase. Return "12-lead ECG", "HAS-BLED score", "CV surveillance", "AF ablation", or "intensity-modulated RT" exactly as written rather than inventing a long-form phrase absent from the section.
+- Preserve classifier-like acronym phrases such as "ICI myocarditis", "RAF inhibitor", and "MEK inhibitor". Do not mechanically rewrite them as unnatural concatenations such as "immune checkpoint inhibitors myocarditis" or long pathway-name-plus-inhibitor phrases.
+- For a named risk score whose source uses only the acronym, return the conventional form "<ACRONYM> score", for example "HAS-BLED score".
 - If both an acronym and its full form are explicitly provided in the same section, prefer the full form and do not return the acronym as a duplicate concept.
 - Be conservative with short forms that can also be ordinary words, such as AS or MR. Return them only when the source clearly uses the uppercase form as a medical abbreviation.
 - Return valid JSON only.
@@ -292,6 +300,27 @@ Concepts:
 ]
 
 The imaging examination is a diagnostic_test, whereas its observed enhancement is a clinical_finding. A biological analyte measured in a specimen may be a biomarker; a functional fraction, physiological measurement, environmental pollutant, or exposure constituent is not. Device is reserved for the medical device.
+
+
+Example 10 — organizations, disciplines, treatment modalities, and embedded acronyms
+Input text:
+\"\"\"
+Title: Surveillance and treatment
+
+Body:
+The European Society of Cardiology recommends CV surveillance with a 12-lead ECG. HAS-BLED score may support bleeding-risk assessment. Cardio-oncology teams coordinate care during intensity-modulated RT and anthracycline chemotherapy.
+\"\"\"
+
+Concepts:
+[
+  {"name": "CV surveillance", "type": "care_strategy"},
+  {"name": "12-lead ECG", "type": "diagnostic_test"},
+  {"name": "HAS-BLED score", "type": "score_or_risk_model"},
+  {"name": "intensity-modulated RT", "type": "procedure_or_intervention"},
+  {"name": "anthracycline chemotherapy", "type": "procedure_or_intervention"}
+]
+
+Do not extract European Society of Cardiology, cardio-oncology, teams, discipline, or treatment as standalone concepts. Preserve embedded acronyms exactly when their long forms are not explicitly written in the section.
 """
 
 
