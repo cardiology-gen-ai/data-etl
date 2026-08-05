@@ -117,7 +117,7 @@
         "delete_orphans": true
       },
       "entity_normalization": {
-        "enabled": true,
+        "enabled": false,
         "doc_id": "Cardiomyopathies_2023",
         "backend": "umls_api",
         "model_name": "en_core_sci_sm",

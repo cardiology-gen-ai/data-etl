@@ -833,7 +833,6 @@ def write_section_concepts(
             concept,
             c,
             coalesce(c.observed_types, []) AS old_observed_types,
-            c.type_resolution_status AS previous_status,
             coalesce(c.type_resolution_status, 'pending') AS old_status,
             coalesce(c.needs_type_review, false) AS old_needs_type_review
 
@@ -845,23 +844,19 @@ def write_section_concepts(
                 END,
             c.canonical_type =
                 CASE
-                    WHEN previous_status IS NULL THEN NULL
-                    WHEN old_status IN ['single_type', 'resolved']
-                         AND NOT (concept.type IN old_observed_types)
+                    WHEN NOT (concept.type IN old_observed_types)
                     THEN NULL
                     ELSE c.canonical_type
                 END,
             c.type_resolution_status =
                 CASE
-                    WHEN old_status IN ['single_type', 'resolved']
-                         AND NOT (concept.type IN old_observed_types)
+                    WHEN NOT (concept.type IN old_observed_types)
                     THEN 'pending'
                     ELSE old_status
                 END,
             c.needs_type_review =
                 CASE
-                    WHEN old_status IN ['single_type', 'resolved']
-                         AND NOT (concept.type IN old_observed_types)
+                    WHEN NOT (concept.type IN old_observed_types)
                     THEN true
                     ELSE old_needs_type_review
                 END,
@@ -880,7 +875,8 @@ def write_section_concepts(
             r.acronym_match_method = concept.acronym_match_method,
             r.expanded_from_acronym = concept.expanded_from_acronym,
             r.raw_name = concept.raw_name,
-            r.raw_type = concept.raw_type
+            r.raw_type = concept.raw_type,
+            r.quality_flags = coalesce(concept.quality_flags, [])
         ON MATCH SET
             r.observed_types =
                 CASE
@@ -898,7 +894,8 @@ def write_section_concepts(
             r.acronym_match_method = concept.acronym_match_method,
             r.expanded_from_acronym = concept.expanded_from_acronym,
             r.raw_name = concept.raw_name,
-            r.raw_type = concept.raw_type
+            r.raw_type = concept.raw_type,
+            r.quality_flags = coalesce(concept.quality_flags, [])
         WITH s, r
         SET r += $relationship_metadata
         FOREACH (_ IN CASE
@@ -1154,10 +1151,20 @@ def process_extracted_concepts(
         c for c in accepted
         if c.get("support_method") == "acronym"
     ]
+    accepted_with_quality_flags = [
+        c for c in accepted
+        if c.get("quality_flags")
+    ]
 
     stats["successful_sections"] += 1
     stats["concepts_rejected_by_validation"] += len(rejected)
     stats["concepts_accepted_by_acronym"] += len(accepted_by_acronym)
+    stats["concepts_with_quality_flags"] += len(
+        accepted_with_quality_flags
+    )
+
+    if accepted_with_quality_flags:
+        stats["sections_with_quality_flags"] += 1
 
     if accepted_by_acronym:
         stats["sections_with_acronym_supported_concepts"] += 1
@@ -1243,6 +1250,7 @@ def clear_entity_review_exports_safely(
 def add_entities_from_sections(
     driver: Driver,
     doc_id: Optional[str] = None,
+    section_ids: Optional[List[str]] = None,
     use_section_text: bool = False,
     max_sections: Optional[int] = None,
     max_sections_per_batch: int = 2,
@@ -1264,6 +1272,11 @@ def add_entities_from_sections(
     - section_view_role must be ``retrieval``;
     - embed must be true;
     - excluded must be false.
+
+    ``section_ids`` can restrict extraction to an explicit document-local
+    subset for integration tests and pilot runs. The default ``None`` preserves
+    production behaviour and processes every eligible Section selected by
+    ``doc_id``.
 
     Structural Section nodes are never sent to the LLM and are not marked as
     skipped. They remain pure hierarchy/navigation nodes.
@@ -1290,6 +1303,24 @@ def add_entities_from_sections(
     if max_sections is not None and max_sections < 1:
         raise ValueError("max_sections must be >= 1 or None")
 
+    normalized_section_ids: Optional[List[str]] = None
+    if section_ids is not None:
+        normalized_section_ids = list(
+            dict.fromkeys(
+                str(section_id).strip()
+                for section_id in section_ids
+                if str(section_id).strip()
+            )
+        )
+        if not normalized_section_ids:
+            raise ValueError(
+                "section_ids must contain at least one non-empty section id"
+            )
+        if doc_id is None:
+            raise ValueError(
+                "section_ids can be used only together with a specific doc_id"
+            )
+
     max_segment_chars = min(
         max_batch_chars,
         (
@@ -1303,6 +1334,13 @@ def add_entities_from_sections(
     entity_review_run_id = f"entity_extraction::{utc_now_iso()}"
 
     stats = {
+        "requested_section_ids": (
+            len(normalized_section_ids)
+            if normalized_section_ids is not None
+            else 0
+        ),
+        "matched_requested_section_ids": 0,
+        "missing_requested_section_ids": 0,
         "eligible_retrieval_sections": 0,
         "processed_sections": 0,
         "successful_sections": 0,
@@ -1316,6 +1354,8 @@ def add_entities_from_sections(
         "concepts_rejected_by_validation": 0,
         "concepts_accepted_by_acronym": 0,
         "sections_with_acronym_supported_concepts": 0,
+        "concepts_with_quality_flags": 0,
+        "sections_with_quality_flags": 0,
         "documents_with_acronym_cache": 0,
         "acronyms_loaded": 0,
         "entity_review_accepted_records": 0,
@@ -1330,6 +1370,10 @@ def add_entities_from_sections(
         query = """
         MATCH (s:Section)
         WHERE ($doc_id IS NULL OR s.doc_id = $doc_id)
+          AND (
+                $section_ids IS NULL
+                OR s.section_id IN $section_ids
+              )
           AND s.section_view_role = $retrieval_role
           AND coalesce(s.embed, false) = true
           AND coalesce(s.excluded, false) = false
@@ -1362,11 +1406,13 @@ def add_entities_from_sections(
         result = session.run(
             query,
             doc_id=doc_id,
+            section_ids=normalized_section_ids,
             retrieval_role=RETRIEVAL_ROLE,
             max_sections=max_sections,
         )
 
         prepared_rows: List[Dict[str, Any]] = []
+        matched_section_ids: set[str] = set()
 
         for record in result:
             row = {
@@ -1381,6 +1427,8 @@ def add_entities_from_sections(
             }
 
             stats["eligible_retrieval_sections"] += 1
+            if row.get("section_id") is not None:
+                matched_section_ids.add(str(row["section_id"]))
 
             if use_section_text and not has_section_body(row):
                 stats["skipped_sections"] += 1
@@ -1420,6 +1468,24 @@ def add_entities_from_sections(
 
             row["source_text"] = source_text
             prepared_rows.append(row)
+
+        if normalized_section_ids is not None:
+            requested_set = set(normalized_section_ids)
+            missing_section_ids = sorted(requested_set - matched_section_ids)
+            stats["matched_requested_section_ids"] = len(
+                requested_set & matched_section_ids
+            )
+            stats["missing_requested_section_ids"] = len(
+                missing_section_ids
+            )
+
+            if missing_section_ids:
+                logger.warning(
+                    "Requested Section ids were not eligible or not found | "
+                    "doc=%s | missing=%s",
+                    doc_id,
+                    missing_section_ids,
+                )
 
         review_doc_ids = sorted(
             {
@@ -1658,6 +1724,8 @@ def add_entities_from_sections(
             "concepts_rejected_by_validation=%d | "
             "acronym_supported_concepts=%d | "
             "sections_with_acronym_supported_concepts=%d | "
+            "concepts_with_quality_flags=%d | "
+            "sections_with_quality_flags=%d | "
             "docs_with_acronym_cache=%d | acronyms_loaded=%d | "
             "review_accepted=%d | review_rejected=%d | "
             "review_export_failures=%d | orphan_concepts_deleted=%d",
@@ -1674,6 +1742,8 @@ def add_entities_from_sections(
             stats["concepts_rejected_by_validation"],
             stats["concepts_accepted_by_acronym"],
             stats["sections_with_acronym_supported_concepts"],
+            stats["concepts_with_quality_flags"],
+            stats["sections_with_quality_flags"],
             stats["documents_with_acronym_cache"],
             stats["acronyms_loaded"],
             stats["entity_review_accepted_records"],

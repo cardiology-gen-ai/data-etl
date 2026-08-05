@@ -24,6 +24,10 @@ Main policy:
   safely expanded; the expanded long form is written instead
 - raw acronym-only concepts without a safe expansion are rejected rather than
   written as ambiguous short-form nodes
+- uppercase gene symbols extracted as genetic_factor are treated as canonical
+  gene symbols, not clinical acronyms; exact source capitalization is preserved
+- obvious care settings misclassified as population_or_patient_group are
+  rejected because the schema has no care-setting entity type
 - tiny lowercase surface names such as "as" are rejected by direct source
   matching, because they can be ordinary words rather than clinical concepts
 - support checking is intentionally strict, with only small matching tolerance
@@ -59,6 +63,55 @@ _DASH_TRANSLATION = str.maketrans({
     "\u2014": "-",
     "\u2212": "-",
 })
+
+
+# Require at least three characters so very short clinical abbreviations such
+# as AS or LV are not accepted as genes solely from surface form.
+_GENE_SYMBOL_PATTERN = re.compile(r"^[A-Z][A-Z0-9-]{2,19}$")
+
+_CARE_SETTING_HEADS = {
+    "care",
+    "clinic",
+    "hospital",
+    "practice",
+    "service",
+    "services",
+    "setting",
+    "unit",
+    "ward",
+}
+
+_HUMAN_GROUP_MARKERS = {
+    "adult",
+    "adults",
+    "adolescent",
+    "adolescents",
+    "athlete",
+    "athletes",
+    "child",
+    "children",
+    "family",
+    "families",
+    "individual",
+    "individuals",
+    "infant",
+    "infants",
+    "mother",
+    "mothers",
+    "neonate",
+    "neonates",
+    "patient",
+    "patients",
+    "people",
+    "person",
+    "persons",
+    "relative",
+    "relatives",
+    "survivor",
+    "survivors",
+    "woman",
+    "women",
+}
 
 
 # Conservative spelling equivalences useful in cardiology guideline text.
@@ -589,6 +642,90 @@ def copy_raw_fields(
     return out
 
 
+def get_exact_case_source_support(
+    surface: Any,
+    source_text: str,
+) -> Optional[Dict[str, Any]]:
+    """Return exact case-sensitive source evidence for a short symbol."""
+    raw_surface = normalize_whitespace(str(surface or "")).strip()
+    if not raw_surface:
+        return None
+
+    pattern = (
+        rf"(?<![A-Za-z0-9]){re.escape(raw_surface)}"
+        rf"(?![A-Za-z0-9])"
+    )
+    match = re.search(pattern, str(source_text or ""))
+    if match is None:
+        return None
+
+    return {
+        "support_method": "direct_source",
+        "support_reason": "accepted_gene_symbol_direct_source",
+        "matched_text": match.group(0),
+        "matched_pattern": pattern,
+    }
+
+
+def try_accept_raw_gene_symbol_concept(
+    concept: Dict[str, Any],
+    source_text: str,
+    concept_type: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Accept an exact uppercase gene symbol without acronym expansion.
+
+    The intrinsic type must be genetic_factor and the exact symbol must occur
+    in the Section source with the same capitalization.
+    """
+    if concept_type != "genetic_factor":
+        return None
+
+    raw_symbol = normalize_whitespace(
+        str(get_raw_name_for_acronym_check(concept) or "")
+    ).strip()
+
+    if _GENE_SYMBOL_PATTERN.fullmatch(raw_symbol) is None:
+        return None
+
+    support_evidence = get_exact_case_source_support(
+        surface=raw_symbol,
+        source_text=source_text,
+    )
+    if support_evidence is None:
+        return None
+
+    accepted = copy_raw_fields(
+        normalized_concept={
+            "name": raw_symbol,
+            "type": concept_type,
+        },
+        source_concept=concept,
+    )
+    return build_accepted_concept(
+        normalized_concept=accepted,
+        support_evidence=support_evidence,
+    )
+
+
+def is_non_population_care_setting(
+    name: Any,
+    concept_type: str,
+) -> bool:
+    """Detect an obvious care setting misclassified as a population."""
+    if concept_type != "population_or_patient_group":
+        return False
+
+    tokens = _normalized_name_tokens(name)
+    if not tokens:
+        return False
+
+    if set(tokens).intersection(_HUMAN_GROUP_MARKERS):
+        return False
+
+    return tokens[-1] in _CARE_SETTING_HEADS
+
+
 def try_expand_raw_acronym_concept(
     concept: Dict[str, Any],
     source_text: str,
@@ -1013,7 +1150,24 @@ def validate_single_concept(
             "reason": "non_allowed_type",
         }
 
-    # First, try to expand raw acronym-only LLM outputs before any direct
+    # Gene symbols are canonical genetic entities, not clinical acronyms.
+    accepted_gene_symbol = try_accept_raw_gene_symbol_concept(
+        concept=concept,
+        source_text=source_text,
+        concept_type=concept_type,
+    )
+    if accepted_gene_symbol is not None:
+        accepted_gene_symbol = attach_quality_flags(
+            concept=accepted_gene_symbol,
+            source_text=source_text,
+        )
+        return {
+            "accepted": True,
+            "concept": accepted_gene_symbol,
+            "reason": accepted_gene_symbol["validation_reason"],
+        }
+
+    # Next, try to expand raw acronym-only LLM outputs before normal direct
     # source matching. This prevents "AS" from becoming a written Concept
     # called "as".
     expanded_acronym_concept = try_expand_raw_acronym_concept(
@@ -1076,6 +1230,19 @@ def validate_single_concept(
             "accepted": False,
             "concept": normalized_concept,
             "reason": "generic_causal_description",
+        }
+
+    if is_non_population_care_setting(
+        name=name,
+        concept_type=concept_type,
+    ):
+        normalized_concept["quality_flags"] = [
+            "non_population_care_setting"
+        ]
+        return {
+            "accepted": False,
+            "concept": normalized_concept,
+            "reason": "care_setting_not_population",
         }
 
     support_evidence = get_support_evidence(
