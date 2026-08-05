@@ -33,6 +33,10 @@ from managers.mineru_markdown_adapter import (
     load_mineru_markdown,
 )
 from managers.hierarchical_chunking_manager import build_hierarchical_chunks
+from managers.clean_chunk_source_manager import (
+    ensure_clean_chunk_dirs,
+    resolve_section_view_chunk_source,
+)
 try:
     from managers.hierarchical_chunking_manager import validate_section_boundaries
 except ImportError:
@@ -169,6 +173,7 @@ def ensure_pipeline_dirs(config) -> None:
     ensure_dir(Path(config.image_dir))
     ensure_dir(Path(config.anchor_dir))
     ensure_dir(Path(config.chunk_dir))
+    ensure_clean_chunk_dirs(config)
     ensure_dir(get_section_view_dir(config))
 
     if should_run_acronym_extraction(config):
@@ -447,7 +452,7 @@ def chunk_path_to_doc_id(chunk_path: Path) -> str:
 
 
 
-SECTION_VIEW_CACHE_SCHEMA_VERSION = "1"
+SECTION_VIEW_CACHE_SCHEMA_VERSION = "2"
 
 
 def get_section_view_dir(config) -> Path:
@@ -494,11 +499,11 @@ def _sha256_file(path: Path) -> str:
 
 def _expected_section_view_cache_metadata(
     config,
-    canonical_chunk_path: Path,
+    section_source,
 ) -> Dict[str, Any]:
     return {
         "section_view_cache_schema_version": SECTION_VIEW_CACHE_SCHEMA_VERSION,
-        "source_chunk_sha256": _sha256_file(canonical_chunk_path),
+        **section_source.cache_metadata(),
         "max_level": get_retrieval_max_level(config),
         "include_descendant_titles": bool(
             getattr(config, "retrieval_include_descendant_titles", True)
@@ -507,7 +512,6 @@ def _expected_section_view_cache_metadata(
             getattr(config, "retrieval_include_section_ids_in_titles", True)
         ),
     }
-
 
 def _read_json_object(path: Path) -> Optional[Dict[str, Any]]:
     try:
@@ -552,6 +556,19 @@ def load_or_build_retrieval_section_view(
             f"{canonical_chunk_path}"
         )
 
+    section_source = resolve_section_view_chunk_source(
+        config=config,
+        canonical_chunk_path=canonical_chunk_path,
+    )
+    logger.info(
+        "Section-view text source for %s | kind=%s | source=%s | "
+        "cleaning_version=%s | cache=%s",
+        doc_id,
+        section_source.source_kind,
+        section_source.source_path,
+        section_source.text_cleaning_version,
+        section_source.text_cleaning_cache_status,
+    )
     output_dir = get_section_view_dir(config)
     ensure_dir(output_dir)
 
@@ -559,7 +576,7 @@ def load_or_build_retrieval_section_view(
     validation_path = section_view_validation_path(output_path)
     expected_metadata = _expected_section_view_cache_metadata(
         config=config,
-        canonical_chunk_path=canonical_chunk_path,
+        section_source=section_source,
     )
     force = bool(getattr(config, "force_retrieval_view", False))
 
@@ -597,7 +614,7 @@ def load_or_build_retrieval_section_view(
             )
 
     output_path, report = build_retrieval_section_view_file(
-        input_path=canonical_chunk_path,
+        input_path=section_source.source_path,
         output_dir=output_dir,
         max_level=get_retrieval_max_level(config),
         include_descendant_titles=bool(
