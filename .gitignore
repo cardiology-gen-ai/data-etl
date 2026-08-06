@@ -111,6 +111,7 @@ run_recommendation_review_poc.py
 test.py
 umls_test/
 mineru_test/
+mineru_test_old/
 cardio_test/
 scripts/
 prototype/
