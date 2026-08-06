@@ -389,7 +389,11 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
-            RETURN coalesce(r.source_vocabulary, 'UNSET') AS source_vocabulary,
+            WITH r, properties(r) AS rel_props
+            RETURN coalesce(
+                       rel_props['source_vocabulary'],
+                       'UNSET'
+                   ) AS source_vocabulary,
                    count(*) AS n
             ORDER BY n DESC, source_vocabulary ASC
         """,
@@ -441,12 +445,14 @@ CHECKS: List[Dict[str, Any]] = [
         "query": """
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
-              AND (r.source_vocabulary IS NULL OR trim(toString(r.source_vocabulary)) = '')
+            WITH r, properties(r) AS rel_props
+            WHERE rel_props['source_vocabulary'] IS NULL
+               OR trim(toString(rel_props['source_vocabulary'])) = ''
             RETURN type(r) AS relationship_type,
                    elementId(r) AS relationship_id,
-                   r.edge_key AS edge_key,
-                   r.source_cui AS source_cui,
-                   r.target_cui AS target_cui
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['source_cui'] AS source_cui,
+                   rel_props['target_cui'] AS target_cui
             ORDER BY relationship_type, relationship_id
         """,
     },
@@ -901,9 +907,11 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH ()-[r]->()
             WHERE type(r) IN $relationship_types
               AND r.provenance = 'umls_connections'
-            WITH r.edge_key AS edge_key,
+            WITH type(r) AS relationship_type,
+                 properties(r) AS rel_props
+            WITH rel_props['edge_key'] AS edge_key,
                  count(*) AS n,
-                 collect(DISTINCT type(r)) AS relationship_types
+                 collect(DISTINCT relationship_type) AS relationship_types
             WHERE edge_key IS NULL OR trim(toString(edge_key)) = '' OR n > 1
             RETURN edge_key,
                    n,
@@ -1025,13 +1033,13 @@ CHECKS: List[Dict[str, Any]] = [
             MATCH (source:Concept)-[r]->(target:Concept)
             WHERE type(r) = rule.relationship_type
               AND r.provenance = 'umls_connections'
-            WITH rule, source, r, target,
+            WITH rule, source, r, target, properties(r) AS rel_props,
                  coalesce(toString(source.canonical_type), '') AS source_type,
                  coalesce(toString(target.canonical_type), '') AS target_type
             WHERE NOT (source_type IN rule.source_types)
                OR NOT (target_type IN rule.target_types)
             RETURN type(r) AS relationship_type,
-                   r.edge_key AS edge_key,
+                   rel_props['edge_key'] AS edge_key,
                    rule.relation_name AS relation_name,
                    source.name AS source_concept,
                    source_type AS source_canonical_type,
@@ -1532,6 +1540,11 @@ CHECKS: List[Dict[str, Any]] = [
               AND coalesce(mention_props['expanded_from_acronym'], false) = false
               AND coalesce(toString(mention_props['support_method']), '') <>
                   'acronym'
+              AND coalesce(
+                    toString(mention_props['validation_reason']),
+                    ''
+                  ) <> 'accepted_gene_symbol_direct_source'
+              AND coalesce(toString(c.canonical_type), '') <> 'genetic_factor'
             RETURN s.uid AS section_uid,
                    c.name AS concept,
                    mention_props['raw_name'] AS raw_name,
@@ -2120,12 +2133,12 @@ SECTION_VIEW_CHECKS: List[Dict[str, Any]] = [
             MATCH (s:Section)
             WHERE s.section_view_role = 'structural'
             OPTIONAL MATCH (s)-[r:MENTIONS]->(:Concept)
-            WITH s, count(r) AS mention_count
+            WITH s, properties(s) AS section_props, count(r) AS mention_count
             WHERE mention_count > 0
                OR coalesce(s.entity_extracted, false) = true
                OR s.entity_extraction_status IS NOT NULL
                OR s.entity_extracted_at IS NOT NULL
-               OR s.entity_extraction_failed_at IS NOT NULL
+               OR section_props['entity_extraction_failed_at'] IS NOT NULL
             RETURN s.uid AS uid,
                    mention_count,
                    s.entity_extracted AS entity_extracted,

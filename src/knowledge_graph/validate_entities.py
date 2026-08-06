@@ -192,6 +192,49 @@ _NONCLINICAL_RESEARCH_HEADS = {
     "trials",
 }
 
+
+# Research/document objects are outside the current intrinsic entity schema.
+# Keep these rules narrow enough not to reject bona-fide diagnostic procedures
+# whose established name happens to end in ``study``.
+_ALWAYS_NON_ENTITY_RESEARCH_HEADS = {
+    "registries",
+    "registry",
+    "trial",
+    "trials",
+}
+
+_CLINICAL_DIAGNOSTIC_STUDY_MARKERS = {
+    "electrophysiologic",
+    "electrophysiological",
+    "electrophysiology",
+    "haemodynamic",
+    "hemodynamic",
+    "imaging",
+    "perfusion",
+    "scintigraphic",
+    "sleep",
+}
+
+_SCORE_ARTIFACT_MARKERS = {
+    "classification",
+    "criteria",
+    "model",
+    "mortality",
+    "predicted",
+    "prediction",
+    "risk",
+    "score",
+    "staging",
+}
+
+_PUBLICATION_TITLE_PATTERNS = (
+    re.compile(r"^\d{4}\s+.+\bguidelines?\b"),
+    re.compile(r"\b(?:clinical\s+practice\s+)?guidelines?\s+(?:for|of|on|regarding)\b"),
+    re.compile(r"\bconsensus\s+(?:document|paper|statement)\b"),
+    re.compile(r"\bposition\s+(?:paper|statement)\b"),
+    re.compile(r"\bscientific\s+statement\b"),
+)
+
 _GENERIC_VARIABLE_NAMES = {
     "cancer type",
     "clinical syndrome",
@@ -944,14 +987,29 @@ def is_non_population_care_setting(
     return tokens[-1] in _CARE_SETTING_HEADS
 
 
-def is_organization_like_name(name: Any) -> bool:
-    """Detect organizations and scientific bodies outside the entity schema."""
+def is_organization_like_name(
+    name: Any,
+    concept_type: Optional[str] = None,
+) -> bool:
+    """
+    Detect organizations and scientific bodies outside the entity schema.
+
+    Named scores and criteria may legitimately contain an organization name in
+    their title, for example ``Society of Thoracic Surgeons Predicted Risk of
+    Mortality`` or ``revised Task Force criteria``. Those are clinical models,
+    not organization nodes, and must remain eligible when the extracted type is
+    ``score_or_risk_model``.
+    """
     tokens = _normalized_name_tokens(name)
 
     if not tokens:
         return False
 
     normalized = " ".join(tokens)
+
+    if concept_type == "score_or_risk_model":
+        if set(tokens).intersection(_SCORE_ARTIFACT_MARKERS):
+            return False
 
     if tokens[-1] in _ORGANIZATION_HEADS:
         return True
@@ -993,7 +1051,14 @@ def is_nonclinical_research_or_variable(
     name: Any,
     concept_type: str,
 ) -> bool:
-    """Detect study-design and generic-variable phrases outside the schema."""
+    """
+    Detect research objects and generic variables outside the entity schema.
+
+    Trial and registry names are never intrinsic clinical entities in the
+    current schema, regardless of the type proposed by the LLM. ``Study`` is
+    more nuanced because some established diagnostic procedures use that word,
+    such as ``electrophysiological study``.
+    """
     tokens = _normalized_name_tokens(name)
 
     if not tokens:
@@ -1007,9 +1072,36 @@ def is_nonclinical_research_or_variable(
     if normalized in _GENERIC_VARIABLE_NAMES:
         return True
 
+    if tokens[-1] in _ALWAYS_NON_ENTITY_RESEARCH_HEADS:
+        return True
+
+    if tokens[-1] in {"study", "studies"}:
+        if (
+            concept_type in {"diagnostic_test", "procedure_or_intervention"}
+            and bool(set(tokens[:-1]).intersection(
+                _CLINICAL_DIAGNOSTIC_STUDY_MARKERS
+            ))
+        ):
+            return False
+
+        return True
+
     return (
         concept_type in {"clinical_finding", "diagnostic_test"}
         and tokens[-1] in _NONCLINICAL_RESEARCH_HEADS
+    )
+
+
+def is_document_or_publication_like_name(name: Any) -> bool:
+    """Detect guideline, consensus, and publication titles outside the schema."""
+    normalized = " ".join(_normalized_name_tokens(name))
+
+    if not normalized:
+        return False
+
+    return any(
+        pattern.search(normalized) is not None
+        for pattern in _PUBLICATION_TITLE_PATTERNS
     )
 
 
@@ -1665,6 +1757,120 @@ def build_rejected_concept_record(
     return rejected
 
 
+_ACRONYM_EVIDENCE_FIELDS = {
+    "acronym_short",
+    "acronym_definition",
+    "acronym_match_method",
+}
+
+
+def normalize_mention_evidence(concept: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Return one internally coherent accepted-concept evidence record.
+
+    A direct-source mention must not retain acronym-expansion metadata copied
+    from another duplicate candidate. Conversely, a record marked as expanded
+    from an acronym is valid only when its raw surface is the acronym short
+    form. This defensive normalization protects both review exports and future
+    MENTIONS writes.
+    """
+    out = dict(concept or {})
+    support_method = str(out.get("support_method") or "").strip()
+
+    if support_method == "direct_source":
+        for field in _ACRONYM_EVIDENCE_FIELDS:
+            out.pop(field, None)
+        out["expanded_from_acronym"] = False
+        return out
+
+    if support_method == "acronym":
+        expanded = bool(out.get("expanded_from_acronym", False))
+        raw_name = normalize_whitespace(str(out.get("raw_name") or ""))
+        acronym_short = normalize_whitespace(
+            str(out.get("acronym_short") or "")
+        )
+
+        if expanded and (
+            not raw_name
+            or not acronym_short
+            or raw_name.casefold() != acronym_short.casefold()
+        ):
+            # The concept long form was supported by an acronym in the source,
+            # but the LLM did not actually emit the short form itself.
+            out["expanded_from_acronym"] = False
+
+    return out
+
+
+def mention_evidence_priority(concept: Dict[str, Any]) -> Tuple[int, int]:
+    """Return a deterministic preference score for duplicate evidence records."""
+    normalized = normalize_mention_evidence(concept)
+    support_method = normalized.get("support_method")
+
+    if support_method == "direct_source":
+        primary = 3
+    elif support_method == "acronym" and normalized.get(
+        "expanded_from_acronym"
+    ):
+        primary = 2
+    elif support_method == "acronym":
+        primary = 1
+    else:
+        primary = 0
+
+    evidence_fields = (
+        "matched_text",
+        "matched_pattern",
+        "acronym_short",
+        "acronym_definition",
+        "acronym_match_method",
+        "raw_name",
+        "raw_type",
+    )
+    richness = sum(
+        1
+        for field in evidence_fields
+        if normalized.get(field) not in (None, "")
+    )
+    return primary, richness
+
+
+def merge_validated_concept_evidence(
+    existing: Dict[str, Any],
+    incoming: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Merge duplicate accepted records without mixing incompatible provenance.
+
+    Only one complete evidence record wins. Non-provenance review flags are
+    unioned, but support_method/raw_name/acronym fields are never assembled
+    piecemeal from different candidates.
+    """
+    left = normalize_mention_evidence(existing)
+    right = normalize_mention_evidence(incoming)
+
+    if mention_evidence_priority(right) > mention_evidence_priority(left):
+        winner, loser = right, left
+    else:
+        winner, loser = left, right
+
+    merged = dict(winner)
+
+    merged_flags: List[str] = []
+    for source in (winner, loser):
+        for flag in source.get("quality_flags") or []:
+            clean_flag = str(flag).strip()
+            if clean_flag and clean_flag not in merged_flags:
+                merged_flags.append(clean_flag)
+
+    if merged_flags:
+        merged["quality_flags"] = merged_flags
+    else:
+        merged.pop("quality_flags", None)
+
+    return normalize_mention_evidence(merged)
+
+
 def deduplicate_validated_concepts(
     concepts: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
@@ -1685,17 +1891,57 @@ def deduplicate_validated_concepts(
         key = (name, concept_type)
 
         if key not in deduped:
-            deduped[key] = dict(concept)
+            deduped[key] = normalize_mention_evidence(concept)
             continue
 
-        # Merge non-empty evidence fields if a duplicate has extra metadata.
-        existing = deduped[key]
-
-        for field, value in concept.items():
-            if existing.get(field) in (None, "") and value not in (None, ""):
-                existing[field] = value
+        deduped[key] = merge_validated_concept_evidence(
+            deduped[key],
+            concept,
+        )
 
     return list(deduped.values())
+
+
+
+def collapse_validated_concepts_by_name(
+    concepts: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Collapse accepted type assertions to one coherent row per Concept name.
+
+    Validation intentionally deduplicates by ``(name, type)`` so type evidence
+    is not lost. Neo4j stores one ``MENTIONS`` relationship per Section--Concept
+    pair, therefore singular provenance fields must come from one complete
+    evidence record while ``observed_types`` preserves every accepted type.
+    """
+    collapsed: Dict[str, Dict[str, Any]] = {}
+
+    for concept in concepts or []:
+        if not isinstance(concept, dict):
+            continue
+
+        name = str(concept.get("name") or "").strip()
+        concept_type = str(concept.get("type") or "").strip()
+        if not name or not concept_type:
+            continue
+
+        normalized = normalize_mention_evidence(concept)
+
+        if name not in collapsed:
+            row = dict(normalized)
+            row["observed_types"] = [concept_type]
+            collapsed[name] = row
+            continue
+
+        existing = collapsed[name]
+        observed_types = list(existing.get("observed_types") or [])
+        if concept_type not in observed_types:
+            observed_types.append(concept_type)
+
+        merged = merge_validated_concept_evidence(existing, normalized)
+        merged["observed_types"] = observed_types
+        collapsed[name] = merged
+
+    return list(collapsed.values())
 
 
 
@@ -1850,6 +2096,65 @@ def attach_quality_flags(
     return out
 
 
+def get_out_of_schema_rejection(
+    name: str,
+    concept_type: str,
+    blocklist_names: Set[str],
+) -> Optional[Dict[str, Any]]:
+    """
+    Return a deterministic rejection for document/research objects.
+
+    This helper is intentionally applied both to ordinary concepts and to
+    acronym-expanded concepts so acronym expansion cannot bypass schema-level
+    exclusions.
+    """
+    if name in blocklist_names:
+        return {
+            "reason": "blocklisted_name",
+            "quality_flags": [],
+        }
+
+    if is_organization_like_name(name, concept_type=concept_type):
+        return {
+            "reason": "organization_not_supported_entity_type",
+            "quality_flags": ["organization_outside_entity_schema"],
+        }
+
+    if is_document_or_publication_like_name(name):
+        return {
+            "reason": "document_or_publication_not_entity",
+            "quality_flags": ["document_or_publication_outside_entity_schema"],
+        }
+
+    if is_nonclinical_research_or_variable(
+        name=name,
+        concept_type=concept_type,
+    ):
+        return {
+            "reason": "nonclinical_research_or_variable",
+            "quality_flags": ["nonclinical_research_or_variable"],
+        }
+
+    return None
+
+
+def reject_with_semantic_metadata(
+    normalized_concept: Dict[str, Any],
+    rejection: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build a standard validate_single_concept rejection payload."""
+    concept = dict(normalized_concept)
+    flags = rejection.get("quality_flags") or []
+    if flags:
+        concept["quality_flags"] = list(dict.fromkeys(flags))
+
+    return {
+        "accepted": False,
+        "concept": concept,
+        "reason": str(rejection["reason"]),
+    }
+
+
 def validate_single_concept(
     concept: Dict[str, Any],
     source_text: str,
@@ -1970,13 +2275,17 @@ def validate_single_concept(
 
     if expanded_acronym_concept is not None:
         expanded_name = expanded_acronym_concept["name"]
+        expanded_rejection = get_out_of_schema_rejection(
+            name=expanded_name,
+            concept_type=concept_type,
+            blocklist_names=blocklist_names,
+        )
 
-        if expanded_name in blocklist_names:
-            return {
-                "accepted": False,
-                "concept": expanded_acronym_concept,
-                "reason": "expanded_acronym_blocklisted_name",
-            }
+        if expanded_rejection is not None:
+            return reject_with_semantic_metadata(
+                normalized_concept=expanded_acronym_concept,
+                rejection=expanded_rejection,
+            )
 
         expanded_acronym_concept = attach_quality_flags(
             concept=expanded_acronym_concept,
@@ -2026,12 +2335,16 @@ def validate_single_concept(
             "reason": "ambiguous_short_surface_name",
         }
 
-    if name in blocklist_names:
-        return {
-            "accepted": False,
-            "concept": normalized_concept,
-            "reason": "blocklisted_name",
-        }
+    out_of_schema_rejection = get_out_of_schema_rejection(
+        name=name,
+        concept_type=concept_type,
+        blocklist_names=blocklist_names,
+    )
+    if out_of_schema_rejection is not None:
+        return reject_with_semantic_metadata(
+            normalized_concept=normalized_concept,
+            rejection=out_of_schema_rejection,
+        )
 
     if is_generic_causal_description(name):
         normalized_concept["quality_flags"] = ["generic_causal_phrase"]
@@ -2052,16 +2365,6 @@ def validate_single_concept(
             "accepted": False,
             "concept": normalized_concept,
             "reason": "care_setting_not_population",
-        }
-
-    if is_organization_like_name(name):
-        normalized_concept["quality_flags"] = [
-            "organization_outside_entity_schema"
-        ]
-        return {
-            "accepted": False,
-            "concept": normalized_concept,
-            "reason": "organization_not_supported_entity_type",
         }
 
     if is_generic_population_name(
@@ -2098,19 +2401,6 @@ def validate_single_concept(
             "accepted": False,
             "concept": normalized_concept,
             "reason": "anatomical_adjective_not_structure",
-        }
-
-    if is_nonclinical_research_or_variable(
-        name=name,
-        concept_type=concept_type,
-    ):
-        normalized_concept["quality_flags"] = [
-            "nonclinical_research_or_variable"
-        ]
-        return {
-            "accepted": False,
-            "concept": normalized_concept,
-            "reason": "nonclinical_research_or_variable",
         }
 
     if is_generic_process_entity(

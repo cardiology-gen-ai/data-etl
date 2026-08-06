@@ -68,8 +68,9 @@ from knowledge_graph.prompts import (
 )
 from knowledge_graph.relationship_metadata import build_mention_relationship_metadata
 from knowledge_graph.validate_entities import (
-    validate_concepts_against_source,
+    collapse_validated_concepts_by_name,
     summarize_rejections,
+    validate_concepts_against_source,
 )
 
 
@@ -782,6 +783,7 @@ def mark_section_extraction_skipped_empty(
     )
 
 
+
 def write_section_concepts(
     tx,
     section_uid: str,
@@ -798,6 +800,8 @@ def write_section_concepts(
     Concept-level type state is intentionally provisional here. The final
     canonical_type should be assigned later by entity_disambiguation.py.
     """
+    concepts = collapse_validated_concepts_by_name(concepts)
+
     if replace_section_mentions:
         clear_section_mentions(tx, section_uid)
 
@@ -823,7 +827,7 @@ def write_section_concepts(
 
         MERGE (c:Concept {name: concept.name})
         ON CREATE SET
-            c.observed_types = [concept.type],
+            c.observed_types = concept.observed_types,
             c.type_resolution_status = 'pending',
             c.needs_type_review = false,
             c.created_at = datetime()
@@ -834,37 +838,32 @@ def write_section_concepts(
             c,
             coalesce(c.observed_types, []) AS old_observed_types,
             coalesce(c.type_resolution_status, 'pending') AS old_status,
-            coalesce(c.needs_type_review, false) AS old_needs_type_review
+            coalesce(c.needs_type_review, false) AS old_needs_type_review,
+            any(
+                observed_type IN concept.observed_types
+                WHERE NOT observed_type IN coalesce(c.observed_types, [])
+            ) AS has_new_type
 
         SET
-            c.observed_types =
+            c.observed_types = reduce(
+                merged_types = old_observed_types,
+                observed_type IN concept.observed_types |
                 CASE
-                    WHEN concept.type IN old_observed_types THEN old_observed_types
-                    ELSE old_observed_types + concept.type
-                END,
+                    WHEN observed_type IN merged_types THEN merged_types
+                    ELSE merged_types + observed_type
+                END
+            ),
             c.canonical_type =
-                CASE
-                    WHEN NOT (concept.type IN old_observed_types)
-                    THEN NULL
-                    ELSE c.canonical_type
-                END,
+                CASE WHEN has_new_type THEN NULL ELSE c.canonical_type END,
             c.type_resolution_status =
-                CASE
-                    WHEN NOT (concept.type IN old_observed_types)
-                    THEN 'pending'
-                    ELSE old_status
-                END,
+                CASE WHEN has_new_type THEN 'pending' ELSE old_status END,
             c.needs_type_review =
-                CASE
-                    WHEN NOT (concept.type IN old_observed_types)
-                    THEN true
-                    ELSE old_needs_type_review
-                END,
+                CASE WHEN has_new_type THEN true ELSE old_needs_type_review END,
             c.updated_at = datetime()
 
         MERGE (s)-[r:MENTIONS]->(c)
         ON CREATE SET
-            r.observed_types = [concept.type],
+            r.observed_types = concept.observed_types,
             r.created_at = datetime(),
             r.validation_reason = concept.validation_reason,
             r.support_method = concept.support_method,
@@ -878,12 +877,14 @@ def write_section_concepts(
             r.raw_type = concept.raw_type,
             r.quality_flags = coalesce(concept.quality_flags, [])
         ON MATCH SET
-            r.observed_types =
+            r.observed_types = reduce(
+                merged_types = coalesce(r.observed_types, []),
+                observed_type IN concept.observed_types |
                 CASE
-                    WHEN r.observed_types IS NULL THEN [concept.type]
-                    WHEN concept.type IN r.observed_types THEN r.observed_types
-                    ELSE r.observed_types + concept.type
-                END,
+                    WHEN observed_type IN merged_types THEN merged_types
+                    ELSE merged_types + observed_type
+                END
+            ),
             r.updated_at = datetime(),
             r.validation_reason = concept.validation_reason,
             r.support_method = concept.support_method,
