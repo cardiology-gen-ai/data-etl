@@ -48,7 +48,7 @@
         "parse_recommendations": true,
         "render_mode": "conservative",
         "write_back_to_chunks": false,
-        "force": false
+        "force": true
       }
     },
     "knowledge_graph": {
@@ -58,11 +58,11 @@
         "work_root": "mineru_test",
         "mineru_markdown_root": "mineru_test/mddocs",
         "clear_neo4j_before_run": false,
-        "force_toc": false,
-        "force_markdown": false,
-        "force_anchors": false,
-        "force_chunks": false,
-        "force_acronyms": false
+        "force_toc": true,
+        "force_markdown": true,
+        "force_anchors": true,
+        "force_chunks": true,
+        "force_acronyms": true
       },
       "logging": {
         "enabled": true,
@@ -90,7 +90,7 @@
         "max_level": 4,
         "include_descendant_titles": true,
         "include_section_ids_in_titles": true,
-        "force": false,
+        "force": true,
         "output_dir": null
       },
       "graph_loader": {
