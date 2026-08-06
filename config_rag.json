@@ -1,0 +1,72 @@
+{
+  "cardiology_rag_fixed_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "mineru_test/fixed_chunks/Cardiomyopathies_2023_fixed_chunks_c2000_o300.json",
+      "source_type": "fixed_chunks",
+      "expected_chunk_count": 293
+    },
+    "indexing": {
+      "name": "cardiomyopathies_fixed_c2000_o300_openai3small_prototype",
+      "description": "Single-guideline fixed-size RAG prototype built from Cardiomyopathies_2023.",
+      "type": "faiss",
+      "distance": "cosine",
+      "retrieval_mode": "dense",
+      "folder": "prototype/vectorstores/fixed_c2000_o300_openai3small"
+    },
+    "embeddings": {
+      "deployment": "text-embedding-3-small",
+      "kwargs": {}
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "prototype",
+        "input_folder": "input",
+        "output_folder": "rag_metadata/fixed_c2000_o300",
+        "allowed_extensions": ["json"]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": ["Figure"]
+      },
+      "chunking": {}
+    }
+  },
+  "cardiology_rag_hierarchical_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "mineru_test/section_views/Cardiomyopathies_2023_section_view_L4.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 166
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_L4_openai3small_prototype",
+      "description": "Single-guideline hierarchical Section-view L4 RAG prototype built from Cardiomyopathies_2023.",
+      "type": "faiss",
+      "distance": "cosine",
+      "retrieval_mode": "dense",
+      "folder": "prototype/vectorstores/hierarchical_L4_openai3small"
+    },
+    "embeddings": {
+      "deployment": "text-embedding-3-small",
+      "kwargs": {}
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "prototype",
+        "input_folder": "input",
+        "output_folder": "rag_metadata/hierarchical_L4",
+        "allowed_extensions": ["json"]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": ["Figure"]
+      },
+      "chunking": {}
+    }
+  }
+}
