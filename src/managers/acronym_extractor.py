@@ -24,6 +24,11 @@ from typing import Dict, List, Optional, Tuple
 import fitz
 
 from managers.table_of_contents_manager import TOCMetadata
+from managers.acronym_mineru_parser import (
+    PARSER_VERSION as MINERU_ACRONYM_PARSER_VERSION,
+    extract_mineru_acronym_candidates,
+    find_mineru_artifact,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +40,7 @@ TEST_DATA_DIR = ROOT_DIR / "test_data"
 DEFAULT_PDF_DIR = TEST_DATA_DIR / "pdfdocs"
 DEFAULT_TOC_DIR = TEST_DATA_DIR / "toc"
 DEFAULT_ACRONYM_DIR = TEST_DATA_DIR / "acronyms"
+DEFAULT_MINERU_DIR = TEST_DATA_DIR / "content_list"
 
 ACRONYM_SAMPLE_SIZE = 25
 PRINT_FULL_ACRONYMS = False
@@ -2487,11 +2493,12 @@ def build_output_payload(
     acronyms: Dict[str, str],
     raw_n_acronyms: Optional[int] = None,
     validation_issues: Optional[List[Dict[str, str]]] = None,
+    extra_metadata: Optional[Dict] = None,
 ) -> Dict:
     validation_issues = validation_issues or []
     suspicious = collect_suspicious_acronyms(acronyms)
 
-    return {
+    payload = {
         "doc_id": doc_id,
         "status": status,
         "source": source,
@@ -2505,6 +2512,9 @@ def build_output_payload(
         "validation_issues": validation_issues,
         "acronyms": dict(sorted(acronyms.items())),
     }
+    if extra_metadata:
+        payload.update(extra_metadata)
+    return payload
 
 
 def write_output_payload(out_path: Path, payload: Dict) -> None:
@@ -2543,15 +2553,191 @@ def print_acronyms(
     print()
 
 
+def _resolve_mineru_dir(
+    mineru_dir: Optional[Path],
+    acronym_dir: Optional[Path],
+    out_path: Optional[Path],
+) -> Path:
+    if mineru_dir is not None:
+        return Path(mineru_dir)
+    if acronym_dir is not None:
+        return Path(acronym_dir).parent / "content_list"
+    if out_path is not None:
+        return Path(out_path).parent.parent / "content_list"
+    return DEFAULT_MINERU_DIR
+
+
+def extract_acronym_payload_from_mineru(
+    *,
+    doc_id: str,
+    mineru_dir: Path,
+    mineru_file: Optional[Path] = None,
+) -> Optional[Dict]:
+    source_path, candidate_file_count = find_mineru_artifact(
+        content_list_dir=mineru_dir,
+        doc_id=doc_id,
+        explicit_file=mineru_file,
+    )
+    if source_path is None:
+        logger.info(
+            "No MinerU acronym source found for %s under %s",
+            doc_id,
+            mineru_dir,
+        )
+        return None
+
+    result = extract_mineru_acronym_candidates(
+        source_path,
+        doc_id=doc_id,
+        short_detector=looks_like_short_sequence,
+        candidate_file_count=candidate_file_count,
+    )
+    if not result.usable:
+        logger.warning(
+            "MinerU acronym source not usable for %s | path=%s | "
+            "warnings=%s | blocking_issues=%s",
+            doc_id,
+            source_path,
+            result.warnings,
+            result.blocking_issues,
+        )
+        return None
+
+    raw_acronyms: Dict[str, str] = {}
+    candidate_definitions: Dict[str, set[str]] = {}
+    source_kind_counts: Dict[str, int] = {}
+
+    for candidate in result.candidates:
+        clean_short = clean_short_token(candidate.short)
+        clean_definition = clean_long_definition(candidate.definition)
+        if not clean_short or not clean_definition:
+            continue
+        candidate_definitions.setdefault(clean_short, set()).add(
+            normalize_spaces(clean_definition)
+        )
+        source_kind_counts[candidate.source_kind] = (
+            source_kind_counts.get(candidate.source_kind, 0) + 1
+        )
+        add_or_update_acronym(
+            raw_acronyms,
+            clean_short,
+            clean_definition,
+        )
+
+    if not raw_acronyms:
+        return None
+
+    acronyms, validation_issues = post_validate_acronyms(raw_acronyms)
+    conflicts = [
+        {
+            "short": short,
+            "definitions": sorted(definitions),
+        }
+        for short, definitions in sorted(candidate_definitions.items())
+        if len(definitions) > 1
+    ]
+
+    payload = build_output_payload(
+        doc_id=doc_id,
+        status="success",
+        source="mineru_front_matter",
+        page_start=(
+            result.page_start_idx + 1
+            if result.page_start_idx is not None
+            else None
+        ),
+        page_end=(
+            result.page_end_idx + 1
+            if result.page_end_idx is not None
+            else None
+        ),
+        acronyms=acronyms,
+        raw_n_acronyms=len(raw_acronyms),
+        validation_issues=validation_issues,
+        extra_metadata={
+            "mineru_parser_version": MINERU_ACRONYM_PARSER_VERSION,
+            "mineru_source_path": str(source_path),
+            "mineru_source_format": result.source_format,
+            "mineru_candidate_file_count": candidate_file_count,
+            "mineru_heading_found": result.heading_found,
+            "mineru_candidate_pair_count": len(result.candidates),
+            "mineru_text_pair_count": result.text_pair_count,
+            "mineru_table_pair_count": result.table_pair_count,
+            "mineru_conflict_count": len(conflicts),
+            "mineru_conflicts": conflicts,
+            "mineru_warnings": result.warnings,
+            "mineru_blocking_issue_count": len(result.blocking_issues),
+            "mineru_blocking_issues": result.blocking_issues,
+            "mineru_review_issue_count": len(result.review_issues),
+            "mineru_review_issues": result.review_issues,
+            "mineru_strategy_counts": result.strategy_counts,
+            "mineru_layout_diagnostics": result.layout_diagnostics,
+            "mineru_source_kind_counts": source_kind_counts,
+            "pdf_fallback_used": False,
+        },
+    )
+    warn_on_suspicious_acronyms(doc_id, acronyms)
+    logger.info(
+        "MinerU acronym extraction succeeded for %s | path=%s | "
+        "acronyms=%d | text_pairs=%d | table_pairs=%d",
+        doc_id,
+        source_path,
+        len(acronyms),
+        result.text_pair_count,
+        result.table_pair_count,
+    )
+    return payload
+
+
 def extract_acronym_payload_from_pdf(
     pdf_path: Path,
     doc_id: Optional[str] = None,
     toc_path: Optional[Path] = None,
+    mineru_dir: Optional[Path] = None,
+    mineru_file: Optional[Path] = None,
+    prefer_mineru: bool = True,
+    allow_pdf_fallback: bool = True,
 ) -> Dict:
     pdf_path = Path(pdf_path)
     doc_id = doc_id or pdf_path.stem
 
     logger.info("Starting acronym extraction for %s", doc_id)
+
+    if prefer_mineru and (mineru_file is not None or mineru_dir is not None):
+        try:
+            mineru_payload = extract_acronym_payload_from_mineru(
+                doc_id=doc_id,
+                mineru_dir=Path(mineru_dir or DEFAULT_MINERU_DIR),
+                mineru_file=mineru_file,
+            )
+        except Exception as exc:
+            if not allow_pdf_fallback:
+                raise
+            logger.warning(
+                "MinerU acronym extraction failed for %s; falling back to PDF: %s",
+                doc_id,
+                exc,
+                exc_info=True,
+            )
+        else:
+            if mineru_payload is not None:
+                return mineru_payload
+
+        if not allow_pdf_fallback:
+            return build_output_payload(
+                doc_id=doc_id,
+                status="mineru_not_usable",
+                source="mineru_not_usable",
+                page_start=None,
+                page_end=None,
+                acronyms={},
+                extra_metadata={
+                    "pdf_fallback_used": False,
+                    "mineru_source_path": (
+                        str(mineru_file) if mineru_file is not None else None
+                    ),
+                },
+            )
 
     toc_metadata = load_optional_toc(toc_path)
 
@@ -2660,6 +2846,7 @@ def extract_acronym_payload_from_pdf(
             acronyms=acronyms,
             raw_n_acronyms=len(raw_acronyms),
             validation_issues=validation_issues,
+            extra_metadata={"pdf_fallback_used": bool(prefer_mineru)},
         )
 
         warn_on_suspicious_acronyms(doc_id, acronyms)
@@ -2679,6 +2866,10 @@ def load_or_extract_acronyms(
     write_output: bool = True,
     sample_size: int = 0,
     print_all: bool = False,
+    mineru_dir: Optional[Path] = None,
+    mineru_file: Optional[Path] = None,
+    prefer_mineru: bool = True,
+    allow_pdf_fallback: bool = True,
 ) -> Dict:
     pdf_path = Path(pdf_path)
     doc_id = doc_id or pdf_path.stem
@@ -2696,10 +2887,20 @@ def load_or_extract_acronyms(
             logger.info("Using cached acronym output for %s: %s", doc_id, out_path)
             return cached
 
+    resolved_mineru_dir = _resolve_mineru_dir(
+        mineru_dir=mineru_dir,
+        acronym_dir=acronym_dir,
+        out_path=out_path,
+    )
+
     payload = extract_acronym_payload_from_pdf(
         pdf_path=pdf_path,
         doc_id=doc_id,
         toc_path=toc_path,
+        mineru_dir=resolved_mineru_dir,
+        mineru_file=mineru_file,
+        prefer_mineru=prefer_mineru,
+        allow_pdf_fallback=allow_pdf_fallback,
     )
 
     if write_output:
@@ -2731,6 +2932,10 @@ def run_acronym_extraction_for_pdf(
     sample_size: int = ACRONYM_SAMPLE_SIZE,
     print_all: bool = PRINT_FULL_ACRONYMS,
     force: bool = False,
+    mineru_dir: Optional[Path] = None,
+    mineru_file: Optional[Path] = None,
+    prefer_mineru: bool = True,
+    allow_pdf_fallback: bool = True,
 ) -> Dict:
     pdf_path = Path(pdf_path)
     doc_id = pdf_path.stem
@@ -2745,6 +2950,10 @@ def run_acronym_extraction_for_pdf(
         write_output=True,
         sample_size=sample_size,
         print_all=print_all,
+        mineru_dir=mineru_dir,
+        mineru_file=mineru_file,
+        prefer_mineru=prefer_mineru,
+        allow_pdf_fallback=allow_pdf_fallback,
     )
 
 
@@ -2756,6 +2965,10 @@ def run_acronym_extraction(
     toc_dir: Path = DEFAULT_TOC_DIR,
     acronym_dir: Path = DEFAULT_ACRONYM_DIR,
     force: bool = False,
+    mineru_dir: Optional[Path] = None,
+    mineru_file: Optional[Path] = None,
+    prefer_mineru: bool = True,
+    allow_pdf_fallback: bool = True,
 ) -> None:
     pdf_dir = Path(pdf_dir)
     toc_dir = Path(toc_dir)
@@ -2787,6 +3000,15 @@ def run_acronym_extraction(
 
     logger.info("Found %d PDF files in %s", len(pdf_paths), pdf_dir)
 
+    if mineru_file is not None and len(pdf_paths) != 1:
+        raise ValueError("--mineru-file requires exactly one selected PDF")
+
+    resolved_mineru_dir = (
+        Path(mineru_dir)
+        if mineru_dir is not None
+        else acronym_dir.parent / "content_list"
+    )
+
     for pdf_path in pdf_paths:
         try:
             run_acronym_extraction_for_pdf(
@@ -2796,6 +3018,10 @@ def run_acronym_extraction(
                 sample_size=sample_size,
                 print_all=print_all,
                 force=force,
+                mineru_dir=resolved_mineru_dir,
+                mineru_file=mineru_file,
+                prefer_mineru=prefer_mineru,
+                allow_pdf_fallback=allow_pdf_fallback,
             )
         except Exception as e:
             logger.exception("Failed on %s: %s", pdf_path.name, e)
@@ -2848,6 +3074,35 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--mineru-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory containing MinerU JSON artefacts. Default: sibling "
+            "content_list directory next to --acronym-dir."
+        ),
+    )
+
+    parser.add_argument(
+        "--mineru-file",
+        type=Path,
+        default=None,
+        help="Explicit MinerU JSON artefact; requires one selected PDF.",
+    )
+
+    parser.add_argument(
+        "--no-mineru",
+        action="store_true",
+        help="Disable MinerU and use the existing PDF parser.",
+    )
+
+    parser.add_argument(
+        "--no-pdf-fallback",
+        action="store_true",
+        help="Fail closed when MinerU is missing or unusable.",
+    )
+
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Re-extract acronyms even if a cached JSON output already exists.",
@@ -2868,4 +3123,8 @@ if __name__ == "__main__":
         toc_dir=args.toc_dir,
         acronym_dir=args.acronym_dir,
         force=args.force,
+        mineru_dir=args.mineru_dir,
+        mineru_file=args.mineru_file,
+        prefer_mineru=not args.no_mineru,
+        allow_pdf_fallback=not args.no_pdf_fallback,
     )
