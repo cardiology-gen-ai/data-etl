@@ -124,8 +124,10 @@ UMLS_VALUE_FIELDS = {
 UMLS_API_SEARCH_TYPES = ("exact", "normalizedString", "words")
 
 # Conservative compatibility map between the local controlled entity types and
-# UMLS semantic types. Unknown local types remain unfiltered. Known types fail
-# closed when the API returns an explicitly incompatible semantic type.
+# UMLS semantic types. Intrinsic local types still fail closed when the API
+# returns an explicitly incompatible semantic type. Contextual/document-role
+# types are handled separately because their UMLS semantic type may describe the
+# underlying clinical entity rather than its role in the guideline.
 CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
     "disease": {
         "Acquired Abnormality",
@@ -233,6 +235,31 @@ CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
         "Pathologic Function",
         "Sign or Symptom",
     },
+    "exposure_or_lifestyle_factor": {
+        "Environmental Effect of Humans",
+        "Hazardous or Poisonous Substance",
+        "Human-caused Phenomenon or Process",
+        "Individual Behavior",
+        "Natural Phenomenon or Process",
+        "Social Behavior",
+    },
+    "microorganism_or_pathogen": {
+        "Animal",
+        "Archaeon",
+        "Bacterium",
+        "Eukaryote",
+        "Fungus",
+        "Organism",
+        "Virus",
+    },
+    "population_or_patient_group": {
+        "Age Group",
+        "Family Group",
+        "Group",
+        "Patient or Disabled Group",
+        "Population Group",
+        "Professional or Occupational Group",
+    },
     # Backward-compatible aliases for older local type names.
     "procedure": {
         "Diagnostic Procedure",
@@ -266,11 +293,37 @@ CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
 }
 
 
+# These local types often encode the role played by an entity in a guideline,
+# not its intrinsic ontology class. A non-overlapping UMLS semantic type is
+# therefore reviewable evidence rather than an automatic veto.
+CONTEXTUAL_CANONICAL_TYPES = frozenset({
+    "risk_factor",
+    "clinical_outcome",
+    "care_strategy",
+    "exposure_or_lifestyle_factor",
+})
+
+REVIEW_REQUIRED_STATUS = "review_required"
+TYPE_REVIEW_REQUIRED_METHOD = "type_resolution_required"
+TYPE_REVIEW_REQUIRED_REASON = "concept_type_requires_review"
+
+SEMANTIC_COMPATIBLE = "compatible"
+SEMANTIC_CONTEXTUAL_MISMATCH = "contextual_mismatch"
+SEMANTIC_INCOMPATIBLE = "incompatible"
+SEMANTIC_UNKNOWN_LOCAL_TYPE = "unknown_local_type"
+SEMANTIC_TYPES_MISSING = "semantic_types_missing"
+
+
 @dataclass
 class ConceptRecord:
     concept_id: str
     name: str
     canonical_type: Optional[str] = None
+    needs_type_review: bool = False
+    type_resolution_status: Optional[str] = None
+    observed_types: List[str] = field(default_factory=list)
+    invalid_observed_types: List[str] = field(default_factory=list)
+    type_support_pairs: List[str] = field(default_factory=list)
     doc_ids: List[str] = field(default_factory=list)
     relationship_acronyms: List[Dict[str, str]] = field(default_factory=list)
     properties: Dict[str, Any] = field(default_factory=dict)
@@ -293,6 +346,13 @@ class UMLSMatch:
     semantic_types: List[str] = field(default_factory=list)
     search_type: Optional[str] = None
     type_compatible: Optional[bool] = None
+    semantic_compatibility: Optional[str] = None
+
+
+def concept_requires_type_review(concept: ConceptRecord) -> bool:
+    """Return whether UMLS candidate generation must be skipped for a concept."""
+    canonical_type = normalize_type(concept.canonical_type or "")
+    return bool(concept.needs_type_review) or canonical_type == "ambiguous"
 
 
 def utc_now_iso() -> str:
@@ -549,6 +609,11 @@ def fetch_concepts_for_normalization(tx, doc_id: Optional[str]) -> List[ConceptR
             elementId(c) AS concept_id,
             c.name AS name,
             c.canonical_type AS canonical_type,
+            coalesce(c.needs_type_review, false) AS needs_type_review,
+            c.type_resolution_status AS type_resolution_status,
+            coalesce(c.observed_types, []) AS observed_types,
+            coalesce(c.invalid_observed_types, []) AS invalid_observed_types,
+            coalesce(c.type_support_pairs, []) AS type_support_pairs,
             concept_props['umls_cui'] AS umls_cui,
             concept_props['umls_canonical_name'] AS umls_canonical_name,
             concept_props['umls_definition'] AS umls_definition,
@@ -599,6 +664,23 @@ def fetch_concepts_for_normalization(tx, doc_id: Optional[str]) -> List[ConceptR
                 concept_id=row["concept_id"],
                 name=str(row["name"] or ""),
                 canonical_type=row["canonical_type"],
+                needs_type_review=bool(row["needs_type_review"]),
+                type_resolution_status=row["type_resolution_status"],
+                observed_types=[
+                    str(value)
+                    for value in (row["observed_types"] or [])
+                    if value
+                ],
+                invalid_observed_types=[
+                    str(value)
+                    for value in (row["invalid_observed_types"] or [])
+                    if value
+                ],
+                type_support_pairs=[
+                    str(value)
+                    for value in (row["type_support_pairs"] or [])
+                    if value
+                ],
                 doc_ids=[doc for doc in (row["doc_ids"] or []) if doc],
                 relationship_acronyms=acronym_rows,
                 properties=properties,
@@ -798,20 +880,22 @@ def _matching_tokens(value: str) -> List[str]:
     ]
 
 
-def semantic_types_are_compatible(
+def classify_semantic_compatibility(
     canonical_type: Optional[str],
     semantic_types: Sequence[str],
-) -> Optional[bool]:
-    """
-    Return True/False for known local types, or None when no rule applies.
+) -> str:
+    """Classify local/UMLS semantic compatibility without losing provenance.
 
-    A known local type with missing UMLS semantic types remains undecided rather
-    than being rejected.
+    Contextual local types (risk factor, clinical outcome, care strategy) may
+    legitimately map to a UMLS concept whose semantic type describes the
+    underlying entity rather than its role in the source document. Such cases
+    remain candidates, receive a small ranking penalty, and are explicitly
+    marked for audit instead of being rejected before ranking.
     """
     normalized_type = normalize_type(canonical_type or "")
     allowed = CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES.get(normalized_type)
     if not allowed:
-        return None
+        return SEMANTIC_UNKNOWN_LOCAL_TYPE
 
     observed = {
         str(value).strip().casefold()
@@ -819,10 +903,37 @@ def semantic_types_are_compatible(
         if str(value).strip()
     }
     if not observed:
-        return None
+        return SEMANTIC_TYPES_MISSING
 
     allowed_normalized = {value.casefold() for value in allowed}
-    return bool(observed & allowed_normalized)
+    if observed & allowed_normalized:
+        return SEMANTIC_COMPATIBLE
+
+    if normalized_type in CONTEXTUAL_CANONICAL_TYPES:
+        return SEMANTIC_CONTEXTUAL_MISMATCH
+
+    return SEMANTIC_INCOMPATIBLE
+
+
+def semantic_types_are_compatible(
+    canonical_type: Optional[str],
+    semantic_types: Sequence[str],
+) -> Optional[bool]:
+    """Return the legacy tri-state view of semantic compatibility.
+
+    ``True`` means explicitly compatible, ``False`` means a strong
+    incompatibility for an intrinsic local type, and ``None`` means the
+    candidate must remain observable/reviewable.
+    """
+    status = classify_semantic_compatibility(
+        canonical_type=canonical_type,
+        semantic_types=semantic_types,
+    )
+    if status == SEMANTIC_COMPATIBLE:
+        return True
+    if status == SEMANTIC_INCOMPATIBLE:
+        return False
+    return None
 
 
 def compute_umls_candidate_score(
@@ -1115,6 +1226,10 @@ class UMLSAPIClient:
                 if str(value).strip()
             ]
 
+            semantic_compatibility = classify_semantic_compatibility(
+                canonical_type=canonical_type,
+                semantic_types=semantic_types,
+            )
             type_compatible = semantic_types_are_compatible(
                 canonical_type=canonical_type,
                 semantic_types=semantic_types,
@@ -1143,6 +1258,7 @@ class UMLSAPIClient:
                 semantic_types=semantic_types,
                 search_type=search_type,
                 type_compatible=type_compatible,
+                semantic_compatibility=semantic_compatibility,
             )
             candidates.append((match.score, -rank, match))
 
@@ -1251,6 +1367,11 @@ def build_existing_umls_match(concept: ConceptRecord) -> Optional[UMLSMatch]:
     raw_semantic_types = concept.properties.get("umls_semantic_types") or []
     if not isinstance(raw_semantic_types, list):
         raw_semantic_types = []
+    semantic_types = [str(value) for value in raw_semantic_types if value]
+    semantic_compatibility = classify_semantic_compatibility(
+        canonical_type=concept.canonical_type,
+        semantic_types=semantic_types,
+    )
 
     return UMLSMatch(
         alias=concept.name,
@@ -1259,7 +1380,12 @@ def build_existing_umls_match(concept: ConceptRecord) -> Optional[UMLSMatch]:
         definition=concept.properties.get("umls_definition"),
         aliases=[str(alias) for alias in raw_aliases if alias],
         score=round(score, 4),
-        semantic_types=[str(value) for value in raw_semantic_types if value],
+        semantic_types=semantic_types,
+        type_compatible=semantic_types_are_compatible(
+            canonical_type=concept.canonical_type,
+            semantic_types=semantic_types,
+        ),
+        semantic_compatibility=semantic_compatibility,
     )
 
 
@@ -1648,10 +1774,16 @@ def create_duplicate_evidence(
     create_same_as_edges: bool = False,
     create_fuzzy_candidate_edges: bool = False,
 ) -> Dict[str, int]:
-    same_as_pairs = compute_same_cui_pairs(concepts)
+    eligible_concepts = [
+        concept
+        for concept in concepts
+        if not concept_requires_type_review(concept)
+        and concept.normalization_status != REVIEW_REQUIRED_STATUS
+    ]
+    same_as_pairs = compute_same_cui_pairs(eligible_concepts)
     same_as_keys = {edge_key(left, right) for left, right in same_as_pairs}
     fuzzy_pairs = compute_fuzzy_pairs(
-        concepts=concepts,
+        concepts=eligible_concepts,
         fuzzy_threshold=fuzzy_threshold,
         same_as_keys=same_as_keys,
     )
@@ -1751,6 +1883,12 @@ def build_review_record(
         "concept_id": concept.concept_id,
         "concept_name": concept.name,
         "canonical_type": concept.canonical_type,
+        "normalization_eligible": not concept_requires_type_review(concept),
+        "needs_type_review": concept.needs_type_review,
+        "type_resolution_status": concept.type_resolution_status,
+        "observed_types": concept.observed_types,
+        "invalid_observed_types": concept.invalid_observed_types,
+        "type_support_pairs": concept.type_support_pairs,
         "aliases_considered": concept.aliases_considered,
         "normalization_status": concept.normalization_status,
         "normalization_method": concept.normalization_method,
@@ -1764,6 +1902,9 @@ def build_review_record(
         "umls_matched_alias": match.alias if match else None,
         "umls_search_type": match.search_type if match else None,
         "umls_type_compatible": match.type_compatible if match else None,
+        "umls_semantic_compatibility": (
+            match.semantic_compatibility if match else None
+        ),
         "backend": backend,
         "model_name": model_name,
         "linker_name": linker_name,
@@ -1833,6 +1974,7 @@ def initialize_stats() -> Dict[str, int]:
         "concepts_low_confidence": 0,
         "concepts_failed": 0,
         "concepts_skipped": 0,
+        "concepts_review_required": 0,
         "same_as_edges_created": 0,
         "possibly_same_as_edges_created": 0,
         "review_records_written": 0,
@@ -1855,6 +1997,8 @@ def update_stats_for_concept(stats: Dict[str, int], concept: ConceptRecord) -> N
         stats["concepts_no_match"] += 1
     elif status == "skipped":
         stats["concepts_skipped"] += 1
+    elif status == REVIEW_REQUIRED_STATUS:
+        stats["concepts_review_required"] += 1
     elif status == "failed":
         stats["concepts_failed"] += 1
 
@@ -1905,7 +2049,10 @@ def normalize_concepts_with_umls(
     run_id = f"umls_normalization::{normalized_at}"
 
     with driver.session() as session:
-        session.execute_write(setup_normalization_schema)
+        # A dry run must be read-only with respect to Neo4j. Creating indexes is
+        # a schema write, so defer it to real normalization runs only.
+        if not dry_run:
+            session.execute_write(setup_normalization_schema)
         concepts = session.execute_read(fetch_concepts_for_normalization, doc_id)
 
     stats["concepts_seen"] = len(concepts)
@@ -1923,6 +2070,12 @@ def normalize_concepts_with_umls(
         else {}
     )
 
+    backend_work_required = any(
+        not should_preserve_existing_normalization(concept, force=force)
+        and not concept_requires_type_review(concept)
+        for concept in concepts
+    )
+
     nlp = linker = None
     api_client: Optional[UMLSAPIClient] = None
     method_for_match = AUTO_NORMALIZATION_METHOD
@@ -1931,7 +2084,7 @@ def normalize_concepts_with_umls(
     resolved_model_name = model_name
     resolved_linker_name = linker_name
 
-    if backend == SCISPACY_BACKEND:
+    if backend == SCISPACY_BACKEND and backend_work_required:
         nlp, linker = load_scispacy_pipeline(
             model_name=model_name,
             linker_name=linker_name,
@@ -1939,7 +2092,7 @@ def normalize_concepts_with_umls(
             local_files_only=local_files_only,
             min_available_memory_gb=min_available_memory_gb,
         )
-    elif backend == UMLS_API_BACKEND:
+    elif backend == UMLS_API_BACKEND and backend_work_required:
         api_client = UMLSAPIClient(
             cache_dir=get_default_api_cache_dir(
                 api_cache_dir=api_cache_dir,
@@ -1953,6 +2106,16 @@ def normalize_concepts_with_umls(
         method_for_no_match = API_NO_MATCH_METHOD
         resolved_model_name = "UMLS REST API"
         resolved_linker_name = "umls_api"
+    elif backend == UMLS_API_BACKEND:
+        method_for_match = API_NORMALIZATION_METHOD
+        method_for_low_confidence = API_LOW_CONFIDENCE_METHOD
+        method_for_no_match = API_NO_MATCH_METHOD
+        resolved_model_name = "UMLS REST API"
+        resolved_linker_name = "umls_api"
+    elif backend == SCISPACY_BACKEND:
+        # No eligible concept requires the expensive linker, but preserve the
+        # configured backend metadata in the review output.
+        pass
     else:
         method_for_match = "fuzzy_only"
         method_for_low_confidence = "fuzzy_only"
@@ -1973,6 +2136,14 @@ def normalize_concepts_with_umls(
                     concept.normalization_status = "skipped"
                     concept.normalization_method = SKIPPED_METHOD
                     concept.reason = "existing_normalization_preserved"
+                    update_stats_for_concept(stats, concept)
+                    continue
+
+                if concept_requires_type_review(concept):
+                    concept.best_match = None
+                    concept.normalization_status = REVIEW_REQUIRED_STATUS
+                    concept.normalization_method = TYPE_REVIEW_REQUIRED_METHOD
+                    concept.reason = TYPE_REVIEW_REQUIRED_REASON
                     update_stats_for_concept(stats, concept)
                     continue
 
@@ -2084,7 +2255,7 @@ def normalize_concepts_with_umls(
         )
 
     logger.info(
-        "UMLS normalization completed | backend=%s | threshold=%.3f | exact_threshold=%.3f | seen=%d | normalized=%d | low_confidence=%d | no_match=%d | failed=%d | skipped=%d | same_as=%d | fuzzy=%d | dry_run=%s",
+        "UMLS normalization completed | backend=%s | threshold=%.3f | exact_threshold=%.3f | seen=%d | normalized=%d | low_confidence=%d | no_match=%d | failed=%d | skipped=%d | review_required=%d | same_as=%d | fuzzy=%d | dry_run=%s",
         backend,
         threshold,
         exact_threshold,
@@ -2094,6 +2265,7 @@ def normalize_concepts_with_umls(
         stats["concepts_no_match"],
         stats["concepts_failed"],
         stats["concepts_skipped"],
+        stats["concepts_review_required"],
         stats["same_as_edges_created"],
         stats["possibly_same_as_edges_created"],
         dry_run,
@@ -2114,6 +2286,11 @@ __all__ = [
     "build_aliases_for_concept",
     "compute_umls_candidate_score",
     "semantic_types_are_compatible",
+    "classify_semantic_compatibility",
+    "concept_requires_type_review",
+    "REVIEW_REQUIRED_STATUS",
+    "TYPE_REVIEW_REQUIRED_METHOD",
+    "TYPE_REVIEW_REQUIRED_REASON",
     "select_best_umls_api_match",
     "compute_fuzzy_pairs",
     "compute_same_cui_pairs",
