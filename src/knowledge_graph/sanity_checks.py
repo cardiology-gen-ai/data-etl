@@ -1031,6 +1031,10 @@ CHECKS: List[Dict[str, Any]] = [
                 OR rel_props['materialize_by_default'] IS NULL
                 OR rel_props['materialization_decision'] IS NULL
                 OR rel_props['materialization_decision_reason'] IS NULL
+                OR rel_props['relation_catalogued'] IS NULL
+                OR rel_props['has_local_type_ambiguity'] IS NULL
+                OR rel_props['source_type_count'] IS NULL
+                OR rel_props['target_type_count'] IS NULL
               )
             RETURN type(r) AS relationship_type,
                    rel_props['edge_key'] AS edge_key,
@@ -1044,7 +1048,35 @@ CHECKS: List[Dict[str, Any]] = [
                    rel_props['relation_family'] AS relation_family,
                    rel_props['materialize_by_default'] AS materialize_by_default,
                    rel_props['materialization_decision'] AS materialization_decision,
-                   rel_props['materialization_decision_reason'] AS materialization_decision_reason
+                   rel_props['materialization_decision_reason'] AS materialization_decision_reason,
+                   rel_props['relation_catalogued'] AS relation_catalogued,
+                   rel_props['has_local_type_ambiguity'] AS has_local_type_ambiguity,
+                   rel_props['source_type_count'] AS source_type_count,
+                   rel_props['target_type_count'] AS target_type_count
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "materialized_umls_connections_with_local_type_ambiguity",
+        "title": "Materialized UMLS connections involving multi-type local CUIs",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {"relationship_types": UMLS_CONNECTION_RELATION_TYPES},
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE coalesce(rel_props['has_local_type_ambiguity'], false) = true
+               OR coalesce(rel_props['source_type_count'], 0) > 1
+               OR coalesce(rel_props['target_type_count'], 0) > 1
+            RETURN type(r) AS relationship_type,
+                   rel_props['edge_key'] AS edge_key,
+                   source.name AS source_concept,
+                   target.name AS target_concept,
+                   rel_props['source_type_count'] AS source_type_count,
+                   rel_props['target_type_count'] AS target_type_count
             ORDER BY relationship_type, edge_key
         """,
     },
@@ -1182,7 +1214,7 @@ CHECKS: List[Dict[str, Any]] = [
     },
     {
         "name": "audit_only_umls_candidates_materialized",
-        "title": "Audit-only UMLS candidate relations materialized in Neo4j",
+        "title": "Unapproved exploratory UMLS relations materialized in Neo4j",
         "group": "UMLS connections",
         "phases": {"entities"},
         "level": "ERROR",
