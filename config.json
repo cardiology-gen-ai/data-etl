@@ -23,7 +23,7 @@
         ]
       },
       "images": {
-        "enabled": true,
+        "enabled": false,
         "dpi": 200,
         "tol": 40.0,
         "pad": 16.0,
