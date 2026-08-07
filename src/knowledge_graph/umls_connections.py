@@ -32,6 +32,7 @@ else:
     Driver = Any
 
 from knowledge_graph.entity_review_exports import safe_filename_component
+from knowledge_graph.entity_schema import ALLOWED_TYPES, ENTITY_SCHEMA_VERSION
 from knowledge_graph.relationship_metadata import build_ontology_relationship_metadata
 try:
     from knowledge_graph.umls_normalization import (
@@ -186,35 +187,79 @@ DISEASE_FINDING_TYPES = _type_tuple(
     {
         "disease",
         "clinical_finding",
-        "complication_or_comorbidity",
     }
 )
-DIAGNOSTIC_FAMILY_TYPES = _type_tuple({"diagnostic_test", "imaging_modality"})
+DIAGNOSTIC_FAMILY_TYPES = _type_tuple({"diagnostic_test"})
 PROCEDURE_TYPES = _type_tuple(
     {
         "procedure_or_intervention",
         "diagnostic_test",
-        "imaging_modality",
     }
 )
-DIRECT_PROCEDURE_TYPES = _type_tuple(
-    {
-        "procedure_or_intervention",
-        "diagnostic_test",
-    }
-)
+DIRECT_PROCEDURE_TYPES = PROCEDURE_TYPES
 ANATOMICAL_TYPES = _type_tuple({"anatomical_structure"})
 DEVICE_TYPES = _type_tuple({"device"})
 BIOMARKER_TYPES = _type_tuple({"biomarker"})
+CAUSATIVE_AGENT_TYPES = _type_tuple(
+    {
+        "drug_or_drug_class",
+        "genetic_factor",
+        "exposure_or_lifestyle_factor",
+        "microorganism_or_pathogen",
+    }
+)
+
+# Canonical relation names are the only names that may appear in the local graph.
+# Raw UMLS/SNOMED inverse labels are accepted during discovery and re-oriented
+# to these canonical forward relations before type validation or materialization.
+RAW_RELATION_CANONICALIZATION: dict[str, tuple[str, bool]] = {
+    "isa": ("isa", False),
+    "inverse_isa": ("isa", True),
+    "has_finding_site": ("has_finding_site", False),
+    "finding_site_of": ("has_finding_site", True),
+    "has_associated_morphology": ("has_associated_morphology", False),
+    "associated_morphology_of": ("has_associated_morphology", True),
+    "has_procedure_site": ("has_procedure_site", False),
+    "procedure_site_of": ("has_procedure_site", True),
+    "has_direct_procedure_site": ("has_direct_procedure_site", False),
+    "direct_procedure_site_of": ("has_direct_procedure_site", True),
+    "has_definitional_manifestation": ("has_definitional_manifestation", False),
+    "definitional_manifestation_of": ("has_definitional_manifestation", True),
+    "uses_device": ("uses_device", False),
+    "device_used_by": ("uses_device", True),
+    "has_direct_device": ("has_direct_device", False),
+    "direct_device_of": ("has_direct_device", True),
+    "has_measured_component": ("has_measured_component", False),
+    "measured_component_of": ("has_measured_component", True),
+    "has_method": ("has_method", False),
+    "method_of": ("has_method", True),
+    "has_causative_agent": ("has_causative_agent", False),
+    "causative_agent_of": ("has_causative_agent", True),
+    "has_pathological_process": ("has_pathological_process", False),
+    "pathological_process_of": ("has_pathological_process", True),
+    "has_associated_finding": ("has_associated_finding", False),
+    "associated_finding_of": ("has_associated_finding", True),
+    "interprets": ("interprets", False),
+    "is_interpreted_by": ("interprets", True),
+    "has_interpretation": ("has_interpretation", False),
+    "interpretation_of": ("has_interpretation", True),
+    "has_clinical_course": ("has_clinical_course", False),
+    "clinical_course_of": ("has_clinical_course", True),
+    "due_to": ("due_to", False),
+    "cause_of": ("due_to", True),
+}
+
+
+def canonicalize_raw_relation_name(value: Any) -> tuple[str, bool]:
+    raw_name = normalize_relation_term(value)
+    return RAW_RELATION_CANONICALIZATION.get(raw_name, (raw_name, False))
+
 
 CORE_SNOMED_RELATION_NAMES = frozenset(
     {
         "isa",
-        "inverse_isa",
         "has_finding_site",
-        "finding_site_of",
         "has_associated_morphology",
-        "associated_morphology_of",
         "has_procedure_site",
         "has_direct_procedure_site",
     }
@@ -223,36 +268,22 @@ CORE_SNOMED_RELATION_NAMES = frozenset(
 FIRST_SNOMED_EXTENSION_RELATION_NAMES = frozenset(
     {
         "has_definitional_manifestation",
-        "definitional_manifestation_of",
         "uses_device",
-        "device_used_by",
         "has_direct_device",
-        "direct_device_of",
         "has_measured_component",
-        "measured_component_of",
     }
 )
 
 AUDIT_ONLY_RELATION_NAMES = frozenset(
     {
-        "procedure_site_of",
-        "direct_procedure_site_of",
         "has_method",
-        "method_of",
         "has_causative_agent",
-        "causative_agent_of",
         "has_pathological_process",
-        "pathological_process_of",
         "has_associated_finding",
-        "associated_finding_of",
         "interprets",
-        "is_interpreted_by",
         "has_interpretation",
-        "interpretation_of",
         "has_clinical_course",
-        "clinical_course_of",
         "due_to",
-        "cause_of",
     }
 )
 
@@ -260,28 +291,22 @@ EXPANDED_SNOMED_RELATION_NAMES = frozenset(
     CORE_SNOMED_RELATION_NAMES
     | FIRST_SNOMED_EXTENSION_RELATION_NAMES
 )
-BALANCED_CORE_SNOMED_RELATION_NAMES = frozenset(
-    CORE_SNOMED_RELATION_NAMES
-    | {"procedure_site_of", "direct_procedure_site_of"}
-)
+
+# Retained as a backward-compatible experiment profile name. Once raw inverse
+# relations are canonicalized, the old "balanced" profile is equivalent to core.
+BALANCED_CORE_SNOMED_RELATION_NAMES = CORE_SNOMED_RELATION_NAMES
+
 AUDIT_ALL_SNOMED_RELATION_NAMES = frozenset(
     EXPANDED_SNOMED_RELATION_NAMES | AUDIT_ONLY_RELATION_NAMES
 )
 
-# Backward-compatible alias. "Strong" now means the expanded SNOMED profile.
+# Backward-compatible alias. "Strong" means the canonical expanded profile.
 STRONG_RELATION_NAMES = EXPANDED_SNOMED_RELATION_NAMES
 
 RELATION_SPECS = dict(
     [
         _relation_spec(
             "isa",
-            family="core",
-            validation_mode="hierarchy",
-            default_traversal_policy="hierarchy",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
-            "inverse_isa",
             family="core",
             validation_mode="hierarchy",
             default_traversal_policy="hierarchy",
@@ -296,27 +321,12 @@ RELATION_SPECS = dict(
             materialize_by_default=True,
         ),
         _relation_spec(
-            "finding_site_of",
-            family="core",
-            source_types=ANATOMICAL_TYPES,
-            target_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
             "has_associated_morphology",
             family="core",
             source_types=DISEASE_FINDING_TYPES,
-            target_types=DISEASE_FINDING_TYPES,
+            target_types={"clinical_finding"},
+            broad_target_types=DISEASE_FINDING_TYPES,
             default_traversal_policy="safe",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
-            "associated_morphology_of",
-            family="core",
-            source_types=DISEASE_FINDING_TYPES,
-            target_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
             materialize_by_default=True,
         ),
         _relation_spec(
@@ -338,17 +348,9 @@ RELATION_SPECS = dict(
         _relation_spec(
             "has_definitional_manifestation",
             family="first_extension",
-            source_types={"disease", "complication_or_comorbidity"},
+            source_types={"disease"},
             target_types={"clinical_finding"},
             default_traversal_policy="safe",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
-            "definitional_manifestation_of",
-            family="first_extension",
-            source_types={"clinical_finding"},
-            target_types={"disease", "complication_or_comorbidity"},
-            default_traversal_policy="reverse_review",
             materialize_by_default=True,
         ),
         _relation_spec(
@@ -360,27 +362,11 @@ RELATION_SPECS = dict(
             materialize_by_default=True,
         ),
         _relation_spec(
-            "device_used_by",
-            family="first_extension",
-            source_types=DEVICE_TYPES,
-            target_types=PROCEDURE_TYPES,
-            default_traversal_policy="reverse_review",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
             "has_direct_device",
             family="first_extension",
             source_types=DIRECT_PROCEDURE_TYPES,
             target_types=DEVICE_TYPES,
             default_traversal_policy="safe",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
-            "direct_device_of",
-            family="first_extension",
-            source_types=DEVICE_TYPES,
-            target_types=DIRECT_PROCEDURE_TYPES,
-            default_traversal_policy="reverse_review",
             materialize_by_default=True,
         ),
         _relation_spec(
@@ -392,56 +378,23 @@ RELATION_SPECS = dict(
             materialize_by_default=True,
         ),
         _relation_spec(
-            "measured_component_of",
-            family="first_extension",
-            source_types=BIOMARKER_TYPES,
-            target_types={"diagnostic_test"},
-            default_traversal_policy="reverse_review",
-            materialize_by_default=True,
-        ),
-        _relation_spec(
-            "procedure_site_of",
-            family="audit_candidate",
-            source_types=ANATOMICAL_TYPES,
-            target_types=PROCEDURE_TYPES,
-            default_traversal_policy="reverse_review",
-        ),
-        _relation_spec(
-            "direct_procedure_site_of",
-            family="audit_candidate",
-            source_types=ANATOMICAL_TYPES,
-            target_types=DIRECT_PROCEDURE_TYPES,
-            default_traversal_policy="reverse_review",
-        ),
-        _relation_spec(
             "has_method",
             family="audit_candidate",
             source_types=PROCEDURE_TYPES,
-            target_types={"care_strategy", "procedure_or_intervention"},
+            target_types={
+                "care_strategy",
+                "procedure_or_intervention",
+                "diagnostic_test",
+            },
             default_traversal_policy="review",
-        ),
-        _relation_spec(
-            "method_of",
-            family="audit_candidate",
-            source_types={"care_strategy", "procedure_or_intervention"},
-            target_types=PROCEDURE_TYPES,
-            default_traversal_policy="reverse_review",
         ),
         _relation_spec(
             "has_causative_agent",
             family="audit_candidate",
             source_types=DISEASE_FINDING_TYPES,
-            target_types={"drug_or_drug_class", "genetic_factor", "risk_factor"},
-            broad_target_types={"biomarker", "drug_or_drug_class", "genetic_factor", "risk_factor"},
+            target_types=CAUSATIVE_AGENT_TYPES,
+            broad_target_types=set(CAUSATIVE_AGENT_TYPES) | {"biomarker"},
             default_traversal_policy="review",
-        ),
-        _relation_spec(
-            "causative_agent_of",
-            family="audit_candidate",
-            source_types={"drug_or_drug_class", "genetic_factor", "risk_factor"},
-            target_types=DISEASE_FINDING_TYPES,
-            broad_source_types={"biomarker", "drug_or_drug_class", "genetic_factor", "risk_factor"},
-            default_traversal_policy="reverse_review",
         ),
         _relation_spec(
             "has_pathological_process",
@@ -452,14 +405,6 @@ RELATION_SPECS = dict(
             default_traversal_policy="review",
         ),
         _relation_spec(
-            "pathological_process_of",
-            family="audit_candidate",
-            source_types={"clinical_finding"},
-            target_types=DISEASE_FINDING_TYPES,
-            broad_source_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
-        ),
-        _relation_spec(
             "has_associated_finding",
             family="audit_candidate",
             source_types=DISEASE_FINDING_TYPES,
@@ -467,86 +412,60 @@ RELATION_SPECS = dict(
             default_traversal_policy="review",
         ),
         _relation_spec(
-            "associated_finding_of",
-            family="audit_candidate",
-            source_types=DISEASE_FINDING_TYPES,
-            target_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
-        ),
-        _relation_spec(
             "interprets",
             family="audit_candidate",
-            source_types={"diagnostic_test", "imaging_modality", "score_or_risk_model"},
+            source_types={"diagnostic_test", "score_or_risk_model"},
             target_types={"biomarker", "clinical_finding"},
             default_traversal_policy="review",
         ),
         _relation_spec(
-            "is_interpreted_by",
-            family="audit_candidate",
-            source_types={"biomarker", "clinical_finding"},
-            target_types={"diagnostic_test", "imaging_modality", "score_or_risk_model"},
-            default_traversal_policy="reverse_review",
-        ),
-        _relation_spec(
             "has_interpretation",
             family="audit_candidate",
-            source_types={"biomarker", "diagnostic_test", "imaging_modality"},
+            source_types={"biomarker", "diagnostic_test"},
             target_types={"clinical_finding"},
             broad_target_types=DISEASE_FINDING_TYPES,
             default_traversal_policy="review",
         ),
         _relation_spec(
-            "interpretation_of",
-            family="audit_candidate",
-            source_types={"clinical_finding"},
-            target_types={"biomarker", "diagnostic_test", "imaging_modality"},
-            broad_source_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
-        ),
-        _relation_spec(
             "has_clinical_course",
             family="audit_candidate",
             source_types=DISEASE_FINDING_TYPES,
-            target_types={"clinical_outcome"},
+            target_types={"clinical_outcome", "clinical_finding"},
             default_traversal_policy="review",
-        ),
-        _relation_spec(
-            "clinical_course_of",
-            family="audit_candidate",
-            source_types={"clinical_outcome"},
-            target_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
         ),
         _relation_spec(
             "due_to",
             family="audit_candidate",
             source_types=DISEASE_FINDING_TYPES,
-            target_types={
-                "disease",
-                "clinical_finding",
-                "complication_or_comorbidity",
-                "drug_or_drug_class",
-                "genetic_factor",
-                "risk_factor",
-            },
+            target_types=set(DISEASE_FINDING_TYPES) | set(CAUSATIVE_AGENT_TYPES),
             default_traversal_policy="review",
-        ),
-        _relation_spec(
-            "cause_of",
-            family="audit_candidate",
-            source_types={
-                "disease",
-                "clinical_finding",
-                "complication_or_comorbidity",
-                "drug_or_drug_class",
-                "genetic_factor",
-                "risk_factor",
-            },
-            target_types=DISEASE_FINDING_TYPES,
-            default_traversal_policy="reverse_review",
         ),
     ]
 )
+
+
+def validate_relation_specs_against_entity_schema() -> None:
+    allowed = set(ALLOWED_TYPES)
+    invalid: dict[str, list[str]] = {}
+    for relation_name, spec in RELATION_SPECS.items():
+        referenced_types = (
+            set(spec.source_types)
+            | set(spec.target_types)
+            | set(spec.broad_source_types)
+            | set(spec.broad_target_types)
+        )
+        unknown = sorted(referenced_types - allowed)
+        if unknown:
+            invalid[relation_name] = unknown
+
+    if invalid:
+        raise RuntimeError(
+            "UMLS relation catalog is not aligned with entity schema "
+            f"{ENTITY_SCHEMA_VERSION}: {invalid}"
+        )
+
+
+validate_relation_specs_against_entity_schema()
 
 RELATION_NAMES_BY_PROFILE = {
     "core": CORE_SNOMED_RELATION_NAMES,
@@ -612,8 +531,13 @@ CSV_COLUMNS = [
     "target_cui",
     "umls_relation_label",
     "umls_additional_relation_label",
+    "umls_raw_additional_relation_label",
     "umls_relation_source",
     "umls_relation_ui",
+    "umls_query_cui",
+    "umls_direction_canonicalized",
+    "umls_raw_subject_cuis",
+    "umls_raw_object_cuis",
     "source_vocabulary",
     "relation_raw_id",
     "connection_status",
@@ -633,6 +557,10 @@ CSV_COLUMNS = [
     "relation_raw_related_id_name",
     "relation_raw_related_from_id",
     "relation_raw_related_from_id_name",
+]
+
+EDGE_DEDUP_COLUMNS = [
+    column for column in CSV_COLUMNS if column != "umls_query_cui"
 ]
 
 EQUIVALENCE_RELATION_LABELS = {
@@ -1645,22 +1573,26 @@ def normalize_cui_list(value: Any) -> list[str]:
     return cuis
 
 
-def resolve_related_cuis(
+def resolve_identifier_cuis(
     client: UMLSRelationsClient,
+    identifier: Any,
+    *,
     record: dict[str, Any],
     source_vocab: str,
+    missing_reason: str,
+    unresolved_reason: str,
 ) -> tuple[list[str], Optional[str]]:
-    related_id = clean_text(record.get("relatedId") or record.get("relatedID"))
-    if not related_id:
-        return [], "missing_related_id"
+    identifier_text = clean_text(identifier)
+    if not identifier_text:
+        return [], missing_reason
 
-    direct_cui = extract_cui(related_id)
+    direct_cui = extract_cui(identifier_text)
     if direct_cui:
         return [direct_cui], None
 
-    source_identifier = parse_source_identifier(related_id)
+    source_identifier = parse_source_identifier(identifier_text)
     if source_identifier is None:
-        return [], "unresolved_related_id"
+        return [], unresolved_reason
 
     root_source = source_identifier.root_source or clean_text(record.get("rootSource"))
     root_source = root_source or clean_text(source_vocab)
@@ -1679,6 +1611,88 @@ def resolve_related_cuis(
     return cuis, None
 
 
+def resolve_related_cuis(
+    client: UMLSRelationsClient,
+    record: dict[str, Any],
+    source_vocab: str,
+) -> tuple[list[str], Optional[str]]:
+    """Backward-compatible helper for resolving the raw object endpoint."""
+    return resolve_identifier_cuis(
+        client,
+        record.get("relatedId") or record.get("relatedID"),
+        record=record,
+        source_vocab=source_vocab,
+        missing_reason="missing_related_id",
+        unresolved_reason="unresolved_related_id",
+    )
+
+
+def resolve_relation_endpoint_cuis(
+    client: UMLSRelationsClient,
+    record: dict[str, Any],
+    source_vocab: str,
+) -> tuple[list[str], list[str], Optional[str]]:
+    """
+    Resolve both UMLS relation endpoints.
+
+    UMLS documents ``relatedFromId`` as the subject of the relationship and
+    ``relatedId`` as the related/object endpoint. Direction is therefore
+    derived from these fields rather than from the CUI used to query the
+    /relations endpoint.
+    """
+    subject_cuis, subject_error = resolve_identifier_cuis(
+        client,
+        record.get("relatedFromId") or record.get("relatedFromID"),
+        record=record,
+        source_vocab=source_vocab,
+        missing_reason="missing_related_from_id",
+        unresolved_reason="unresolved_related_from_id",
+    )
+    if subject_error is not None:
+        return [], [], subject_error
+
+    object_cuis, object_error = resolve_identifier_cuis(
+        client,
+        record.get("relatedId") or record.get("relatedID"),
+        record=record,
+        source_vocab=source_vocab,
+        missing_reason="missing_related_id",
+        unresolved_reason="unresolved_related_id",
+    )
+    if object_error is not None:
+        return [], [], object_error
+
+    return (
+        sorted({normalize_cui(cui) for cui in subject_cuis if normalize_cui(cui)}),
+        sorted({normalize_cui(cui) for cui in object_cuis if normalize_cui(cui)}),
+        None,
+    )
+
+
+def canonicalize_resolved_relation(
+    raw_relation_name: str,
+    subject_cuis: Sequence[str],
+    object_cuis: Sequence[str],
+) -> tuple[str, list[str], list[str], bool]:
+    """
+    Return canonical forward relation name and endpoints.
+
+    Raw inverse labels are re-oriented once. The graph therefore stores only
+    one direction for each ontology relation family while raw UMLS provenance
+    remains available in the candidate-edge audit.
+    """
+    canonical_name, swap_endpoints = canonicalize_raw_relation_name(raw_relation_name)
+    normalized_subjects = sorted(
+        {normalize_cui(cui) for cui in subject_cuis if normalize_cui(cui)}
+    )
+    normalized_objects = sorted(
+        {normalize_cui(cui) for cui in object_cuis if normalize_cui(cui)}
+    )
+    if swap_endpoints:
+        return canonical_name, normalized_objects, normalized_subjects, True
+    return canonical_name, normalized_subjects, normalized_objects, False
+
+
 def concepts_by_cui(
     concepts: Sequence[LocalConcept],
 ) -> dict[str, list[LocalConcept]]:
@@ -1692,11 +1706,27 @@ def concepts_by_cui(
     return dict(grouped)
 
 
-def relation_requires_source_ui_lookup(record: dict[str, Any]) -> bool:
-    related_id = clean_text(record.get("relatedId") or record.get("relatedID"))
-    if not related_id or extract_cui(related_id):
+def identifier_requires_source_ui_lookup(value: Any) -> bool:
+    text = clean_text(value)
+    if not text or extract_cui(text):
         return False
-    return parse_source_identifier(related_id) is not None
+    return parse_source_identifier(text) is not None
+
+
+def relation_source_ui_lookup_count(record: dict[str, Any]) -> int:
+    return sum(
+        1
+        for value in (
+            record.get("relatedFromId") or record.get("relatedFromID"),
+            record.get("relatedId") or record.get("relatedID"),
+        )
+        if identifier_requires_source_ui_lookup(value)
+    )
+
+
+def relation_requires_source_ui_lookup(record: dict[str, Any]) -> bool:
+    """Backward-compatible boolean wrapper."""
+    return relation_source_ui_lookup_count(record) > 0
 
 
 def build_initial_relation_stats(
@@ -1747,6 +1777,10 @@ def build_initial_relation_stats(
         "same_cui_relations_skipped": 0,
         "equivalence_relations_skipped": 0,
         "unresolved_target_relations_skipped": 0,
+        "direction_resolution_failures": 0,
+        "missing_related_from_id_relations_skipped": 0,
+        "query_cui_not_endpoint_relations_skipped": 0,
+        "inverse_relations_canonicalized": 0,
         "relation_fetch_failures": 0,
         "relation_fetches_unavailable": 0,
         "relation_fetches_skipped_by_negative_cache": 0,
@@ -2019,7 +2053,10 @@ def build_candidate_edges(
             relation_label = clean_text(record.get("relationLabel"))
             additional_label = clean_text(record.get("additionalRelationLabel"))
             relation_source = clean_text(record.get("rootSource"))
-            normalized_additional_label = normalize_relation_term(additional_label)
+            raw_relation_name = normalize_relation_term(additional_label)
+            canonical_relation_name_value, _swap_preview = canonicalize_raw_relation_name(
+                raw_relation_name
+            )
 
             if (
                 source_vocab
@@ -2031,14 +2068,14 @@ def build_candidate_edges(
 
             if (
                 resolved_include_names
-                and normalized_additional_label not in resolved_include_names
+                and canonical_relation_name_value not in resolved_include_names
             ):
                 stats["relation_records_skipped_by_relation_name_filter"] += 1
                 continue
 
             if (
                 resolved_exclude_names
-                and normalized_additional_label in resolved_exclude_names
+                and canonical_relation_name_value in resolved_exclude_names
             ):
                 stats["relation_records_skipped_by_relation_name_filter"] += 1
                 continue
@@ -2047,27 +2084,57 @@ def build_candidate_edges(
                 stats["equivalence_relations_skipped"] += 1
                 continue
 
-            if relation_requires_source_ui_lookup(record):
-                if (
-                    per_source_ui_lookups_attempted
-                    >= max_source_ui_lookups_per_cui
-                ):
-                    per_source_ui_lookups_skipped += 1
-                    stats["source_ui_lookups_skipped_by_limit"] += 1
-                    stats["unresolved_target_relations_skipped"] += 1
-                    continue
+            required_source_ui_lookups = relation_source_ui_lookup_count(record)
+            if (
+                per_source_ui_lookups_attempted + required_source_ui_lookups
+                > max_source_ui_lookups_per_cui
+            ):
+                per_source_ui_lookups_skipped += required_source_ui_lookups
+                stats["source_ui_lookups_skipped_by_limit"] += required_source_ui_lookups
+                stats["unresolved_target_relations_skipped"] += 1
+                continue
 
-                per_source_ui_lookups_attempted += 1
-                stats["source_ui_lookups_attempted"] += 1
+            per_source_ui_lookups_attempted += required_source_ui_lookups
+            stats["source_ui_lookups_attempted"] += required_source_ui_lookups
 
-            related_cuis, resolution_error = resolve_related_cuis(
+            (
+                raw_subject_cuis,
+                raw_object_cuis,
+                resolution_error,
+            ) = resolve_relation_endpoint_cuis(
                 client=client,
                 record=record,
                 source_vocab=source_vocab,
             )
             if resolution_error is not None:
                 stats["unresolved_target_relations_skipped"] += 1
+                stats["direction_resolution_failures"] += 1
+                if resolution_error == "missing_related_from_id":
+                    stats["missing_related_from_id_relations_skipped"] += 1
                 continue
+
+            resolved_raw_endpoints = set(raw_subject_cuis) | set(raw_object_cuis)
+            if source_cui not in resolved_raw_endpoints:
+                # /CUI/{cui}/relations returns relations associated with the
+                # queried CUI. If endpoint resolution cannot recover that CUI,
+                # direction cannot be trusted and the row is kept out of the
+                # local candidate graph.
+                stats["query_cui_not_endpoint_relations_skipped"] += 1
+                stats["direction_resolution_failures"] += 1
+                continue
+
+            (
+                canonical_relation_name_value,
+                canonical_source_cuis,
+                canonical_target_cuis,
+                direction_canonicalized,
+            ) = canonicalize_resolved_relation(
+                raw_relation_name,
+                raw_subject_cuis,
+                raw_object_cuis,
+            )
+            if direction_canonicalized:
+                stats["inverse_relations_canonicalized"] += 1
 
             relation_ui = clean_text(record.get("ui") or record.get("relationUi"))
             raw_id = relation_record_id(record)
@@ -2094,55 +2161,67 @@ def build_candidate_edges(
                 "relatedFromName",
             )
 
-            for target_cui in sorted(set(related_cuis)):
-                target_cui = normalize_cui(target_cui)
-                if source_cui == target_cui:
-                    stats["same_cui_relations_skipped"] += 1
-                    continue
-                if target_cui not in local_cuis:
-                    stats["external_target_relations_skipped"] += 1
-                    continue
+            for canonical_source_cui in canonical_source_cuis:
+                for canonical_target_cui in canonical_target_cuis:
+                    canonical_source_cui = normalize_cui(canonical_source_cui)
+                    canonical_target_cui = normalize_cui(canonical_target_cui)
 
-                for source_concept in by_cui[source_cui]:
-                    for target_concept in by_cui[target_cui]:
-                        edges.append(
-                            {
-                                "doc_id": clean_text(doc_id),
-                                "source_concept_id": source_concept.concept_id,
-                                "source_name": source_concept.name,
-                                "source_type": source_concept.canonical_type,
-                                "source_cui": source_cui,
-                                "target_concept_id": target_concept.concept_id,
-                                "target_name": target_concept.name,
-                                "target_type": target_concept.canonical_type,
-                                "target_cui": target_cui,
-                                "umls_relation_label": relation_label,
-                                "umls_additional_relation_label": additional_label,
-                                "umls_relation_source": relation_source,
-                                "umls_relation_ui": relation_ui,
-                                "source_vocabulary": source_vocab,
-                                "relation_raw_id": raw_id,
-                                "connection_status": CONNECTION_STATUS,
-                                "source_umls_canonical_name": source_concept.umls_canonical_name,
-                                "source_umls_semantic_types": serialize_string_tuple(source_concept.umls_semantic_types),
-                                "source_umls_score": source_concept.umls_score,
-                                "source_observed_types": serialize_string_tuple(source_concept.observed_types),
-                                "source_type_support_pairs": serialize_string_tuple(source_concept.type_support_pairs),
-                                "source_type_resolution_status": source_concept.type_resolution_status,
-                                "source_needs_type_review": source_concept.needs_type_review,
-                                "target_umls_canonical_name": target_concept.umls_canonical_name,
-                                "target_umls_semantic_types": serialize_string_tuple(target_concept.umls_semantic_types),
-                                "target_umls_score": target_concept.umls_score,
-                                "target_observed_types": serialize_string_tuple(target_concept.observed_types),
-                                "target_type_support_pairs": serialize_string_tuple(target_concept.type_support_pairs),
-                                "target_type_resolution_status": target_concept.type_resolution_status,
-                                "target_needs_type_review": target_concept.needs_type_review,
-                                "relation_raw_related_id": relation_raw_related_id,
-                                "relation_raw_related_id_name": relation_raw_related_id_name,
-                                "relation_raw_related_from_id": relation_raw_related_from_id,
-                                "relation_raw_related_from_id_name": relation_raw_related_from_id_name,
-                            }
-                        )
+                    if canonical_source_cui == canonical_target_cui:
+                        stats["same_cui_relations_skipped"] += 1
+                        continue
+                    if (
+                        canonical_source_cui not in local_cuis
+                        or canonical_target_cui not in local_cuis
+                    ):
+                        stats["external_target_relations_skipped"] += 1
+                        continue
+
+                    for source_concept in by_cui[canonical_source_cui]:
+                        for target_concept in by_cui[canonical_target_cui]:
+                            edges.append(
+                                {
+                                    "doc_id": clean_text(doc_id),
+                                    "source_concept_id": source_concept.concept_id,
+                                    "source_name": source_concept.name,
+                                    "source_type": source_concept.canonical_type,
+                                    "source_cui": canonical_source_cui,
+                                    "target_concept_id": target_concept.concept_id,
+                                    "target_name": target_concept.name,
+                                    "target_type": target_concept.canonical_type,
+                                    "target_cui": canonical_target_cui,
+                                    "umls_relation_label": relation_label,
+                                    "umls_additional_relation_label": canonical_relation_name_value,
+                                    "umls_raw_additional_relation_label": additional_label,
+                                    "umls_relation_source": relation_source,
+                                    "umls_relation_ui": relation_ui,
+                                    "umls_query_cui": source_cui,
+                                    "umls_direction_canonicalized": direction_canonicalized,
+                                    "umls_raw_subject_cuis": "; ".join(raw_subject_cuis),
+                                    "umls_raw_object_cuis": "; ".join(raw_object_cuis),
+                                    "source_vocabulary": source_vocab,
+                                    "relation_raw_id": raw_id,
+                                    "connection_status": CONNECTION_STATUS,
+                                    "source_umls_canonical_name": source_concept.umls_canonical_name,
+                                    "source_umls_semantic_types": serialize_string_tuple(source_concept.umls_semantic_types),
+                                    "source_umls_score": source_concept.umls_score,
+                                    "source_observed_types": serialize_string_tuple(source_concept.observed_types),
+                                    "source_type_support_pairs": serialize_string_tuple(source_concept.type_support_pairs),
+                                    "source_type_resolution_status": source_concept.type_resolution_status,
+                                    "source_needs_type_review": source_concept.needs_type_review,
+                                    "target_umls_canonical_name": target_concept.umls_canonical_name,
+                                    "target_umls_semantic_types": serialize_string_tuple(target_concept.umls_semantic_types),
+                                    "target_umls_score": target_concept.umls_score,
+                                    "target_observed_types": serialize_string_tuple(target_concept.observed_types),
+                                    "target_type_support_pairs": serialize_string_tuple(target_concept.type_support_pairs),
+                                    "target_type_resolution_status": target_concept.type_resolution_status,
+                                    "target_needs_type_review": target_concept.needs_type_review,
+                                    "relation_raw_related_id": relation_raw_related_id,
+                                    "relation_raw_related_id_name": relation_raw_related_id_name,
+                                    "relation_raw_related_from_id": relation_raw_related_from_id,
+                                    "relation_raw_related_from_id_name": relation_raw_related_from_id_name,
+                                }
+                            )
+
 
         deduped_so_far = deduplicate_edges(edges)
         stats["internal_candidate_edges_retained"] = len(deduped_so_far)
@@ -2246,7 +2325,7 @@ def deduplicate_edges(edges: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
         edges,
         key=lambda item: tuple(clean_text(item.get(column)) for column in CSV_COLUMNS),
     ):
-        key = tuple(edge.get(column) for column in CSV_COLUMNS)
+        key = tuple(edge.get(column) for column in EDGE_DEDUP_COLUMNS)
         if key in seen:
             continue
         seen.add(key)
@@ -2381,13 +2460,19 @@ def build_collapsed_edge_key(
     relation_label: str,
     relation_name: str,
 ) -> str:
+    """
+    Stable identity for one canonical ontology edge.
+
+    ``relation_label`` is intentionally excluded: UMLS may expose the same
+    semantic edge through PAR/CHD or forward/inverse source-asserted rows.
+    Those raw labels remain provenance, not graph identity.
+    """
     payload = {
         "doc_id": clean_text(doc_id),
         "source_vocab": clean_text(source_vocab),
         "umls_version": clean_text(umls_version),
         "source_cui": normalize_cui(source_cui),
         "target_cui": normalize_cui(target_cui),
-        "relation_label": clean_text(relation_label),
         "relation_name": normalize_relation_term(relation_name),
     }
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -2412,6 +2497,7 @@ def catalog_relationship_type_rows() -> list[dict[str, Any]]:
             "validation_mode": spec.validation_mode,
             "materialize_by_default": spec.materialize_by_default,
             "default_traversal_policy": spec.default_traversal_policy,
+            "entity_schema_version": ENTITY_SCHEMA_VERSION,
         }
         for relation_name, spec in sorted(RELATION_SPECS.items())
     ]
@@ -2426,6 +2512,7 @@ def catalog_local_type_rule_rows() -> list[dict[str, Any]]:
             "target_types": list(spec.target_types),
             "validation_mode": spec.validation_mode,
             "materialize_by_default": spec.materialize_by_default,
+            "entity_schema_version": ENTITY_SCHEMA_VERSION,
         }
         for relation_name, spec in sorted(RELATION_SPECS.items())
         if spec.validation_mode == "exact" and spec.source_types and spec.target_types
@@ -2970,10 +3057,9 @@ def collapsed_connection_key(
     doc_id: Optional[str],
     source_vocab: str,
     umls_version: str,
-) -> tuple[str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str]:
     source_cui = normalize_cui(edge.get("source_cui"))
     target_cui = normalize_cui(edge.get("target_cui"))
-    relation_label = clean_text(edge.get("umls_relation_label"))
     relation_name = canonical_relation_name(edge)
     return (
         clean_text(doc_id),
@@ -2981,7 +3067,6 @@ def collapsed_connection_key(
         clean_text(umls_version),
         source_cui,
         target_cui,
-        relation_label,
         relation_name,
     )
 
@@ -3052,7 +3137,7 @@ def build_collapsed_connections(
     representatives_by_cui: Optional[dict[str, LocalConcept]] = None,
     materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
 ) -> list[dict[str, Any]]:
-    grouped: dict[tuple[str, str, str, str, str, str, str], dict[str, Any]] = {}
+    grouped: dict[tuple[str, str, str, str, str, str], dict[str, Any]] = {}
 
     for edge in edges:
         key = collapsed_connection_key(
@@ -3069,14 +3154,15 @@ def build_collapsed_connections(
                 "umls_version": key[2],
                 "source_cui": key[3],
                 "target_cui": key[4],
-                "relation_label": key[5],
-                "relation_name": key[6],
+                "relation_name": key[5],
                 "raw_rows": 0,
                 "source_names": set(),
                 "target_names": set(),
                 "source_types": set(),
                 "target_types": set(),
                 "relation_ids": set(),
+                "relation_labels": set(),
+                "raw_relation_names": set(),
             },
         )
         row["raw_rows"] += 1
@@ -3085,6 +3171,11 @@ def build_collapsed_connections(
         source_type = clean_text(edge.get("source_type"))
         target_type = clean_text(edge.get("target_type"))
         relation_id = clean_text(edge.get("umls_relation_ui") or edge.get("relation_raw_id"))
+        relation_label = clean_text(edge.get("umls_relation_label"))
+        raw_relation_name = normalize_relation_term(
+            edge.get("umls_raw_additional_relation_label")
+            or edge.get("umls_additional_relation_label")
+        )
         if source_name:
             row["source_names"].add(source_name)
         if target_name:
@@ -3095,6 +3186,10 @@ def build_collapsed_connections(
             row["target_types"].add(target_type)
         if relation_id:
             row["relation_ids"].add(relation_id)
+        if relation_label:
+            row["relation_labels"].add(relation_label)
+        if raw_relation_name:
+            row["raw_relation_names"].add(raw_relation_name)
 
     collapsed_edges: list[dict[str, Any]] = []
     representatives_by_cui = representatives_by_cui or {}
@@ -3102,6 +3197,9 @@ def build_collapsed_connections(
         source_types = sorted(row["source_types"])
         target_types = sorted(row["target_types"])
         relation_name = row["relation_name"]
+        relation_labels = sorted(row["relation_labels"])
+        raw_relation_names = sorted(row["raw_relation_names"])
+        relation_label_display = "; ".join(relation_labels)
         relationship_metadata = build_ontology_relationship_metadata(
             row["source_vocabulary"]
         )
@@ -3139,19 +3237,22 @@ def build_collapsed_connections(
                 umls_version=row["umls_version"],
                 source_cui=row["source_cui"],
                 target_cui=row["target_cui"],
-                relation_label=row["relation_label"],
+                relation_label=relation_label_display,
                 relation_name=relation_name,
             ),
             "doc_id": row["doc_id"],
             "source_cui": row["source_cui"],
             "target_cui": row["target_cui"],
-            "relation_label": row["relation_label"],
+            "relation_label": relation_label_display,
+            "relation_labels": relation_labels,
             "relation_name": relation_name,
+            "raw_relation_names": raw_relation_names,
             "relationship_type": (
                 spec.relationship_type if spec is not None else None
             ),
             "source_vocabulary": row["source_vocabulary"],
             "umls_version": row["umls_version"],
+            "entity_schema_version": ENTITY_SCHEMA_VERSION,
             "raw_rows": row["raw_rows"],
             "relation_ids": sorted(row["relation_ids"]),
             "source_names": sorted(row["source_names"]),
@@ -3198,7 +3299,6 @@ def build_collapsed_connections(
             -int(item["raw_rows"]),
             item["source_cui"],
             item["target_cui"],
-            item["relation_label"],
             item["relation_name"],
         )
     )
@@ -3338,6 +3438,7 @@ def build_summary_markdown(
         f"- selected doc_id: `{doc_id or 'ALL'}`",
         f"- source vocabulary: `{source_vocab or 'ALL'}`",
         f"- UMLS version: `{umls_version}`",
+        f"- entity schema version: `{ENTITY_SCHEMA_VERSION}`",
         f"- run name: `{stats.get('run_name') or '(none)'}`",
         f"- output path: `{stats.get('output_dir') or csv_path.parent}`",
         f"- dry-run/read-only: `{str(dry_run).lower()}`",
@@ -3372,6 +3473,10 @@ def build_summary_markdown(
         f"- relation fetches unavailable after repeated 404: {stats.get('relation_fetches_unavailable', 0)}",
         f"- relation fetches skipped by negative cache: {stats.get('relation_fetches_skipped_by_negative_cache', 0)}",
         f"- unresolved target relations skipped: {stats.get('unresolved_target_relations_skipped', 0)}",
+        f"- relation direction resolution failures: {stats.get('direction_resolution_failures', 0)}",
+        f"- relations missing relatedFromId skipped: {stats.get('missing_related_from_id_relations_skipped', 0)}",
+        f"- queried-CUI endpoint mismatches skipped: {stats.get('query_cui_not_endpoint_relations_skipped', 0)}",
+        f"- raw inverse relations canonicalized: {stats.get('inverse_relations_canonicalized', 0)}",
         f"- external target relations skipped: {stats.get('external_target_relations_skipped', 0)}",
         f"- same-CUI/equivalence relations skipped: {stats.get('same_cui_relations_skipped', 0) + stats.get('equivalence_relations_skipped', 0)}",
         f"- sourceUi target lookups attempted: {stats.get('source_ui_lookups_attempted', 0)}",
@@ -3980,9 +4085,12 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
             r.source_cui = $source_cui,
             r.target_cui = $target_cui,
             r.relation_label = $relation_label,
+            r.relation_labels = $relation_labels,
             r.relation_name = $relation_name,
+            r.raw_relation_names = $raw_relation_names,
             r.source_vocabulary = $source_vocabulary,
             r.umls_version = $umls_version,
+            r.entity_schema_version = $entity_schema_version,
             r.raw_rows = $raw_rows,
             r.relation_ids = $relation_ids,
             r.source_names = $source_names,
@@ -4015,9 +4123,12 @@ def materialize_collapsed_edge(tx, edge: dict[str, Any], now: str) -> Optional[s
         source_cui=normalize_cui(edge.get("source_cui")),
         target_cui=normalize_cui(edge.get("target_cui")),
         relation_label=clean_text(edge.get("relation_label")),
+        relation_labels=list(edge.get("relation_labels") or []),
         relation_name=relation_name,
+        raw_relation_names=list(edge.get("raw_relation_names") or []),
         source_vocabulary=clean_text(edge.get("source_vocabulary")),
         umls_version=clean_text(edge.get("umls_version")),
+        entity_schema_version=clean_text(edge.get("entity_schema_version") or ENTITY_SCHEMA_VERSION),
         raw_rows=int_or_zero(edge.get("raw_rows")),
         relation_ids=list(edge.get("relation_ids") or []),
         source_names=list(edge.get("source_names") or []),
@@ -4519,6 +4630,10 @@ def run_umls_connections(
         "same_cui_relations_skipped": 0,
         "equivalence_relations_skipped": 0,
         "unresolved_target_relations_skipped": 0,
+        "direction_resolution_failures": 0,
+        "missing_related_from_id_relations_skipped": 0,
+        "query_cui_not_endpoint_relations_skipped": 0,
+        "inverse_relations_canonicalized": 0,
         "relation_fetch_failures": 0,
         "relation_fetches_unavailable": 0,
         "relation_fetches_skipped_by_negative_cache": 0,

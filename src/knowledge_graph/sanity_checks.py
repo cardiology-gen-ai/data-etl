@@ -19,8 +19,9 @@ from typing import Any, Dict, List, Set
 
 from neo4j import Driver
 
-from knowledge_graph.entity_schema import ALLOWED_TYPES
+from knowledge_graph.entity_schema import ALLOWED_TYPES, ENTITY_SCHEMA_VERSION
 from knowledge_graph.umls_connections import (
+    RAW_RELATION_CANONICALIZATION,
     UMLS_CONNECTION_RELATION_TYPES,
     catalog_local_type_rule_rows,
     catalog_relationship_type_rows,
@@ -47,6 +48,12 @@ SPECIAL_CANONICAL_TYPES = {
 
 VALID_CANONICAL_TYPES = sorted(ALLOWED_TYPES | SPECIAL_CANONICAL_TYPES)
 VALID_ENTITY_TYPES = sorted(ALLOWED_TYPES)
+INVERSE_RAW_UMLS_RELATION_NAMES = sorted(
+    relation_name
+    for relation_name, (_canonical_name, swap_endpoints)
+    in RAW_RELATION_CANONICALIZATION.items()
+    if swap_endpoints
+)
 UMLS_CATALOG_RELATIONSHIP_ROWS = catalog_relationship_type_rows()
 UMLS_CATALOG_LOCAL_TYPE_RULES = catalog_local_type_rule_rows()
 AUDIT_ONLY_UMLS_RELATIONSHIP_TYPES = sorted(
@@ -877,6 +884,60 @@ CHECKS: List[Dict[str, Any]] = [
                    rel_props['status'] AS status,
                    rel_props['score'] AS score
             ORDER BY source_concept, target_concept
+        """,
+    },
+    {
+        "name": "umls_connections_noncanonical_relation_names",
+        "title": "Materialized UMLS connections using raw inverse relation names",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "relationship_types": UMLS_CONNECTION_RELATION_TYPES,
+            "inverse_raw_relation_names": INVERSE_RAW_UMLS_RELATION_NAMES,
+        },
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE coalesce(toString(rel_props['relation_name']), '')
+                  IN $inverse_raw_relation_names
+            RETURN type(r) AS relationship_type,
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['relation_name'] AS relation_name,
+                   source.name AS source_concept,
+                   target.name AS target_concept
+            ORDER BY relationship_type, edge_key
+        """,
+    },
+    {
+        "name": "umls_connections_entity_schema_version_mismatch",
+        "title": "Materialized UMLS connections using a different entity schema version",
+        "group": "UMLS connections",
+        "phases": {"entities"},
+        "level": "ERROR",
+        "params": {
+            "relationship_types": UMLS_CONNECTION_RELATION_TYPES,
+            "entity_schema_version": ENTITY_SCHEMA_VERSION,
+        },
+        "query": """
+            MATCH (source:Concept)-[r]->(target:Concept)
+            WHERE type(r) IN $relationship_types
+              AND r.provenance = 'umls_connections'
+            WITH source, r, target, properties(r) AS rel_props
+            WHERE coalesce(
+                      toString(rel_props['entity_schema_version']),
+                      ''
+                  ) <> $entity_schema_version
+            RETURN type(r) AS relationship_type,
+                   rel_props['edge_key'] AS edge_key,
+                   rel_props['relation_name'] AS relation_name,
+                   source.name AS source_concept,
+                   target.name AS target_concept,
+                   rel_props['entity_schema_version'] AS relationship_schema_version,
+                   $entity_schema_version AS expected_schema_version
+            ORDER BY relationship_type, edge_key
         """,
     },
     {
