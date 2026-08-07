@@ -11,7 +11,8 @@ from cardiology_gen_ai.config.manager import ConfigManager
 
 
 class ImageManagerConfig(BaseModel):
-    """Configure image extraction and placement for Markdown conversion."""
+    """Configure optional PDF-native image extraction."""
+    enabled: bool = False
     dpi: int = 200 #: int, default ``200`` : Rendering DPI used when rasterize PDF regions into images.
     tol: float = 40.0 #: float, default ``40.0`` : Tolerance (in PDF points) used to merge touching/nearby image rectangles.
     pad: float = 16.0 #: float, default ``16.0`` : Padding (in points) added around detected image boxes before rendering.

@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Set
 from managers.table_of_contents_manager import GuidelineTOCExtractor
 from managers.markdown_conversion_manager import MarkdownConverter
 from managers.markdown_manager import MarkdownManager
+from managers.pdf_image_extraction_manager import extract_document_images_if_enabled
 from managers.mineru_markdown_adapter import (
     MinerUMarkdownDocument,
     load_mineru_markdown,
@@ -738,6 +739,12 @@ def preprocess_single_document(
     """
     doc_id = pdf_path.stem
     logger.info("=== Preprocessing %s ===", doc_id)
+
+    extract_document_images_if_enabled(
+        pdf_path=pdf_path,
+        image_root=Path(config.image_dir),
+        image_config=config.preprocessing_config.image_manager,
+    )
 
     chunk_path = get_cached_chunk_path(config, doc_id)
 
