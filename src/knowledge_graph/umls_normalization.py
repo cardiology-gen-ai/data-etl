@@ -94,8 +94,21 @@ DEFAULT_PLAUSIBLE_UMLS_THRESHOLD = 0.50
 MIN_EXACT_ATOM_SOURCE_COUNT = 2
 SYNONYM_AUTO_ACCEPT_CANONICAL_TYPES = {"disease"}
 
+# Disease-only narrowing guard. These modifiers are intentionally few and
+# semantically restrictive: when UMLS introduces one that is absent from the
+# local alias, the candidate may represent a subtype rather than an equivalent
+# concept. Do not include broad words such as "primary", "type", "left", or
+# "right" here: those would create avoidable false negatives.
+DISEASE_NARROWING_MODIFIER_PHRASES = (
+    ("hereditary",),
+    ("familial",),
+    ("senile",),
+    ("wild", "type"),
+    ("acquired",),
+)
+
 CANDIDATE_TRACE_VERSION = "umls_candidate_trace_v2"
-RANKING_POLICY_VERSION = "umls_candidate_quality_v3"
+RANKING_POLICY_VERSION = "umls_candidate_quality_v7"
 NO_PLAUSIBLE_MATCH_STATUS = "umls_no_plausible_match"
 API_NO_PLAUSIBLE_MATCH_METHOD = "umls_api_no_plausible_match"
 NO_PLAUSIBLE_MATCH_METHOD = "umls_no_plausible_match"
@@ -136,14 +149,15 @@ UMLS_API_SEARCH_TYPES = ("exact", "normalizedString", "words")
 
 # Candidate acceptance continues to use the conservative lexical score stored in
 # ``UMLSMatch.score``. Cross-strategy selection uses a separate evidence score:
-# rank-1 exact search is meaningful synonym evidence, while broad ``words``
-# retrieval receives a small penalty. This prevents a highly specific words
-# result from displacing an exact rank-1 synonym, without making exact search an
-# unconditional winner.
-EXACT_RANK_ONE_SELECTION_FLOOR = 0.75
-EXACT_NON_PRIMARY_SELECTION_BONUS = 0.03
+# ``words`` retrieval receives a small penalty, but exact API rank alone must
+# not create artificial confidence. In particular, a weak exact rank-1 result
+# must not displace a much stronger compatible exact candidate. Strong atom
+# synonym evidence is handled separately during cross-strategy ranking.
+EXACT_RANK_ONE_SELECTION_FLOOR = 0.0
+EXACT_NON_PRIMARY_SELECTION_BONUS = 0.0
 NORMALIZED_STRING_SELECTION_PENALTY = 0.01
 WORDS_SELECTION_PENALTY = 0.03
+STRONG_COMPATIBLE_EXACT_SELECTION_THRESHOLD = DEFAULT_EXACT_UMLS_THRESHOLD
 
 # Conservative compatibility map between the local controlled entity types and
 # UMLS semantic types. Intrinsic local types still fail closed when the API
@@ -1180,22 +1194,18 @@ def compute_umls_candidate_score(
 
 
 def compute_umls_selection_score(match: UMLSMatch) -> float:
-    """Return evidence-aware score used only to choose among candidates.
+    """Return the conservative score used to choose among candidates.
 
-    The stored ``match.score`` remains the conservative acceptance score. A
-    rank-1 exact result receives a floor because UMLS may return a preferred
-    name that is lexically different from the exact synonym used in the query.
-    Broad ``words`` results receive a small penalty.
+    The stored ``match.score`` remains the acceptance score. Exact API rank is
+    intentionally only a tie-breaker elsewhere: it must not manufacture a
+    score advantage over a lexically stronger compatible candidate. Broad
+    search strategies retain their small penalties.
     """
     score = float(match.score)
     search_type = str(match.search_type or "")
-    api_rank = int(match.api_rank or 0)
 
     if search_type == "exact":
-        if api_rank == 1:
-            score = max(score, EXACT_RANK_ONE_SELECTION_FLOOR)
-        else:
-            score += EXACT_NON_PRIMARY_SELECTION_BONUS
+        score += EXACT_NON_PRIMARY_SELECTION_BONUS
     elif search_type == "normalizedString":
         score -= NORMALIZED_STRING_SELECTION_PENALTY
     elif search_type == "words":
@@ -1210,12 +1220,76 @@ def _resolved_selection_score(match: UMLSMatch) -> float:
     return float(match.selection_score)
 
 
+def _contains_token_phrase(
+    tokens: Sequence[str],
+    phrase: Sequence[str],
+) -> bool:
+    if not tokens or not phrase or len(phrase) > len(tokens):
+        return False
+    width = len(phrase)
+    target = tuple(phrase)
+    return any(
+        tuple(tokens[index : index + width]) == target
+        for index in range(len(tokens) - width + 1)
+    )
+
+
+def has_disease_specificity_conflict(match: UMLSMatch) -> bool:
+    """Return whether a disease candidate adds a restrictive subtype label.
+
+    UMLS atoms can list a generic source term under a narrower CUI. Strong atom
+    evidence is therefore insufficient by itself when the preferred UMLS name
+    adds a clearly restrictive modifier absent from the local alias. The guard
+    is deliberately disease-only and uses a short, conservative modifier list.
+    """
+    if normalize_type(match.canonical_type or "") != "disease":
+        return False
+
+    alias_tokens = _matching_tokens(match.alias)
+    canonical_tokens = _matching_tokens(match.canonical_name or "")
+
+    for phrase in DISEASE_NARROWING_MODIFIER_PHRASES:
+        if (
+            _contains_token_phrase(canonical_tokens, phrase)
+            and not _contains_token_phrase(alias_tokens, phrase)
+        ):
+            return True
+    return False
+
+
+def is_strong_compatible_exact_match(match: UMLSMatch) -> bool:
+    """Return whether exact evidence is strong enough for selection priority.
+
+    This is deliberately narrower than "exact search": the candidate must be
+    semantically compatible with the local concept type, must not introduce a
+    disease-specific narrowing modifier, and its conservative lexical score
+    must already meet the exact-match acceptance threshold.
+    """
+    return bool(
+        not has_disease_specificity_conflict(match)
+        and str(match.search_type or "") == "exact"
+        and str(match.semantic_compatibility or "") == "compatible"
+        and float(match.score) >= STRONG_COMPATIBLE_EXACT_SELECTION_THRESHOLD
+    )
+
+
 def _ranked_match_tuple(
     match: UMLSMatch,
     alias_index: int,
     search_index: int,
-) -> Tuple[float, float, int, int, int, UMLSMatch]:
+) -> Tuple[int, int, int, float, float, int, int, int, UMLSMatch]:
+    """Return the cross-strategy ranking key.
+
+    Candidates without a disease-specific narrowing conflict are preferred
+    first. Among those, independently supported synonyms remain the strongest
+    evidence, followed by strong semantically compatible exact matches and the
+    ordinary conservative scores. Exact API rank still has no score floor.
+    """
+    specificity_safe = not has_disease_specificity_conflict(match)
     return (
+        1 if specificity_safe else 0,
+        1 if (specificity_safe and match.synonym_supported) else 0,
+        1 if is_strong_compatible_exact_match(match) else 0,
         _resolved_selection_score(match),
         float(match.score),
         -alias_index,
@@ -1630,6 +1704,7 @@ class UMLSAPIClient:
         }
         best["exact_atom_count"] = len(exact_atoms)
         best["exact_atom_source_count"] = len(exact_sources)
+        best["exact_atom_sources"] = sorted(exact_sources)
         return best
 
     def enrich_match_with_atom_evidence(
@@ -1638,7 +1713,7 @@ class UMLSAPIClient:
     ) -> UMLSMatch:
         if not getattr(self, "enable_atom_enrichment", False):
             return match
-        if match.search_type != "exact" or int(match.api_rank or 0) != 1:
+        if match.search_type != "exact":
             return match
         if match.score >= DEFAULT_EXACT_UMLS_THRESHOLD:
             return match
@@ -1664,12 +1739,34 @@ class UMLSAPIClient:
         match.matched_atom_source_count = int(
             atom.get("exact_atom_source_count") or 0
         )
-        match.synonym_supported = bool(
+
+        canonical_type = normalize_type(match.canonical_type or "")
+        exact_atom_sources = {
+            str(source).strip()
+            for source in atom.get("exact_atom_sources") or []
+            if str(source).strip()
+        }
+        semantic_types = {
+            str(value).strip()
+            for value in match.semantic_types
+            if str(value).strip()
+        }
+
+        disease_synonym_supported = bool(
             atom.get("exact_match")
             and match.matched_atom_source_count
             >= MIN_EXACT_ATOM_SOURCE_COUNT
-            and normalize_type(match.canonical_type or "")
-            in SYNONYM_AUTO_ACCEPT_CANONICAL_TYPES
+            and canonical_type in SYNONYM_AUTO_ACCEPT_CANONICAL_TYPES
+        )
+        hgnc_gene_supported = bool(
+            atom.get("exact_match")
+            and canonical_type == "genetic_factor"
+            and "Gene or Genome" in semantic_types
+            and "HGNC" in exact_atom_sources
+        )
+
+        match.synonym_supported = bool(
+            disease_synonym_supported or hgnc_gene_supported
         )
         return match
 
@@ -1886,7 +1983,7 @@ def select_best_umls_api_match(
     canonical_type: Optional[str] = None,
 ) -> Optional[UMLSMatch]:
     """Select the best candidate using evidence-aware cross-strategy ranking."""
-    matches: List[Tuple[float, float, int, int, int, UMLSMatch]] = []
+    matches: List[Tuple[int, int, int, float, float, int, int, int, UMLSMatch]] = []
 
     for alias_index, alias in enumerate(aliases):
         alias = str(alias or "").strip()
@@ -1923,7 +2020,7 @@ def select_best_umls_api_match_with_trace(
     if trace_limit < 1:
         raise ValueError("trace_limit must be >= 1")
 
-    matches: List[Tuple[float, float, int, int, int, UMLSMatch]] = []
+    matches: List[Tuple[int, int, int, float, float, int, int, int, UMLSMatch]] = []
     trace: List[Dict[str, Any]] = []
     provenance_rows = list(alias_provenance or [])
 
@@ -1944,7 +2041,7 @@ def select_best_umls_api_match_with_trace(
             }
         )
         alias_matches: List[
-            Tuple[float, float, int, int, int, UMLSMatch]
+            Tuple[int, int, int, float, float, int, int, int, UMLSMatch]
         ] = []
 
         for search_index, search_type in enumerate(UMLS_API_SEARCH_TYPES):
@@ -2155,6 +2252,8 @@ def is_confident_umls_match(
 ) -> bool:
     """Return whether a UMLS candidate is safe to accept automatically."""
     if match is None or match.type_compatible is False:
+        return False
+    if has_disease_specificity_conflict(match):
         return False
 
     acceptance_score = effective_umls_acceptance_score(match)
@@ -2778,6 +2877,7 @@ def normalize_concepts_with_umls(
     exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
     collect_candidate_trace: bool = False,
     concept_names: Optional[Sequence[str]] = None,
+    concept_ids: Optional[Sequence[str]] = None,
 ) -> Dict[str, int]:
     """
     Normalize existing Concept nodes with UMLS and add duplicate evidence.
@@ -2793,6 +2893,10 @@ def normalize_concepts_with_umls(
         raise ValueError("fuzzy_threshold must be between 0 and 100")
     if max_candidates < 1:
         raise ValueError("max_candidates must be >= 1")
+    if concept_names and concept_ids:
+        raise ValueError(
+            "Choose either concept_names or concept_ids, not both."
+        )
 
     backend = normalize_backend_name(backend)
     stats = initialize_stats()
@@ -2807,7 +2911,18 @@ def normalize_concepts_with_umls(
             session.execute_write(setup_normalization_schema)
         concepts = session.execute_read(fetch_concepts_for_normalization, doc_id)
 
-    if concept_names:
+    if concept_ids:
+        requested_ids = {
+            str(concept_id).strip()
+            for concept_id in concept_ids
+            if str(concept_id).strip()
+        }
+        concepts = [
+            concept
+            for concept in concepts
+            if str(concept.concept_id) in requested_ids
+        ]
+    elif concept_names:
         requested_names = {
             normalize_name(name)
             for name in concept_names
@@ -3082,6 +3197,7 @@ __all__ = [
     "semantic_types_are_compatible",
     "classify_semantic_compatibility",
     "compute_umls_selection_score",
+    "has_disease_specificity_conflict",
     "effective_umls_acceptance_score",
     "is_plausible_umls_match",
     "concept_requires_type_review",
