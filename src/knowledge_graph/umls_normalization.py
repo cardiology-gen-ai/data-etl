@@ -89,6 +89,17 @@ DEFAULT_API_TIMEOUT = 30.0
 DEFAULT_API_RATE_LIMIT_PER_SECOND = 5.0
 DEFAULT_UMLS_VERSION = "current"
 DEFAULT_API_PAGE_SIZE = 25
+DEFAULT_ATOM_PAGE_SIZE = 100
+DEFAULT_PLAUSIBLE_UMLS_THRESHOLD = 0.50
+MIN_EXACT_ATOM_SOURCE_COUNT = 2
+SYNONYM_AUTO_ACCEPT_CANONICAL_TYPES = {"disease"}
+
+CANDIDATE_TRACE_VERSION = "umls_candidate_trace_v2"
+RANKING_POLICY_VERSION = "umls_candidate_quality_v3"
+NO_PLAUSIBLE_MATCH_STATUS = "umls_no_plausible_match"
+API_NO_PLAUSIBLE_MATCH_METHOD = "umls_api_no_plausible_match"
+NO_PLAUSIBLE_MATCH_METHOD = "umls_no_plausible_match"
+NO_PLAUSIBLE_MATCH_REASON = "no_plausible_candidate"
 
 SCISPACY_BACKEND = "scispacy"
 UMLS_API_BACKEND = "umls_api"
@@ -123,6 +134,17 @@ UMLS_VALUE_FIELDS = {
 
 UMLS_API_SEARCH_TYPES = ("exact", "normalizedString", "words")
 
+# Candidate acceptance continues to use the conservative lexical score stored in
+# ``UMLSMatch.score``. Cross-strategy selection uses a separate evidence score:
+# rank-1 exact search is meaningful synonym evidence, while broad ``words``
+# retrieval receives a small penalty. This prevents a highly specific words
+# result from displacing an exact rank-1 synonym, without making exact search an
+# unconditional winner.
+EXACT_RANK_ONE_SELECTION_FLOOR = 0.75
+EXACT_NON_PRIMARY_SELECTION_BONUS = 0.03
+NORMALIZED_STRING_SELECTION_PENALTY = 0.01
+WORDS_SELECTION_PENALTY = 0.03
+
 # Conservative compatibility map between the local controlled entity types and
 # UMLS semantic types. Intrinsic local types still fail closed when the API
 # returns an explicitly incompatible semantic type. Contextual/document-role
@@ -147,10 +169,12 @@ CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
         "Sign or Symptom",
     },
     "clinical_finding": {
+        "Clinical Attribute",
         "Disease or Syndrome",
         "Finding",
         "Laboratory or Test Result",
         "Mental or Behavioral Dysfunction",
+        "Organism Function",
         "Pathologic Function",
         "Sign or Symptom",
     },
@@ -197,6 +221,7 @@ CANONICAL_TYPE_TO_UMLS_SEMANTIC_TYPES = {
     },
     "score_or_risk_model": {
         "Clinical Attribute",
+        "Finding",
         "Intellectual Product",
         "Quantitative Concept",
     },
@@ -332,6 +357,8 @@ class ConceptRecord:
     normalization_method: Optional[str] = None
     best_match: Optional["UMLSMatch"] = None
     duplicate_candidates: List[Dict[str, Any]] = field(default_factory=list)
+    alias_provenance: List[Dict[str, Any]] = field(default_factory=list)
+    candidate_trace: List[Dict[str, Any]] = field(default_factory=list)
     reason: Optional[str] = None
 
 
@@ -347,6 +374,16 @@ class UMLSMatch:
     search_type: Optional[str] = None
     type_compatible: Optional[bool] = None
     semantic_compatibility: Optional[str] = None
+    api_rank: Optional[int] = None
+    selection_score: Optional[float] = None
+    canonical_type: Optional[str] = None
+    matched_atom_name: Optional[str] = None
+    matched_atom_source: Optional[str] = None
+    matched_atom_term_type: Optional[str] = None
+    matched_atom_score: Optional[float] = None
+    matched_atom_count: int = 0
+    matched_atom_source_count: int = 0
+    synonym_supported: bool = False
 
 
 def concept_requires_type_review(concept: ConceptRecord) -> bool:
@@ -722,6 +759,35 @@ def append_unique(values: List[str], raw_value: Any) -> None:
         values.append(normalized)
 
 
+def should_include_secondary_alias(
+    concept_name: str,
+    candidate_alias: str,
+) -> bool:
+    """Reject secondary acronym aliases that merely broaden the concept.
+
+    A secondary expansion such as ``left ventricular`` for
+    ``left ventricular hypertrabeculation`` removes the discriminating head
+    term and should remain provenance only, not become an independent UMLS
+    query. Primary acronym expansions are not subject to this filter.
+    """
+    normalized_concept = normalize_name(concept_name)
+    normalized_alias = normalize_name(candidate_alias)
+    if not normalized_concept or not normalized_alias:
+        return False
+    if normalized_alias == normalized_concept:
+        return True
+
+    concept_tokens = set(re.findall(r"[a-z0-9]+", normalized_concept))
+    alias_tokens = set(re.findall(r"[a-z0-9]+", normalized_alias))
+    if not alias_tokens:
+        return False
+
+    # A strict token subset is always less specific than the original concept.
+    if alias_tokens < concept_tokens:
+        return False
+    return True
+
+
 def build_aliases_for_concept(
     concept: ConceptRecord,
     acronyms_by_doc_id: Dict[str, Dict[str, str]],
@@ -743,16 +809,18 @@ def build_aliases_for_concept(
         if not definition:
             continue
 
-        target = (
-            preferred_expansions
-            if short and normalize_name(short) == normalized_concept_name
-            else secondary_aliases
+        is_primary = bool(
+            short and normalize_name(short) == normalized_concept_name
         )
-        append_unique(target, definition)
-        append_unique(
-            target,
+        candidates = [
+            definition,
             canonicalize_acronym_definition_for_concept_name(definition),
-        )
+        ]
+        for candidate in candidates:
+            if is_primary:
+                append_unique(preferred_expansions, candidate)
+            elif should_include_secondary_alias(concept.name, candidate):
+                append_unique(secondary_aliases, candidate)
 
     for doc_id in concept.doc_ids:
         for raw_short, raw_definition in sorted(
@@ -787,6 +855,116 @@ def build_aliases_for_concept(
         append_unique(aliases, alias)
 
     return aliases[:DEFAULT_ALIAS_LIMIT]
+
+
+def build_alias_provenance_for_concept(
+    concept: ConceptRecord,
+    acronyms_by_doc_id: Dict[str, Dict[str, str]],
+    aliases: Sequence[str],
+) -> List[Dict[str, Any]]:
+    """Describe where each ordered alias came from without changing alias order."""
+    source_map: Dict[str, Dict[str, set]] = {}
+
+    def register(
+        raw_alias: Any,
+        source: str,
+        *,
+        doc_id: Optional[str] = None,
+        acronym_short: Optional[str] = None,
+    ) -> None:
+        normalized = normalize_name(str(raw_alias or ""))
+        if not normalized:
+            return
+        bucket = source_map.setdefault(
+            normalized,
+            {"sources": set(), "doc_ids": set(), "acronym_shorts": set()},
+        )
+        bucket["sources"].add(source)
+        if doc_id:
+            bucket["doc_ids"].add(str(doc_id))
+        if acronym_short:
+            bucket["acronym_shorts"].add(str(acronym_short))
+
+    register(concept.name, "concept_name")
+
+    normalized_concept_name = normalize_name(concept.name)
+    for row in concept.relationship_acronyms:
+        short = clean_acronym_short(row.get("short"))
+        definition = clean_acronym_definition(row.get("definition"))
+        if not definition:
+            continue
+        is_primary = bool(
+            short and normalize_name(short) == normalized_concept_name
+        )
+        source = (
+            "mention_acronym_expansion"
+            if is_primary
+            else "mention_secondary_acronym_expansion"
+        )
+        provenance_candidates = [
+            (definition, source),
+            (
+                canonicalize_acronym_definition_for_concept_name(definition),
+                f"{source}_canonicalized",
+            ),
+        ]
+        for candidate, candidate_source in provenance_candidates:
+            if is_primary or should_include_secondary_alias(
+                concept.name, candidate
+            ):
+                register(
+                    candidate,
+                    candidate_source,
+                    acronym_short=short,
+                )
+
+    for doc_id in concept.doc_ids:
+        for raw_short, raw_definition in sorted(
+            acronyms_by_doc_id.get(doc_id, {}).items()
+        ):
+            short = clean_acronym_short(raw_short)
+            definition = clean_acronym_definition(raw_definition)
+            if not short or not definition:
+                continue
+
+            if normalize_name(short) == normalized_concept_name:
+                source = "document_acronym_expansion"
+                register(
+                    definition,
+                    source,
+                    doc_id=doc_id,
+                    acronym_short=short,
+                )
+                register(
+                    canonicalize_acronym_definition_for_concept_name(definition),
+                    f"{source}_canonicalized",
+                    doc_id=doc_id,
+                    acronym_short=short,
+                )
+            elif long_form_matches_concept(concept.name, definition):
+                register(
+                    definition,
+                    "document_long_form_match",
+                    doc_id=doc_id,
+                    acronym_short=short,
+                )
+
+    provenance: List[Dict[str, Any]] = []
+    for alias_index, alias in enumerate(aliases):
+        bucket = source_map.get(
+            normalize_name(alias),
+            {"sources": {"derived_alias"}, "doc_ids": set(), "acronym_shorts": set()},
+        )
+        provenance.append(
+            {
+                "alias": alias,
+                "alias_index": alias_index,
+                "alias_sources": sorted(bucket["sources"]),
+                "alias_doc_ids": sorted(bucket["doc_ids"]),
+                "acronym_shorts": sorted(bucket["acronym_shorts"]),
+            }
+        )
+    return provenance
 
 
 def link_alias_to_umls(alias: str, nlp, linker) -> Optional[UMLSMatch]:
@@ -1001,6 +1179,52 @@ def compute_umls_candidate_score(
     return round(max(0.0, min(score, 1.0)), 4)
 
 
+def compute_umls_selection_score(match: UMLSMatch) -> float:
+    """Return evidence-aware score used only to choose among candidates.
+
+    The stored ``match.score`` remains the conservative acceptance score. A
+    rank-1 exact result receives a floor because UMLS may return a preferred
+    name that is lexically different from the exact synonym used in the query.
+    Broad ``words`` results receive a small penalty.
+    """
+    score = float(match.score)
+    search_type = str(match.search_type or "")
+    api_rank = int(match.api_rank or 0)
+
+    if search_type == "exact":
+        if api_rank == 1:
+            score = max(score, EXACT_RANK_ONE_SELECTION_FLOOR)
+        else:
+            score += EXACT_NON_PRIMARY_SELECTION_BONUS
+    elif search_type == "normalizedString":
+        score -= NORMALIZED_STRING_SELECTION_PENALTY
+    elif search_type == "words":
+        score -= WORDS_SELECTION_PENALTY
+
+    return round(max(0.0, min(score, 1.0)), 4)
+
+
+def _resolved_selection_score(match: UMLSMatch) -> float:
+    if match.selection_score is None:
+        match.selection_score = compute_umls_selection_score(match)
+    return float(match.selection_score)
+
+
+def _ranked_match_tuple(
+    match: UMLSMatch,
+    alias_index: int,
+    search_index: int,
+) -> Tuple[float, float, int, int, int, UMLSMatch]:
+    return (
+        _resolved_selection_score(match),
+        float(match.score),
+        -alias_index,
+        -search_index,
+        -int(match.api_rank or 10**9),
+        match,
+    )
+
+
 def api_cache_key(
     alias: str,
     search_type: str,
@@ -1060,6 +1284,7 @@ class UMLSAPIClient:
         self.version = str(version or DEFAULT_UMLS_VERSION)
         self.page_size = int(page_size)
         self.session = session if session is not None else requests.Session()
+        self.enable_atom_enrichment = True
         self._last_request_at = 0.0
         self.stats: Dict[str, int] = {
             "api_cache_hits": 0,
@@ -1192,21 +1417,290 @@ class UMLSAPIClient:
             raise UMLSAPIError("UMLS API request failed")
         raise UMLSAPIError("UMLS API request failed")
 
-    def search_alias(
+    def atom_cache_path(self, cui: str) -> Path:
+        payload = {
+            "cui": str(cui).strip(),
+            "version": self.version,
+            "page_size": DEFAULT_ATOM_PAGE_SIZE,
+        }
+        raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        key = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        return self.cache_dir / f"atoms_{key}.json"
+
+    def get_cached_atoms_payload(self, cui: str) -> Optional[Dict[str, Any]]:
+        path = self.atom_cache_path(cui)
+        if not path.exists():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+        self.stats["api_cache_hits"] += 1
+        return payload if isinstance(payload, dict) else None
+
+    def write_cached_atoms_payload(
+        self,
+        cui: str,
+        payload: Dict[str, Any],
+    ) -> None:
+        self.atom_cache_path(cui).write_text(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            encoding="utf-8",
+        )
+
+    def _request_atom_page(
+        self,
+        cui: str,
+        page_number: int,
+        max_retries: int = 2,
+    ) -> Dict[str, Any]:
+        params = {
+            "apiKey": self.api_key,
+            "pageNumber": page_number,
+            "pageSize": DEFAULT_ATOM_PAGE_SIZE,
+        }
+        url = f"{self.base_url}/content/{self.version}/CUI/{cui}/atoms"
+        last_error: Optional[Exception] = None
+
+        for attempt in range(max_retries + 1):
+            self.throttle()
+            self._last_request_at = time.monotonic()
+            self.stats["api_requests"] += 1
+            try:
+                response = self.session.get(
+                    url,
+                    params=params,
+                    timeout=self.timeout,
+                )
+            except Exception as exc:
+                last_error = UMLSAPIError(type(exc).__name__)
+                self.stats["api_errors"] += 1
+            else:
+                status_code = int(getattr(response, "status_code", 0))
+                if status_code in {401, 403}:
+                    raise UMLSAPIAuthError("UMLS_API_KEY is missing/invalid")
+                if status_code == 429 or status_code >= 500:
+                    self.stats["api_errors"] += 1
+                    last_error = UMLSAPIError(
+                        f"UMLS API temporary failure: HTTP {status_code}"
+                    )
+                elif status_code >= 400:
+                    self.stats["api_errors"] += 1
+                    raise UMLSAPIError(
+                        f"UMLS API atom request failed: HTTP {status_code}"
+                    )
+                else:
+                    try:
+                        payload = response.json()
+                    except Exception as exc:
+                        self.stats["api_errors"] += 1
+                        raise UMLSAPIError(
+                            "Malformed UMLS API atom response"
+                        ) from exc
+                    if not isinstance(payload, dict):
+                        raise UMLSAPIError(
+                            "Malformed UMLS API atom response"
+                        )
+                    return payload
+
+            if attempt < max_retries:
+                self.stats["api_retries"] += 1
+                time.sleep(min(2**attempt, 4))
+
+        if last_error is not None:
+            raise UMLSAPIError("UMLS API atom request failed")
+        raise UMLSAPIError("UMLS API atom request failed")
+
+    def request_atoms(
+        self,
+        cui: str,
+        max_retries: int = 2,
+    ) -> Dict[str, Any]:
+        cached = self.get_cached_atoms_payload(cui)
+        if cached is not None:
+            return cached
+
+        self.stats["api_cache_misses"] += 1
+        all_atoms: List[Dict[str, Any]] = []
+        page_number = 1
+        page_count: Optional[int] = None
+
+        while True:
+            payload = self._request_atom_page(
+                cui=cui,
+                page_number=page_number,
+                max_retries=max_retries,
+            )
+            result = payload.get("result")
+            if not isinstance(result, list):
+                raise UMLSAPIError("Malformed UMLS API atom response")
+
+            all_atoms.extend(
+                item for item in result if isinstance(item, dict)
+            )
+
+            raw_page_count = payload.get("pageCount")
+            try:
+                page_count = (
+                    int(raw_page_count)
+                    if raw_page_count is not None
+                    else page_count
+                )
+            except (TypeError, ValueError):
+                pass
+
+            if page_count is not None and page_number >= page_count:
+                break
+            if len(result) < DEFAULT_ATOM_PAGE_SIZE:
+                break
+
+            page_number += 1
+            if page_number > 100:
+                raise UMLSAPIError(
+                    f"Unexpected UMLS atom pagination for {cui}"
+                )
+
+        combined = {
+            "result": all_atoms,
+            "pageCount": page_count or page_number,
+        }
+        self.write_cached_atoms_payload(cui, combined)
+        return combined
+
+    def find_best_atom_match(
+        self,
+        alias: str,
+        cui: str,
+    ) -> Optional[Dict[str, Any]]:
+        payload = self.request_atoms(cui)
+        atoms = payload.get("result")
+        if not isinstance(atoms, list):
+            raise UMLSAPIError("Malformed UMLS API atom response")
+
+        normalized_alias = normalize_api_alias(alias)
+        ranked: List[Tuple[int, float, int, Dict[str, Any]]] = []
+        exact_atoms: List[Dict[str, Any]] = []
+
+        for index, atom in enumerate(atoms):
+            if not isinstance(atom, dict):
+                continue
+            name = str(atom.get("name") or "").strip()
+            if not name:
+                continue
+
+            normalized_name = normalize_api_alias(name)
+            exact_match = normalized_name == normalized_alias
+            score = compute_umls_candidate_score(
+                alias=alias,
+                candidate_name=name,
+                search_type="exact",
+            )
+            term_type = str(atom.get("termType") or "").strip()
+            preferred_bonus = 1 if term_type in {"PT", "PN", "MH"} else 0
+
+            enriched = {
+                "name": name,
+                "root_source": str(atom.get("rootSource") or "").strip(),
+                "term_type": term_type,
+                "score": round(score, 4),
+                "exact_match": exact_match,
+            }
+            if exact_match:
+                exact_atoms.append(enriched)
+
+            ranked.append(
+                (
+                    1 if exact_match else 0,
+                    score,
+                    preferred_bonus,
+                    -index,
+                    enriched,
+                )
+            )
+
+        if not ranked:
+            return None
+
+        ranked.sort(key=lambda item: item[:-1], reverse=True)
+        best = dict(ranked[0][-1])
+        exact_sources = {
+            atom["root_source"]
+            for atom in exact_atoms
+            if atom.get("root_source")
+        }
+        best["exact_atom_count"] = len(exact_atoms)
+        best["exact_atom_source_count"] = len(exact_sources)
+        return best
+
+    def enrich_match_with_atom_evidence(
+        self,
+        match: UMLSMatch,
+    ) -> UMLSMatch:
+        if not getattr(self, "enable_atom_enrichment", False):
+            return match
+        if match.search_type != "exact" or int(match.api_rank or 0) != 1:
+            return match
+        if match.score >= DEFAULT_EXACT_UMLS_THRESHOLD:
+            return match
+
+        try:
+            atom = self.find_best_atom_match(match.alias, match.cui)
+        except UMLSAPIError as exc:
+            logger.warning(
+                "UMLS atom enrichment failed | cui=%s | error=%s",
+                match.cui,
+                type(exc).__name__,
+            )
+            return match
+
+        if atom is None:
+            return match
+
+        match.matched_atom_name = atom.get("name")
+        match.matched_atom_source = atom.get("root_source")
+        match.matched_atom_term_type = atom.get("term_type")
+        match.matched_atom_score = atom.get("score")
+        match.matched_atom_count = int(atom.get("exact_atom_count") or 0)
+        match.matched_atom_source_count = int(
+            atom.get("exact_atom_source_count") or 0
+        )
+        match.synonym_supported = bool(
+            atom.get("exact_match")
+            and match.matched_atom_source_count
+            >= MIN_EXACT_ATOM_SOURCE_COUNT
+            and normalize_type(match.canonical_type or "")
+            in SYNONYM_AUTO_ACCEPT_CANONICAL_TYPES
+        )
+        return match
+
+    def search_alias_candidates(
         self,
         alias: str,
         search_type: str,
         canonical_type: Optional[str] = None,
-    ) -> Optional[UMLSMatch]:
+        trace_limit: int = DEFAULT_MAX_CANDIDATES,
+    ) -> Tuple[Optional[UMLSMatch], List[Dict[str, Any]]]:
+        """Return the selected candidate plus an auditable bounded trace.
+
+        Selection still considers every valid result returned by the API. The
+        trace retains the first ``trace_limit`` API-ranked candidates and also
+        retains the selected candidate when it falls outside that window.
+        Strongly incompatible candidates remain visible in the trace but are
+        never eligible for selection.
+        """
+        if trace_limit < 1:
+            raise ValueError("trace_limit must be >= 1")
+
         payload = self.request_search(alias=alias, search_type=search_type)
         result = payload.get("result") if isinstance(payload, dict) else None
         results = result.get("results") if isinstance(result, dict) else None
         if not isinstance(results, list):
             raise UMLSAPIError("Malformed UMLS API response")
 
-        candidates: List[Tuple[float, int, UMLSMatch]] = []
+        selectable: List[Tuple[float, float, int, UMLSMatch]] = []
+        trace_rows: List[Dict[str, Any]] = []
 
-        for rank, item in enumerate(results):
+        for zero_based_rank, item in enumerate(results):
             if not isinstance(item, dict):
                 continue
 
@@ -1234,39 +1728,145 @@ class UMLSAPIClient:
                 canonical_type=canonical_type,
                 semantic_types=semantic_types,
             )
-            if type_compatible is False:
-                continue
 
-            score = compute_umls_candidate_score(
+            lexical_score = compute_umls_candidate_score(
                 alias=alias,
                 candidate_name=name,
                 search_type=search_type,
             )
-
-            # Known local types with absent semantic metadata remain possible but
-            # rank below equally similar candidates with confirmed compatibility.
+            adjusted_score = lexical_score
             if type_compatible is None and canonical_type:
-                score = max(0.0, score - 0.02)
+                adjusted_score = max(0.0, adjusted_score - 0.02)
 
+            api_rank = zero_based_rank + 1
             match = UMLSMatch(
                 alias=alias,
                 cui=cui,
                 canonical_name=name,
                 definition=None,
                 aliases=[],
-                score=round(score, 4),
+                score=round(adjusted_score, 4),
                 semantic_types=semantic_types,
                 search_type=search_type,
                 type_compatible=type_compatible,
                 semantic_compatibility=semantic_compatibility,
+                api_rank=api_rank,
+                canonical_type=canonical_type,
             )
-            candidates.append((match.score, -rank, match))
+            match.selection_score = compute_umls_selection_score(match)
 
-        if not candidates:
-            return None
+            selection_eligible = type_compatible is not False
+            trace_rows.append(
+                {
+                    "query_alias": alias,
+                    "search_type": search_type,
+                    "api_rank": api_rank,
+                    "cui": cui,
+                    "canonical_name": name,
+                    "semantic_types": semantic_types,
+                    "lexical_score": round(lexical_score, 4),
+                    "adjusted_score": match.score,
+                    "selection_score": match.selection_score,
+                    "semantic_compatibility": semantic_compatibility,
+                    "type_compatible": type_compatible,
+                    "selection_eligible": selection_eligible,
+                    "exclusion_reason": (
+                        None
+                        if selection_eligible
+                        else "strong_semantic_incompatibility"
+                    ),
+                    "matched_atom_name": None,
+                    "matched_atom_source": None,
+                    "matched_atom_term_type": None,
+                    "matched_atom_score": None,
+                    "matched_atom_count": 0,
+                    "matched_atom_source_count": 0,
+                    "synonym_supported": False,
+                    "selected_for_search_strategy": False,
+                    "selected_for_alias": False,
+                    "selected_final": False,
+                    "retained_reason": None,
+                }
+            )
 
-        candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        return candidates[0][2]
+            if selection_eligible:
+                selectable.append(
+                    (
+                        _resolved_selection_score(match),
+                        match.score,
+                        -zero_based_rank,
+                        match,
+                    )
+                )
+
+        selected: Optional[UMLSMatch] = None
+        if selectable:
+            selectable.sort(
+                key=lambda item: (item[0], item[1], item[2]),
+                reverse=True,
+            )
+            selected = selectable[0][3]
+
+        retained = [dict(row) for row in trace_rows[:trace_limit]]
+        for row in retained:
+            row["retained_reason"] = "top_api_rank"
+
+        if selected is not None:
+            selected = self.enrich_match_with_atom_evidence(selected)
+            selected_key = (selected.cui, selected.api_rank)
+            selected_row = next(
+                (
+                    row
+                    for row in trace_rows
+                    if (row["cui"], row["api_rank"]) == selected_key
+                ),
+                None,
+            )
+            retained_selected = next(
+                (
+                    row
+                    for row in retained
+                    if (row["cui"], row["api_rank"]) == selected_key
+                ),
+                None,
+            )
+            if retained_selected is None and selected_row is not None:
+                retained_selected = dict(selected_row)
+                retained_selected["retained_reason"] = (
+                    "selected_for_search_strategy_outside_trace_limit"
+                )
+                retained.append(retained_selected)
+            if retained_selected is not None:
+                retained_selected.update(
+                    {
+                        "matched_atom_name": selected.matched_atom_name,
+                        "matched_atom_source": selected.matched_atom_source,
+                        "matched_atom_term_type": selected.matched_atom_term_type,
+                        "matched_atom_score": selected.matched_atom_score,
+                        "matched_atom_count": selected.matched_atom_count,
+                        "matched_atom_source_count": (
+                            selected.matched_atom_source_count
+                        ),
+                        "synonym_supported": selected.synonym_supported,
+                        "selected_for_search_strategy": True,
+                    }
+                )
+
+        return selected, retained
+
+    def search_alias(
+        self,
+        alias: str,
+        search_type: str,
+        canonical_type: Optional[str] = None,
+    ) -> Optional[UMLSMatch]:
+        selected, _ = self.search_alias_candidates(
+            alias=alias,
+            search_type=search_type,
+            canonical_type=canonical_type,
+            trace_limit=DEFAULT_MAX_CANDIDATES,
+        )
+        return selected
 
 
 def get_default_api_cache_dir(
@@ -1285,15 +1885,8 @@ def select_best_umls_api_match(
     client: UMLSAPIClient,
     canonical_type: Optional[str] = None,
 ) -> Optional[UMLSMatch]:
-    """
-    Select the best type-compatible UMLS candidate across ordered aliases.
-
-    Exact search is attempted first. Acronym expansions are expected to appear
-    before their short forms in `aliases`, so ties prefer the supported long
-    form without requiring an LLM.
-    """
-    matches: List[Tuple[float, int, int, UMLSMatch]] = []
-    exact_matches: List[Tuple[float, int, int, UMLSMatch]] = []
+    """Select the best candidate using evidence-aware cross-strategy ranking."""
+    matches: List[Tuple[float, float, int, int, int, UMLSMatch]] = []
 
     for alias_index, alias in enumerate(aliases):
         alias = str(alias or "").strip()
@@ -1306,47 +1899,123 @@ def select_best_umls_api_match(
                 search_type=search_type,
                 canonical_type=canonical_type,
             )
-            if match is None:
-                continue
-            if match.type_compatible is False:
+            if match is None or match.type_compatible is False:
                 continue
 
-            ranked_match = (
-                match.score,
-                -alias_index,
-                -search_index,
-                match,
+            matches.append(
+                _ranked_match_tuple(match, alias_index, search_index)
             )
-            matches.append(ranked_match)
-            if match.search_type == "exact":
-                exact_matches.append(ranked_match)
-
-            if match.score >= 0.98:
-                break
 
     if not matches:
         return None
 
-    if exact_matches:
-        # For exact searches, alias order carries contextual evidence. In
-        # particular, validated acronym expansions are intentionally placed
-        # before short or secondary aliases. Use lexical score only as a
-        # secondary criterion within the same alias priority.
-        exact_matches.sort(
-            key=lambda item: (
-                item[1],  # -alias_index
-                item[0],  # lexical score
-                item[2],  # -search_index
-            ),
-            reverse=True,
-        )
-        return exact_matches[0][3]
+    matches.sort(key=lambda item: item[:-1], reverse=True)
+    return matches[0][-1]
 
-    matches.sort(
-        key=lambda item: (item[0], item[1], item[2]),
-        reverse=True,
-    )
-    return matches[0][3]
+def select_best_umls_api_match_with_trace(
+    aliases: Sequence[str],
+    client: UMLSAPIClient,
+    canonical_type: Optional[str] = None,
+    alias_provenance: Optional[Sequence[Dict[str, Any]]] = None,
+    trace_limit: int = DEFAULT_MAX_CANDIDATES,
+) -> Tuple[Optional[UMLSMatch], List[Dict[str, Any]]]:
+    """Select the normalizer result while retaining every queried strategy."""
+    if trace_limit < 1:
+        raise ValueError("trace_limit must be >= 1")
+
+    matches: List[Tuple[float, float, int, int, int, UMLSMatch]] = []
+    trace: List[Dict[str, Any]] = []
+    provenance_rows = list(alias_provenance or [])
+
+    for alias_index, alias in enumerate(aliases):
+        alias = str(alias or "").strip()
+        if not alias:
+            continue
+
+        provenance = (
+            provenance_rows[alias_index]
+            if alias_index < len(provenance_rows)
+            else {
+                "alias": alias,
+                "alias_index": alias_index,
+                "alias_sources": ["ordered_alias"],
+                "alias_doc_ids": [],
+                "acronym_shorts": [],
+            }
+        )
+        alias_matches: List[
+            Tuple[float, float, int, int, int, UMLSMatch]
+        ] = []
+
+        for search_index, search_type in enumerate(UMLS_API_SEARCH_TYPES):
+            match, query_trace = client.search_alias_candidates(
+                alias=alias,
+                search_type=search_type,
+                canonical_type=canonical_type,
+                trace_limit=trace_limit,
+            )
+            for row in query_trace:
+                enriched = dict(row)
+                enriched.update(
+                    {
+                        "alias_index": alias_index,
+                        "search_index": search_index,
+                        "alias_sources": list(
+                            provenance.get("alias_sources") or []
+                        ),
+                        "alias_doc_ids": list(
+                            provenance.get("alias_doc_ids") or []
+                        ),
+                        "acronym_shorts": list(
+                            provenance.get("acronym_shorts") or []
+                        ),
+                    }
+                )
+                trace.append(enriched)
+
+            if match is None or match.type_compatible is False:
+                continue
+
+            ranked = _ranked_match_tuple(
+                match,
+                alias_index,
+                search_index,
+            )
+            alias_matches.append(ranked)
+            matches.append(ranked)
+
+        if alias_matches:
+            alias_matches.sort(key=lambda item: item[:-1], reverse=True)
+            alias_selected = alias_matches[0][-1]
+            for row in trace:
+                if (
+                    row.get("alias_index") == alias_index
+                    and row.get("query_alias") == alias_selected.alias
+                    and row.get("search_type") == alias_selected.search_type
+                    and row.get("cui") == alias_selected.cui
+                    and row.get("api_rank") == alias_selected.api_rank
+                ):
+                    row["selected_for_alias"] = True
+                    break
+
+    if matches:
+        matches.sort(key=lambda item: item[:-1], reverse=True)
+        selected = matches[0][-1]
+    else:
+        selected = None
+
+    if selected is not None:
+        for row in trace:
+            if (
+                row.get("query_alias") == selected.alias
+                and row.get("search_type") == selected.search_type
+                and row.get("cui") == selected.cui
+                and row.get("api_rank") == selected.api_rank
+            ):
+                row["selected_final"] = True
+                break
+
+    return selected, trace
 
 
 def build_existing_umls_match(concept: ConceptRecord) -> Optional[UMLSMatch]:
@@ -1386,6 +2055,7 @@ def build_existing_umls_match(concept: ConceptRecord) -> Optional[UMLSMatch]:
             semantic_types=semantic_types,
         ),
         semantic_compatibility=semantic_compatibility,
+        canonical_type=concept.canonical_type,
     )
 
 
@@ -1471,31 +2141,43 @@ def write_concept_normalization_status(
     )
 
 
+def effective_umls_acceptance_score(match: UMLSMatch) -> float:
+    """Return acceptance confidence without mutating the lexical score."""
+    if match.synonym_supported:
+        return 1.0
+    return float(match.score)
+
+
 def is_confident_umls_match(
     match: Optional[UMLSMatch],
     threshold: float,
     exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> bool:
-    """Return whether a UMLS candidate is safe to accept automatically.
-
-    Exact lookup is stronger than permissive word search, but an exact term can
-    still be polysemous or point to an overly broad/specific clinical sense.
-    Therefore exact candidates use a dedicated conservative lexical threshold.
-    Word-search candidates remain review-only.
-    """
-    if match is None:
+    """Return whether a UMLS candidate is safe to accept automatically."""
+    if match is None or match.type_compatible is False:
         return False
 
-    if match.type_compatible is False:
-        return False
+    acceptance_score = effective_umls_acceptance_score(match)
 
     if match.search_type == "exact":
-        return match.score >= exact_threshold
-
+        return acceptance_score >= exact_threshold
     if match.search_type == "words":
         return False
+    return acceptance_score >= threshold
 
-    return match.score >= threshold
+
+def is_plausible_umls_match(
+    match: Optional[UMLSMatch],
+    plausible_threshold: float = DEFAULT_PLAUSIBLE_UMLS_THRESHOLD,
+) -> bool:
+    """Return whether a rejected candidate is still useful for review."""
+    if match is None or match.type_compatible is False:
+        return False
+    if match.synonym_supported:
+        return True
+    if (match.matched_atom_score or 0.0) >= plausible_threshold:
+        return True
+    return float(match.score) >= plausible_threshold
 
 
 def update_concept_from_result(
@@ -1539,6 +2221,20 @@ def update_concept_from_result(
         return
 
     if match is not None:
+        if not is_plausible_umls_match(match):
+            concept.normalization_status = NO_PLAUSIBLE_MATCH_STATUS
+            concept.normalization_method = NO_PLAUSIBLE_MATCH_METHOD
+            concept.reason = NO_PLAUSIBLE_MATCH_REASON
+            write_concept_normalization_status(
+                tx=tx,
+                concept_id=concept.concept_id,
+                status=concept.normalization_status,
+                method=concept.normalization_method,
+                normalized_at=normalized_at,
+                normalized_name=normalize_name(concept.name),
+            )
+            return
+
         concept.normalization_status = "umls_low_confidence"
         concept.normalization_method = low_confidence_method
         concept.reason = "best_candidate_below_threshold"
@@ -1875,6 +2571,10 @@ def build_review_record(
     exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
 ) -> Dict[str, Any]:
     match = concept.best_match
+    expose_match = (
+        match is not None
+        and concept.normalization_status != NO_PLAUSIBLE_MATCH_STATUS
+    )
 
     return {
         "run_id": run_id,
@@ -1890,20 +2590,66 @@ def build_review_record(
         "invalid_observed_types": concept.invalid_observed_types,
         "type_support_pairs": concept.type_support_pairs,
         "aliases_considered": concept.aliases_considered,
+        "alias_provenance": concept.alias_provenance,
+        "candidate_trace_version": CANDIDATE_TRACE_VERSION,
+        "ranking_policy_version": RANKING_POLICY_VERSION,
+        "candidate_trace": concept.candidate_trace,
         "normalization_status": concept.normalization_status,
         "normalization_method": concept.normalization_method,
         "reason": concept.reason,
-        "umls_cui": match.cui if match else None,
-        "umls_canonical_name": match.canonical_name if match else None,
-        "umls_definition": match.definition if match else None,
-        "umls_aliases": match.aliases if match else [],
-        "umls_semantic_types": match.semantic_types if match else [],
-        "umls_score": match.score if match else None,
-        "umls_matched_alias": match.alias if match else None,
-        "umls_search_type": match.search_type if match else None,
-        "umls_type_compatible": match.type_compatible if match else None,
+        "umls_cui": match.cui if expose_match else None,
+        "umls_canonical_name": (
+            match.canonical_name if expose_match else None
+        ),
+        "umls_definition": match.definition if expose_match else None,
+        "umls_aliases": match.aliases if expose_match else [],
+        "umls_semantic_types": (
+            match.semantic_types if expose_match else []
+        ),
+        "umls_score": match.score if expose_match else None,
+        "umls_matched_alias": match.alias if expose_match else None,
+        "umls_search_type": match.search_type if expose_match else None,
+        "umls_type_compatible": (
+            match.type_compatible if expose_match else None
+        ),
         "umls_semantic_compatibility": (
-            match.semantic_compatibility if match else None
+            match.semantic_compatibility if expose_match else None
+        ),
+        "umls_matched_atom_name": (
+            match.matched_atom_name if expose_match else None
+        ),
+        "umls_matched_atom_source": (
+            match.matched_atom_source if expose_match else None
+        ),
+        "umls_matched_atom_term_type": (
+            match.matched_atom_term_type if expose_match else None
+        ),
+        "umls_matched_atom_score": (
+            match.matched_atom_score if expose_match else None
+        ),
+        "umls_matched_atom_count": (
+            match.matched_atom_count if expose_match else 0
+        ),
+        "umls_matched_atom_source_count": (
+            match.matched_atom_source_count if expose_match else 0
+        ),
+        "umls_synonym_supported": (
+            match.synonym_supported if expose_match else False
+        ),
+        "rejected_umls_cui": (
+            match.cui
+            if match and not expose_match
+            else None
+        ),
+        "rejected_umls_canonical_name": (
+            match.canonical_name
+            if match and not expose_match
+            else None
+        ),
+        "rejected_umls_score": (
+            match.score
+            if match and not expose_match
+            else None
         ),
         "backend": backend,
         "model_name": model_name,
@@ -1971,6 +2717,7 @@ def initialize_stats() -> Dict[str, int]:
         "concepts_seen": 0,
         "concepts_normalized": 0,
         "concepts_no_match": 0,
+        "concepts_no_plausible_match": 0,
         "concepts_low_confidence": 0,
         "concepts_failed": 0,
         "concepts_skipped": 0,
@@ -1983,6 +2730,7 @@ def initialize_stats() -> Dict[str, int]:
         "api_requests": 0,
         "api_retries": 0,
         "api_errors": 0,
+        "candidate_trace_records": 0,
     }
 
 
@@ -1993,6 +2741,8 @@ def update_stats_for_concept(stats: Dict[str, int], concept: ConceptRecord) -> N
         stats["concepts_normalized"] += 1
     elif status == "umls_low_confidence":
         stats["concepts_low_confidence"] += 1
+    elif status == NO_PLAUSIBLE_MATCH_STATUS:
+        stats["concepts_no_plausible_match"] += 1
     elif status == "umls_no_match":
         stats["concepts_no_match"] += 1
     elif status == "skipped":
@@ -2026,6 +2776,8 @@ def normalize_concepts_with_umls(
     create_same_as_edges: bool = False,
     create_fuzzy_candidate_edges: bool = False,
     exact_threshold: float = DEFAULT_EXACT_UMLS_THRESHOLD,
+    collect_candidate_trace: bool = False,
+    concept_names: Optional[Sequence[str]] = None,
 ) -> Dict[str, int]:
     """
     Normalize existing Concept nodes with UMLS and add duplicate evidence.
@@ -2054,6 +2806,18 @@ def normalize_concepts_with_umls(
         if not dry_run:
             session.execute_write(setup_normalization_schema)
         concepts = session.execute_read(fetch_concepts_for_normalization, doc_id)
+
+    if concept_names:
+        requested_names = {
+            normalize_name(name)
+            for name in concept_names
+            if normalize_name(name)
+        }
+        concepts = [
+            concept
+            for concept in concepts
+            if normalize_name(concept.name) in requested_names
+        ]
 
     stats["concepts_seen"] = len(concepts)
 
@@ -2130,6 +2894,11 @@ def normalize_concepts_with_umls(
                     concept=concept,
                     acronyms_by_doc_id=acronyms_by_doc_id,
                 )
+                concept.alias_provenance = build_alias_provenance_for_concept(
+                    concept=concept,
+                    acronyms_by_doc_id=acronyms_by_doc_id,
+                    aliases=concept.aliases_considered,
+                )
 
                 if should_preserve_existing_normalization(concept, force=force):
                     concept.best_match = build_existing_umls_match(concept)
@@ -2155,11 +2924,23 @@ def normalize_concepts_with_umls(
                     )
                 elif backend == UMLS_API_BACKEND:
                     assert api_client is not None
-                    concept.best_match = select_best_umls_api_match(
-                        aliases=concept.aliases_considered,
-                        client=api_client,
-                        canonical_type=concept.canonical_type,
-                    )
+                    if collect_candidate_trace:
+                        (
+                            concept.best_match,
+                            concept.candidate_trace,
+                        ) = select_best_umls_api_match_with_trace(
+                            aliases=concept.aliases_considered,
+                            client=api_client,
+                            canonical_type=concept.canonical_type,
+                            alias_provenance=concept.alias_provenance,
+                            trace_limit=max_candidates,
+                        )
+                    else:
+                        concept.best_match = select_best_umls_api_match(
+                            aliases=concept.aliases_considered,
+                            client=api_client,
+                            canonical_type=concept.canonical_type,
+                        )
                 else:
                     concept.best_match = None
 
@@ -2173,6 +2954,14 @@ def normalize_concepts_with_umls(
                         concept.normalization_status = "umls_matched"
                         concept.normalization_method = method_for_match
                         concept.reason = "dry_run_best_candidate_above_threshold"
+                    elif match is not None and not is_plausible_umls_match(match):
+                        concept.normalization_status = NO_PLAUSIBLE_MATCH_STATUS
+                        concept.normalization_method = (
+                            API_NO_PLAUSIBLE_MATCH_METHOD
+                            if backend == UMLS_API_BACKEND
+                            else NO_PLAUSIBLE_MATCH_METHOD
+                        )
+                        concept.reason = NO_PLAUSIBLE_MATCH_REASON
                     elif match is not None:
                         concept.normalization_status = "umls_low_confidence"
                         concept.normalization_method = method_for_low_confidence
@@ -2224,6 +3013,7 @@ def normalize_concepts_with_umls(
                     )
 
             update_stats_for_concept(stats, concept)
+            stats["candidate_trace_records"] += len(concept.candidate_trace)
 
     duplicate_stats = create_duplicate_evidence(
         driver=driver,
@@ -2255,17 +3045,19 @@ def normalize_concepts_with_umls(
         )
 
     logger.info(
-        "UMLS normalization completed | backend=%s | threshold=%.3f | exact_threshold=%.3f | seen=%d | normalized=%d | low_confidence=%d | no_match=%d | failed=%d | skipped=%d | review_required=%d | same_as=%d | fuzzy=%d | dry_run=%s",
+        "UMLS normalization completed | backend=%s | threshold=%.3f | exact_threshold=%.3f | seen=%d | normalized=%d | low_confidence=%d | no_plausible=%d | no_match=%d | failed=%d | skipped=%d | review_required=%d | trace_records=%d | same_as=%d | fuzzy=%d | dry_run=%s",
         backend,
         threshold,
         exact_threshold,
         stats["concepts_seen"],
         stats["concepts_normalized"],
         stats["concepts_low_confidence"],
+        stats["concepts_no_plausible_match"],
         stats["concepts_no_match"],
         stats["concepts_failed"],
         stats["concepts_skipped"],
         stats["concepts_review_required"],
+        stats["candidate_trace_records"],
         stats["same_as_edges_created"],
         stats["possibly_same_as_edges_created"],
         dry_run,
@@ -2284,14 +3076,23 @@ __all__ = [
     "setup_normalization_schema",
     "fetch_concepts_for_normalization",
     "build_aliases_for_concept",
+    "should_include_secondary_alias",
+    "build_alias_provenance_for_concept",
     "compute_umls_candidate_score",
     "semantic_types_are_compatible",
     "classify_semantic_compatibility",
+    "compute_umls_selection_score",
+    "effective_umls_acceptance_score",
+    "is_plausible_umls_match",
     "concept_requires_type_review",
+    "CANDIDATE_TRACE_VERSION",
+    "RANKING_POLICY_VERSION",
+    "NO_PLAUSIBLE_MATCH_STATUS",
     "REVIEW_REQUIRED_STATUS",
     "TYPE_REVIEW_REQUIRED_METHOD",
     "TYPE_REVIEW_REQUIRED_REASON",
     "select_best_umls_api_match",
+    "select_best_umls_api_match_with_trace",
     "compute_fuzzy_pairs",
     "compute_same_cui_pairs",
     "normalize_backend_name",
