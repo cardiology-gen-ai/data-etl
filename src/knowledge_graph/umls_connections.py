@@ -122,6 +122,17 @@ RELATIONS_404_NEGATIVE_CACHE_THRESHOLD = 3
 MATERIALIZATION_MODE_CHOICES = ("none", "safe_only")
 DEFAULT_MATERIALIZATION_MODE = "none"
 
+# Graph representation policy. Raw UMLS/SNOMED inverse RELA labels are swapped
+# once so ontology edges are represented in the SNOMED attribute direction:
+# domain concept -> attribute value. Retrieval traversal direction is a separate
+# experiment concern and may be forward, reverse, or bidirectional.
+CANONICAL_DIRECTION_POLICY = "snomed_attribute_domain_to_attribute_value"
+CANONICAL_DIRECTION_DESCRIPTION = (
+    "store one canonical SNOMED attribute edge from domain concept to attribute "
+    "value; raw inverse labels are swapped once; retrieval traversal direction "
+    "is configured separately"
+)
+
 
 @dataclass(frozen=True)
 class RelationSpec:
@@ -223,6 +234,24 @@ RAW_RELATION_CANONICALIZATION: dict[str, tuple[str, bool]] = {
     "procedure_site_of": ("has_procedure_site", True),
     "has_direct_procedure_site": ("has_direct_procedure_site", False),
     "direct_procedure_site_of": ("has_direct_procedure_site", True),
+    "has_indirect_procedure_site": ("has_indirect_procedure_site", False),
+    "indirect_procedure_site_of": ("has_indirect_procedure_site", True),
+    "has_device_intended_site": ("has_device_intended_site", False),
+    "device_intended_site_of": ("has_device_intended_site", True),
+    "has_direct_morphology": ("has_direct_morphology", False),
+    "direct_morphology_of": ("has_direct_morphology", True),
+    "has_indirect_morphology": ("has_indirect_morphology", False),
+    "indirect_morphology_of": ("has_indirect_morphology", True),
+    "has_procedure_morphology": ("has_procedure_morphology", False),
+    "procedure_morphology_of": ("has_procedure_morphology", True),
+    "has_focus": ("has_focus", False),
+    "focus_of": ("has_focus", True),
+    "has_finding_method": ("has_finding_method", False),
+    "finding_method_of": ("has_finding_method", True),
+    "has_indirect_device": ("has_indirect_device", False),
+    "indirect_device_of": ("has_indirect_device", True),
+    "has_procedure_device": ("has_procedure_device", False),
+    "procedure_device_of": ("has_procedure_device", True),
     "has_definitional_manifestation": ("has_definitional_manifestation", False),
     "definitional_manifestation_of": ("has_definitional_manifestation", True),
     "uses_device": ("uses_device", False),
@@ -256,6 +285,69 @@ def canonicalize_raw_relation_name(value: Any) -> tuple[str, bool]:
 
 
 ISA_ONLY_RELATION_NAMES = frozenset({"isa"})
+
+# Retrieval-oriented experimental families selected after the full 587-CUI
+# SNOMEDCT_US census. These are experiment filters, not approval lists. Raw
+# inverse labels are canonicalized before filtering so each semantic assertion
+# has one stored direction: SNOMED attribute domain -> attribute value. A
+# retriever may still traverse the resulting edge forward, backward, or both.
+SITE_RELATION_NAMES = frozenset(
+    {
+        "has_finding_site",
+        "has_procedure_site",
+        "has_direct_procedure_site",
+        "has_indirect_procedure_site",
+        "has_device_intended_site",
+    }
+)
+
+MORPHOLOGY_RELATION_NAMES = frozenset(
+    {
+        "has_associated_morphology",
+        "has_direct_morphology",
+        "has_indirect_morphology",
+        "has_procedure_morphology",
+    }
+)
+
+CAUSAL_RELATION_NAMES = frozenset(
+    {
+        "has_causative_agent",
+        "due_to",
+        "has_associated_finding",
+        "has_pathological_process",
+    }
+)
+
+FOCUS_RELATION_NAMES = frozenset({"has_focus"})
+
+DEVICE_RELATION_NAMES = frozenset(
+    {
+        "uses_device",
+        "has_direct_device",
+        "has_indirect_device",
+        "has_procedure_device",
+    }
+)
+
+METHOD_MEASUREMENT_RELATION_NAMES = frozenset(
+    {
+        "has_method",
+        "has_finding_method",
+        "interprets",
+        "has_interpretation",
+        "has_measured_component",
+    }
+)
+
+EXPERIMENTAL_FAMILY_RELATION_NAMES = frozenset(
+    SITE_RELATION_NAMES
+    | MORPHOLOGY_RELATION_NAMES
+    | CAUSAL_RELATION_NAMES
+    | FOCUS_RELATION_NAMES
+    | DEVICE_RELATION_NAMES
+    | METHOD_MEASUREMENT_RELATION_NAMES
+)
 
 # These semantic relation names were selected as an initial experiment seed.
 # They are NOT a validated or approved relation set. The names are kept
@@ -308,7 +400,9 @@ EXPANDED_SNOMED_RELATION_NAMES = frozenset(
 BALANCED_CORE_SNOMED_RELATION_NAMES = CORE_SNOMED_RELATION_NAMES
 
 AUDIT_ALL_SNOMED_RELATION_NAMES = frozenset(
-    EXPANDED_SNOMED_RELATION_NAMES | AUDIT_ONLY_RELATION_NAMES
+    EXPANDED_SNOMED_RELATION_NAMES
+    | AUDIT_ONLY_RELATION_NAMES
+    | EXPERIMENTAL_FAMILY_RELATION_NAMES
 )
 
 # Backward-compatible alias. "Strong" means the canonical expanded profile.
@@ -361,6 +455,81 @@ RELATION_SPECS = dict(
             materialize_by_default=False,
         ),
         _relation_spec(
+            "has_indirect_procedure_site",
+            family="site_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types=ANATOMICAL_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_device_intended_site",
+            family="site_experiment",
+            source_types=DEVICE_TYPES,
+            target_types=ANATOMICAL_TYPES,
+            default_traversal_policy="safe",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_direct_morphology",
+            family="morphology_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types={"clinical_finding"},
+            broad_target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_indirect_morphology",
+            family="morphology_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types={"clinical_finding"},
+            broad_target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_procedure_morphology",
+            family="morphology_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types={"clinical_finding"},
+            broad_target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_focus",
+            family="focus_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types=set(DISEASE_FINDING_TYPES) | set(PROCEDURE_TYPES),
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_finding_method",
+            family="method_measurement_experiment",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=PROCEDURE_TYPES,
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_indirect_device",
+            family="device_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types=DEVICE_TYPES,
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
+            "has_procedure_device",
+            family="device_experiment",
+            source_types=PROCEDURE_TYPES,
+            target_types=DEVICE_TYPES,
+            default_traversal_policy="review",
+            materialize_by_default=False,
+        ),
+        _relation_spec(
             "has_definitional_manifestation",
             family="first_extension",
             source_types={"disease"},
@@ -395,12 +564,7 @@ RELATION_SPECS = dict(
         _relation_spec(
             "has_method",
             family="audit_candidate",
-            source_types=PROCEDURE_TYPES,
-            target_types={
-                "care_strategy",
-                "procedure_or_intervention",
-                "diagnostic_test",
-            },
+            validation_mode="review",
             default_traversal_policy="review",
         ),
         _relation_spec(
@@ -414,9 +578,7 @@ RELATION_SPECS = dict(
         _relation_spec(
             "has_pathological_process",
             family="audit_candidate",
-            source_types=DISEASE_FINDING_TYPES,
-            target_types={"clinical_finding"},
-            broad_target_types=DISEASE_FINDING_TYPES,
+            validation_mode="review",
             default_traversal_policy="review",
         ),
         _relation_spec(
@@ -429,16 +591,13 @@ RELATION_SPECS = dict(
         _relation_spec(
             "interprets",
             family="audit_candidate",
-            source_types={"diagnostic_test", "score_or_risk_model"},
-            target_types={"biomarker", "clinical_finding"},
+            validation_mode="review",
             default_traversal_policy="review",
         ),
         _relation_spec(
             "has_interpretation",
             family="audit_candidate",
-            source_types={"biomarker", "diagnostic_test"},
-            target_types={"clinical_finding"},
-            broad_target_types=DISEASE_FINDING_TYPES,
+            validation_mode="review",
             default_traversal_policy="review",
         ),
         _relation_spec(
@@ -452,7 +611,7 @@ RELATION_SPECS = dict(
             "due_to",
             family="audit_candidate",
             source_types=DISEASE_FINDING_TYPES,
-            target_types=set(DISEASE_FINDING_TYPES) | set(CAUSATIVE_AGENT_TYPES),
+            target_types=set(DISEASE_FINDING_TYPES) | set(PROCEDURE_TYPES),
             default_traversal_policy="review",
         ),
     ]
@@ -499,6 +658,12 @@ RELATION_NAMES_BY_PROFILE = {
     "seed_core": CORE_SNOMED_RELATION_NAMES,
     "first_extension": FIRST_SNOMED_EXTENSION_RELATION_NAMES,
     "seed_expanded": EXPANDED_SNOMED_RELATION_NAMES,
+    "site_relations": SITE_RELATION_NAMES,
+    "morphology_relations": MORPHOLOGY_RELATION_NAMES,
+    "causal_relations": CAUSAL_RELATION_NAMES,
+    "focus_relations": FOCUS_RELATION_NAMES,
+    "device_relations": DEVICE_RELATION_NAMES,
+    "method_measurement_relations": METHOD_MEASUREMENT_RELATION_NAMES,
     "explore_known": AUDIT_ALL_SNOMED_RELATION_NAMES,
     "discover": frozenset(),
     # Backward-compatible aliases. These are exploratory legacy names.
@@ -515,6 +680,12 @@ RELATION_PROFILE_DESCRIPTIONS = {
     "seed_core": "exploratory ISA plus initial semantic seed",
     "first_extension": "exploratory first semantic extension",
     "seed_expanded": "exploratory seed_core plus first_extension",
+    "site_relations": "retrieval experiment: anatomy/site attributes in canonical domain-to-value direction",
+    "morphology_relations": "retrieval experiment: associated/procedure morphology attributes in canonical domain-to-value direction",
+    "causal_relations": "retrieval experiment: causal and etiological relation candidates",
+    "focus_relations": "retrieval experiment: SNOMED Has focus, canonicalized from focus_of when needed",
+    "device_relations": "retrieval experiment: procedure-to-device attributes",
+    "method_measurement_relations": "retrieval experiment: method, finding-method, interpretation and measurement candidates",
     "explore_known": "all currently catalogued exploratory relation names",
     "discover": "unfiltered SNOMED RELA discovery; unsupported labels are review-only",
     "core": "legacy alias of seed_core; not a validated core",
@@ -1915,6 +2086,8 @@ def build_initial_relation_stats(
             relation_profile or "",
             "unfiltered relation exploration" if relation_profile is None else "",
         ),
+        "canonical_direction_policy": CANONICAL_DIRECTION_POLICY,
+        "canonical_direction_description": CANONICAL_DIRECTION_DESCRIPTION,
         "materialization_mode": materialization_mode,
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
@@ -1941,12 +2114,227 @@ def build_initial_relation_stats(
         "source_vocab_mismatch_relations_skipped": 0,
         "observed_raw_relation_names": {},
         "observed_canonical_relation_names": {},
+        # Private JSON-serializable accumulators used to build the relation census.
+        # They are intentionally collected before endpoint resolution so census runs
+        # remain useful with --max-source-ui-lookups-per-cui 0.
+        "_observed_canonical_relation_source_cui_counts": {},
+        "_observed_raw_names_by_canonical_relation": {},
+        "_observed_relation_examples": {},
         "source_ui_lookups_attempted": 0,
         "source_ui_lookups_skipped_by_limit": 0,
         "cuis_truncated_by_max_relations": [],
         "cuis_truncated_by_source_ui_lookups": [],
         "failures": failures,
     }
+
+
+RELATION_CENSUS_EXAMPLE_LIMIT = 5
+
+
+def record_observed_relation_census(
+    stats: dict[str, Any],
+    *,
+    source_cui: str,
+    raw_relation_name: str,
+    canonical_relation_name: str,
+    record: dict[str, Any],
+) -> None:
+    """Accumulate source-CUI dispersion and compact raw examples per relation."""
+    canonical_key = canonical_relation_name or "(none)"
+    raw_key = raw_relation_name or "(none)"
+
+    source_counts_by_relation = stats.setdefault(
+        "_observed_canonical_relation_source_cui_counts", {}
+    )
+    source_counts = source_counts_by_relation.setdefault(canonical_key, {})
+    source_counts[source_cui] = int_or_zero(source_counts.get(source_cui)) + 1
+
+    raw_names_by_relation = stats.setdefault(
+        "_observed_raw_names_by_canonical_relation", {}
+    )
+    raw_name_counts = raw_names_by_relation.setdefault(canonical_key, {})
+    raw_name_counts[raw_key] = int_or_zero(raw_name_counts.get(raw_key)) + 1
+
+    examples_by_relation = stats.setdefault("_observed_relation_examples", {})
+    examples = examples_by_relation.setdefault(canonical_key, [])
+    if len(examples) >= RELATION_CENSUS_EXAMPLE_LIMIT:
+        return
+
+    example = {
+        "query_cui": source_cui,
+        "relation_label": clean_text(record.get("relationLabel")),
+        "raw_relation_name": raw_key,
+        "root_source": clean_text(record.get("rootSource")),
+        "related_from_id": clean_text(
+            record.get("relatedFromId") or record.get("relatedFromID")
+        ),
+        "related_from_name": clean_text(record.get("relatedFromIdName")),
+        "related_id": clean_text(record.get("relatedId") or record.get("relatedID")),
+        "related_id_name": clean_text(record.get("relatedIdName")),
+    }
+    signature = tuple(example.items())
+    if any(tuple(existing.items()) == signature for existing in examples):
+        return
+    examples.append(example)
+
+
+def build_relation_census_statistics(stats: dict[str, Any]) -> dict[str, Any]:
+    """Build relation-frequency diagnostics that are robust to ontology hubs."""
+    observed_counts = stats.get("observed_canonical_relation_names") or {}
+    source_counts_by_relation = stats.get(
+        "_observed_canonical_relation_source_cui_counts"
+    ) or {}
+    raw_names_by_relation = stats.get(
+        "_observed_raw_names_by_canonical_relation"
+    ) or {}
+    examples_by_relation = stats.get("_observed_relation_examples") or {}
+
+    relation_bearing_source_cuis: set[str] = set()
+    for source_counts in source_counts_by_relation.values():
+        relation_bearing_source_cuis.update(source_counts)
+
+    eligible_local_cui_count = int_or_zero(stats.get("eligible_local_cui_count"))
+    relation_bearing_count = len(relation_bearing_source_cuis)
+
+    rows: list[dict[str, Any]] = []
+    for relation_name, relation_records_value in sorted(
+        observed_counts.items(),
+        key=lambda item: (-int_or_zero(item[1]), str(item[0])),
+    ):
+        relation_records = int_or_zero(relation_records_value)
+        source_counts = {
+            str(cui): int_or_zero(count)
+            for cui, count in (source_counts_by_relation.get(relation_name) or {}).items()
+        }
+        positive_counts = sorted(
+            (count for count in source_counts.values() if count > 0)
+        )
+        distinct_source_cuis = len(positive_counts)
+        max_rows = max(positive_counts) if positive_counts else 0
+        top_source_rows = sorted(
+            source_counts.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:5]
+        raw_name_counts = raw_names_by_relation.get(relation_name) or {}
+        raw_relation_names = [
+            {"name": str(name), "relation_records": int_or_zero(count)}
+            for name, count in sorted(
+                raw_name_counts.items(),
+                key=lambda item: (-int_or_zero(item[1]), str(item[0])),
+            )
+        ]
+
+        rows.append(
+            {
+                "relation_name": relation_name,
+                "relation_records": relation_records,
+                "distinct_source_cuis": distinct_source_cuis,
+                "coverage_over_eligible_local_cuis": (
+                    distinct_source_cuis / eligible_local_cui_count
+                    if eligible_local_cui_count
+                    else 0.0
+                ),
+                "coverage_over_relation_bearing_cuis": (
+                    distinct_source_cuis / relation_bearing_count
+                    if relation_bearing_count
+                    else 0.0
+                ),
+                "max_rows_from_one_cui": max_rows,
+                "top_source_cui_share": (
+                    max_rows / relation_records if relation_records else 0.0
+                ),
+                "p50_rows_per_source_cui": median_numeric(positive_counts),
+                "p95_rows_per_source_cui": nearest_rank_percentile(
+                    positive_counts, 95
+                ),
+                "top_source_cuis": [
+                    {"cui": cui, "relation_records": count}
+                    for cui, count in top_source_rows
+                ],
+                "raw_relation_names": raw_relation_names,
+                "examples": list(examples_by_relation.get(relation_name) or []),
+            }
+        )
+
+    return {
+        "eligible_local_cui_count": eligible_local_cui_count,
+        "relation_bearing_source_cui_count": relation_bearing_count,
+        "relation_bearing_source_cui_coverage": (
+            relation_bearing_count / eligible_local_cui_count
+            if eligible_local_cui_count
+            else 0.0
+        ),
+        "relations": rows,
+    }
+
+
+def build_observed_inverse_pair_candidates(stats: dict[str, Any]) -> list[dict[str, Any]]:
+    """Report observed has_X / X_of pairs without changing canonicalization."""
+    raw_counts = {
+        str(name): int_or_zero(count)
+        for name, count in (stats.get("observed_raw_relation_names") or {}).items()
+    }
+    observed_names = set(raw_counts)
+    pairs: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for raw_name in sorted(observed_names):
+        if raw_name == "inverse_isa" and "isa" in observed_names:
+            forward_name, inverse_name = "isa", "inverse_isa"
+        elif raw_name.endswith("_of"):
+            forward_name = f"has_{raw_name[:-3]}"
+            inverse_name = raw_name
+            if forward_name not in observed_names:
+                continue
+        elif raw_name.startswith("has_"):
+            inverse_name = f"{raw_name[4:]}_of"
+            forward_name = raw_name
+            if inverse_name not in observed_names:
+                continue
+        else:
+            continue
+
+        key = (forward_name, inverse_name)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        forward_canonical, _ = canonicalize_raw_relation_name(forward_name)
+        inverse_canonical, inverse_swaps = canonicalize_raw_relation_name(inverse_name)
+        canonicalized_together = (
+            forward_canonical == inverse_canonical and inverse_swaps
+        )
+        pairs.append(
+            {
+                "forward_relation_name": forward_name,
+                "inverse_relation_name": inverse_name,
+                "forward_relation_records": raw_counts.get(forward_name, 0),
+                "inverse_relation_records": raw_counts.get(inverse_name, 0),
+                "canonicalized_together": canonicalized_together,
+                "canonical_relation_name": (
+                    forward_canonical if canonicalized_together else None
+                ),
+            }
+        )
+
+    return sorted(
+        pairs,
+        key=lambda item: (
+            -int_or_zero(item["forward_relation_records"])
+            - int_or_zero(item["inverse_relation_records"]),
+            str(item["forward_relation_name"]),
+        ),
+    )
+
+
+def public_relation_stats(stats: dict[str, Any]) -> dict[str, Any]:
+    """Return stats without private high-cardinality census accumulators."""
+    public = {key: value for key, value in stats.items() if not key.startswith("_")}
+    public["relation_census"] = build_relation_census_statistics(stats)
+    public["observed_inverse_pair_candidates"] = build_observed_inverse_pair_candidates(
+        stats
+    )
+    return public
 
 
 def select_source_cuis(
@@ -2229,6 +2617,13 @@ def build_candidate_edges(
             canonical_counts[canonical_relation_count_key] = int_or_zero(
                 canonical_counts.get(canonical_relation_count_key)
             ) + 1
+            record_observed_relation_census(
+                stats,
+                source_cui=source_cui,
+                raw_relation_name=raw_relation_count_key,
+                canonical_relation_name=canonical_relation_count_key,
+                record=record,
+            )
 
             if (
                 source_vocab
@@ -3685,6 +4080,8 @@ def build_summary_markdown(
         f"- dry-run/read-only: `{str(dry_run).lower()}`",
         f"- selected relation profile: `{stats.get('selected_relation_profile') or '(none)'}`",
         f"- relation profile meaning: `{stats.get('relation_profile_description') or '(none)'}`",
+        f"- canonical direction policy: `{stats.get('canonical_direction_policy') or CANONICAL_DIRECTION_POLICY}`",
+        f"- canonical direction meaning: {stats.get('canonical_direction_description') or CANONICAL_DIRECTION_DESCRIPTION}",
         "- relation profiles are exploratory filters, not validation/approval levels",
         f"- materialization mode: `{materialization_mode}`",
         f"- write_neo4j: `{str(bool(stats.get('write_neo4j'))).lower()}`",
@@ -3783,6 +4180,114 @@ def build_summary_markdown(
             observed_relation_rows,
         )
     )
+
+    relation_census = build_relation_census_statistics(stats)
+    lines.extend(["", "## Relation Source-CUI Coverage and Hub Concentration", ""])
+    lines.extend(
+        [
+            f"- relation-bearing source CUIs: {relation_census['relation_bearing_source_cui_count']} / {relation_census['eligible_local_cui_count']}",
+            f"- relation-bearing source-CUI coverage: {relation_census['relation_bearing_source_cui_coverage']:.4f}",
+            "",
+        ]
+    )
+    census_rows = []
+    for item in relation_census.get("relations") or []:
+        top_sources = ", ".join(
+            f"{entry['cui']}:{entry['relation_records']}"
+            for entry in item.get("top_source_cuis") or []
+        )
+        raw_names = ", ".join(
+            f"{entry['name']}:{entry['relation_records']}"
+            for entry in item.get("raw_relation_names") or []
+        )
+        census_rows.append(
+            (
+                item.get("relation_name"),
+                item.get("relation_records"),
+                item.get("distinct_source_cuis"),
+                f"{float(item.get('coverage_over_eligible_local_cuis') or 0.0):.4f}",
+                f"{float(item.get('coverage_over_relation_bearing_cuis') or 0.0):.4f}",
+                item.get("max_rows_from_one_cui"),
+                f"{float(item.get('top_source_cui_share') or 0.0):.4f}",
+                item.get("p50_rows_per_source_cui"),
+                item.get("p95_rows_per_source_cui"),
+                top_sources,
+                raw_names,
+            )
+        )
+    lines.extend(
+        markdown_count_table(
+            [
+                "relation_name",
+                "rows",
+                "distinct_source_cuis",
+                "coverage_local",
+                "coverage_relation_bearing",
+                "max_rows_one_cui",
+                "top_source_share",
+                "p50_rows_per_cui",
+                "p95_rows_per_cui",
+                "top_source_cuis",
+                "raw_relation_names",
+            ],
+            census_rows,
+        )
+    )
+
+    inverse_pair_rows = [
+        (
+            item.get("forward_relation_name"),
+            item.get("inverse_relation_name"),
+            item.get("forward_relation_records"),
+            item.get("inverse_relation_records"),
+            str(bool(item.get("canonicalized_together"))).lower(),
+            item.get("canonical_relation_name") or "",
+        )
+        for item in build_observed_inverse_pair_candidates(stats)
+    ]
+    lines.extend(["", "## Observed Forward/Inverse Pair Candidates", ""])
+    lines.extend(
+        markdown_count_table(
+            [
+                "forward_relation",
+                "inverse_relation",
+                "forward_rows",
+                "inverse_rows",
+                "already_canonicalized",
+                "canonical_relation_name",
+            ],
+            inverse_pair_rows,
+        )
+    )
+
+    lines.extend(["", "## Relation Census Raw Examples", ""])
+    example_rows = []
+    for item in relation_census.get("relations") or []:
+        for example in item.get("examples") or []:
+            example_rows.append(
+                (
+                    item.get("relation_name"),
+                    example.get("query_cui"),
+                    example.get("raw_relation_name"),
+                    example.get("relation_label"),
+                    example.get("related_from_name") or example.get("related_from_id"),
+                    example.get("related_id_name") or example.get("related_id"),
+                )
+            )
+    lines.extend(
+        markdown_count_table(
+            [
+                "relation_name",
+                "query_cui",
+                "raw_relation_name",
+                "REL",
+                "related_from",
+                "related_to",
+            ],
+            example_rows,
+        )
+    )
+
     lines.extend(["", "## Direction Resolution Failure Reasons", ""])
     direction_failure_rows = [
         (reason, count)
@@ -4306,7 +4811,7 @@ def write_review_exports(
                 "umls_version": umls_version,
                 "dry_run": dry_run,
                 "materialization_mode": materialization_mode,
-                "stats": stats,
+                "stats": public_relation_stats(stats),
                 "client_stats": client_stats,
                 "candidate_edges": len(edges),
                 "collapsed_connections": len(collapsed_edges),
@@ -4944,6 +5449,8 @@ def run_umls_connections(
             if selected_relation_profile is None
             else "",
         ),
+        "canonical_direction_policy": CANONICAL_DIRECTION_POLICY,
+        "canonical_direction_description": CANONICAL_DIRECTION_DESCRIPTION,
         "run_name": resolved_run_name,
         "output_dir": str(run_output_dir),
         "statistics_json_path": str(statistics_json_path),
@@ -4976,6 +5483,9 @@ def run_umls_connections(
         "source_vocab_mismatch_relations_skipped": 0,
         "observed_raw_relation_names": {},
         "observed_canonical_relation_names": {},
+        "_observed_canonical_relation_source_cui_counts": {},
+        "_observed_raw_names_by_canonical_relation": {},
+        "_observed_relation_examples": {},
         "internal_candidate_edges_retained": 0,
         "source_ui_lookups_attempted": 0,
         "source_ui_lookups_skipped_by_limit": 0,
@@ -5411,6 +5921,8 @@ __all__ = [
     "UMLSRelationsClient",
     "build_collapsed_connections",
     "build_collapsed_connection_statistics",
+    "build_relation_census_statistics",
+    "build_observed_inverse_pair_candidates",
     "compute_cui_graph_statistics",
     "catalog_local_type_rule_rows",
     "catalog_relationship_type_rows",
