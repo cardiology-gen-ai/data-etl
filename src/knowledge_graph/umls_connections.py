@@ -153,6 +153,29 @@ class CompatibilityResult:
     reason: str
 
 
+@dataclass
+class LocalSourceUiIndex:
+    source_vocab: str
+    source_ui_to_cuis: dict[str, tuple[str, ...]]
+    queried_local_cuis: tuple[str, ...]
+    complete_local_cuis: tuple[str, ...]
+    incomplete_local_cuis: tuple[str, ...]
+    source_code_counts_by_cui: dict[str, int]
+    reported_record_counts_by_cui: dict[str, int]
+    ambiguous_source_uis: tuple[str, ...]
+    hits: int = 0
+    ambiguous_hits: int = 0
+    external_shortcuts: int = 0
+    fallback_lookups: int = 0
+
+    @property
+    def globally_complete(self) -> bool:
+        return not self.incomplete_local_cuis
+
+    def lookup(self, source_ui: str) -> tuple[str, ...]:
+        return self.source_ui_to_cuis.get(clean_text(source_ui), ())
+
+
 def _type_tuple(values: Sequence[str] = ()) -> tuple[str, ...]:
     return tuple(sorted({str(value).strip().casefold() for value in values if value}))
 
@@ -268,6 +291,12 @@ RAW_RELATION_CANONICALIZATION: dict[str, tuple[str, bool]] = {
     "pathological_process_of": ("has_pathological_process", True),
     "has_associated_finding": ("has_associated_finding", False),
     "associated_finding_of": ("has_associated_finding", True),
+    "has_associated_etiologic_finding": ("has_associated_etiologic_finding", False),
+    "associated_etiologic_finding_of": ("has_associated_etiologic_finding", True),
+    "has_active_ingredient": ("has_active_ingredient", False),
+    "active_ingredient_of": ("has_active_ingredient", True),
+    "has_precise_active_ingredient": ("has_precise_active_ingredient", False),
+    "precise_active_ingredient_of": ("has_precise_active_ingredient", True),
     "interprets": ("interprets", False),
     "is_interpreted_by": ("interprets", True),
     "has_interpretation": ("has_interpretation", False),
@@ -314,7 +343,6 @@ CAUSAL_RELATION_NAMES = frozenset(
     {
         "has_causative_agent",
         "due_to",
-        "has_associated_finding",
         "has_pathological_process",
     }
 )
@@ -340,6 +368,13 @@ METHOD_MEASUREMENT_RELATION_NAMES = frozenset(
     }
 )
 
+ASSOCIATION_RELATION_NAMES = frozenset({"has_associated_finding"})
+MANIFESTATION_RELATION_NAMES = frozenset({"has_definitional_manifestation"})
+ETIOLOGY_EXTENSION_RELATION_NAMES = frozenset({"has_associated_etiologic_finding"})
+DRUG_COMPOSITION_RELATION_NAMES = frozenset(
+    {"has_active_ingredient", "has_precise_active_ingredient"}
+)
+
 EXPERIMENTAL_FAMILY_RELATION_NAMES = frozenset(
     SITE_RELATION_NAMES
     | MORPHOLOGY_RELATION_NAMES
@@ -347,6 +382,10 @@ EXPERIMENTAL_FAMILY_RELATION_NAMES = frozenset(
     | FOCUS_RELATION_NAMES
     | DEVICE_RELATION_NAMES
     | METHOD_MEASUREMENT_RELATION_NAMES
+    | ASSOCIATION_RELATION_NAMES
+    | MANIFESTATION_RELATION_NAMES
+    | ETIOLOGY_EXTENSION_RELATION_NAMES
+    | DRUG_COMPOSITION_RELATION_NAMES
 )
 
 # These semantic relation names were selected as an initial experiment seed.
@@ -383,6 +422,9 @@ AUDIT_ONLY_RELATION_NAMES = frozenset(
         "has_causative_agent",
         "has_pathological_process",
         "has_associated_finding",
+        "has_associated_etiologic_finding",
+        "has_active_ingredient",
+        "has_precise_active_ingredient",
         "interprets",
         "has_interpretation",
         "has_clinical_course",
@@ -418,7 +460,11 @@ RELATION_SPECS = dict(
             "isa",
             family="hierarchy_seed",
             validation_mode="hierarchy",
-            default_traversal_policy="hierarchy",
+            # Source-vocabulary ISA assertions are ontology evidence, not an
+            # automatic retrieval-safety guarantee. Keep every ISA traversal
+            # review-gated until retrieval experiments explicitly choose how
+            # to traverse hierarchy edges.
+            default_traversal_policy="hierarchy_review",
             materialize_by_default=False,
         ),
         _relation_spec(
@@ -426,6 +472,11 @@ RELATION_SPECS = dict(
             family="semantic_seed",
             source_types=DISEASE_FINDING_TYPES,
             target_types=ANATOMICAL_TYPES,
+            # Local clinical_outcome concepts can legitimately correspond to
+            # SNOMED findings/disorders with a finding site. Treat that bridge
+            # as a broad match so it remains review-gated rather than rejected.
+            broad_source_types=set(DISEASE_FINDING_TYPES) | {"clinical_outcome"},
+            broad_target_types=ANATOMICAL_TYPES,
             default_traversal_policy="safe",
             materialize_by_default=False,
         ),
@@ -534,7 +585,10 @@ RELATION_SPECS = dict(
             family="first_extension",
             source_types={"disease"},
             target_types={"clinical_finding"},
-            default_traversal_policy="safe",
+            # Source-asserted definitional manifestations can be useful for
+            # disease-to-finding expansion, but are not assumed retrieval-safe
+            # before local qualitative evaluation.
+            default_traversal_policy="review",
             materialize_by_default=False,
         ),
         _relation_spec(
@@ -586,6 +640,28 @@ RELATION_SPECS = dict(
             family="audit_candidate",
             source_types=DISEASE_FINDING_TYPES,
             target_types=DISEASE_FINDING_TYPES,
+            broad_target_types=set(DISEASE_FINDING_TYPES) | {"clinical_outcome"},
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "has_associated_etiologic_finding",
+            family="etiology_extension_experiment",
+            source_types=DISEASE_FINDING_TYPES,
+            target_types=DISEASE_FINDING_TYPES,
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "has_active_ingredient",
+            family="drug_composition_experiment",
+            source_types={"drug_or_drug_class"},
+            target_types={"drug_or_drug_class"},
+            default_traversal_policy="review",
+        ),
+        _relation_spec(
+            "has_precise_active_ingredient",
+            family="drug_composition_experiment",
+            source_types={"drug_or_drug_class"},
+            target_types={"drug_or_drug_class"},
             default_traversal_policy="review",
         ),
         _relation_spec(
@@ -664,6 +740,10 @@ RELATION_NAMES_BY_PROFILE = {
     "focus_relations": FOCUS_RELATION_NAMES,
     "device_relations": DEVICE_RELATION_NAMES,
     "method_measurement_relations": METHOD_MEASUREMENT_RELATION_NAMES,
+    "association_relations": ASSOCIATION_RELATION_NAMES,
+    "manifestation_relations": MANIFESTATION_RELATION_NAMES,
+    "etiology_extension_relations": ETIOLOGY_EXTENSION_RELATION_NAMES,
+    "drug_composition_relations": DRUG_COMPOSITION_RELATION_NAMES,
     "explore_known": AUDIT_ALL_SNOMED_RELATION_NAMES,
     "discover": frozenset(),
     # Backward-compatible aliases. These are exploratory legacy names.
@@ -686,6 +766,13 @@ RELATION_PROFILE_DESCRIPTIONS = {
     "focus_relations": "retrieval experiment: SNOMED Has focus, canonicalized from focus_of when needed",
     "device_relations": "retrieval experiment: procedure-to-device attributes",
     "method_measurement_relations": "retrieval experiment: method, finding-method, interpretation and measurement candidates",
+    "association_relations": "retrieval experiment: associated-finding links such as history/family-history context; review-only",
+    "manifestation_relations": "retrieval experiment: definitional manifestation links from disorders to findings; review-only",
+    "etiology_extension_relations": "retrieval experiment: associated etiologic finding links; review-only",
+    "drug_composition_relations": (
+        "retrieval experiment: active and precise-active ingredient links among "
+        "local drug/drug-class concepts; review-only"
+    ),
     "explore_known": "all currently catalogued exploratory relation names",
     "discover": "unfiltered SNOMED RELA discovery; unsupported labels are review-only",
     "core": "legacy alias of seed_core; not a validated core",
@@ -1831,6 +1918,65 @@ class UMLSRelationsClient:
         self._source_ui_cui_cache[memory_key] = cuis
         return cuis
 
+    def lookup_source_codes_for_cui(
+        self,
+        cui: str,
+        root_source: str,
+    ) -> tuple[list[str], Optional[int], bool]:
+        """Return source codes for one CUI plus a conservative completeness flag.
+
+        UMLS documents `/search/{version}?string=<CUI>&sabs=<SAB>&returnIdType=code`
+        for mapping a CUI to source-asserted codes. Search responses are capped at
+        200 results with no pagination, so a mapping is considered complete only
+        when `recCount` is present and exactly matches the unique returned codes.
+        """
+        cui = normalize_cui(cui)
+        root_source = clean_text(root_source)
+        cache_payload = {
+            "endpoint": "cui_to_source_codes",
+            "cui": cui,
+            "root_source": root_source,
+            "version": self.version,
+            "return_id_type": "code",
+            "page_size": 200,
+        }
+        cached = self.get_cached_payload("cui_to_source_codes", cache_payload)
+        if cached is not None:
+            codes = normalize_source_ui_list(cached.get("codes"))
+            rec_count = normalize_optional_int(cached.get("rec_count"))
+            complete = bool(cached.get("complete"))
+            return codes, rec_count, complete
+
+        self.stats["api_cache_misses"] += 1
+        url = f"{self.base_url}/search/{self.version}"
+        params = {
+            "string": cui,
+            "sabs": root_source,
+            "returnIdType": "code",
+            "pageSize": 200,
+            "includeObsolete": "false",
+            "includeSuppressible": "false",
+        }
+        payload = self.request_uncached(url=url, params=params)
+        codes = parse_search_source_codes(payload, root_source=root_source)
+        rec_count = parse_search_record_count(payload)
+        # Search is capped at 200 and has no pagination.  Treat the mapping as
+        # complete only when the API-reported total exactly matches the unique
+        # source codes we actually received; any mismatch fails closed.
+        complete = rec_count is not None and rec_count == len(codes) and rec_count <= 200
+
+        self.write_cached_payload(
+            "cui_to_source_codes",
+            cache_payload,
+            {
+                "codes": codes,
+                "rec_count": rec_count,
+                "complete": complete,
+                "result": payload.get("result"),
+            },
+        )
+        return codes, rec_count, complete
+
 
 def parse_page_count(payload: dict[str, Any]) -> Optional[int]:
     raw_page_count = payload.get("pageCount")
@@ -1877,6 +2023,57 @@ def parse_search_cuis(payload: dict[str, Any]) -> list[str]:
     return cuis
 
 
+def parse_search_source_codes(
+    payload: dict[str, Any],
+    *,
+    root_source: str,
+) -> list[str]:
+    result = payload.get("result")
+    results = result.get("results") if isinstance(result, dict) else None
+    if not isinstance(results, list):
+        raise UMLSAPIError("Malformed UMLS CUI-to-source-code search response")
+
+    expected_source = clean_text(root_source).casefold()
+    codes: list[str] = []
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        item_source = clean_text(item.get("rootSource"))
+        if expected_source and item_source.casefold() != expected_source:
+            continue
+        source_ui = clean_text(item.get("ui"))
+        if not source_ui or source_ui.casefold() == "none":
+            continue
+        if source_ui not in codes:
+            codes.append(source_ui)
+    return codes
+
+
+def parse_search_record_count(payload: dict[str, Any]) -> Optional[int]:
+    result = payload.get("result")
+    raw_value = result.get("recCount") if isinstance(result, dict) else None
+    return normalize_optional_int(raw_value)
+
+
+def normalize_optional_int(value: Any) -> Optional[int]:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def normalize_source_ui_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    output: list[str] = []
+    for item in value:
+        source_ui = clean_text(item)
+        if source_ui and source_ui not in output:
+            output.append(source_ui)
+    return output
+
+
 def normalize_cui_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
@@ -1898,6 +2095,7 @@ def resolve_identifier_cuis(
     source_vocab: str,
     missing_reason: str,
     unresolved_reason: str,
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None,
 ) -> tuple[list[str], Optional[str]]:
     identifier_text = clean_text(identifier)
     if not identifier_text:
@@ -1913,6 +2111,26 @@ def resolve_identifier_cuis(
 
     root_source = source_identifier.root_source or clean_text(record.get("rootSource"))
     root_source = root_source or clean_text(source_vocab)
+
+    if (
+        local_source_ui_index is not None
+        and root_source.casefold() == local_source_ui_index.source_vocab.casefold()
+    ):
+        indexed_cuis = list(local_source_ui_index.lookup(source_identifier.source_ui))
+        if len(indexed_cuis) == 1:
+            local_source_ui_index.hits += 1
+            return indexed_cuis, None
+        if len(indexed_cuis) > 1:
+            # A single source-vocabulary identifier should not silently fan out
+            # to multiple local CUIs. Keep the row out of the candidate graph
+            # and expose it as an endpoint-resolution audit case.
+            local_source_ui_index.ambiguous_hits += 1
+            return [], "ambiguous_source_ui_in_local_index"
+        if local_source_ui_index.globally_complete:
+            local_source_ui_index.external_shortcuts += 1
+            return [], "source_ui_not_in_complete_local_index"
+        local_source_ui_index.fallback_lookups += 1
+
     try:
         cuis = client.lookup_cuis_for_source_ui(
             root_source=root_source,
@@ -1932,6 +2150,7 @@ def resolve_related_cuis(
     client: UMLSRelationsClient,
     record: dict[str, Any],
     source_vocab: str,
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None,
 ) -> tuple[list[str], Optional[str]]:
     """Backward-compatible helper for resolving the raw object endpoint."""
     return resolve_identifier_cuis(
@@ -1941,6 +2160,7 @@ def resolve_related_cuis(
         source_vocab=source_vocab,
         missing_reason="missing_related_id",
         unresolved_reason="unresolved_related_id",
+        local_source_ui_index=local_source_ui_index,
     )
 
 
@@ -1948,6 +2168,7 @@ def resolve_relation_endpoint_cuis(
     client: UMLSRelationsClient,
     record: dict[str, Any],
     source_vocab: str,
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None,
 ) -> tuple[list[str], list[str], Optional[str]]:
     """
     Resolve both UMLS relation endpoints.
@@ -1964,6 +2185,7 @@ def resolve_relation_endpoint_cuis(
         source_vocab=source_vocab,
         missing_reason="missing_related_from_id",
         unresolved_reason="unresolved_related_from_id",
+        local_source_ui_index=local_source_ui_index,
     )
     if subject_error is not None:
         return [], [], subject_error
@@ -1975,6 +2197,7 @@ def resolve_relation_endpoint_cuis(
         source_vocab=source_vocab,
         missing_reason="missing_related_id",
         unresolved_reason="unresolved_related_id",
+        local_source_ui_index=local_source_ui_index,
     )
     if object_error is not None:
         return [], [], object_error
@@ -2023,27 +2246,146 @@ def concepts_by_cui(
     return dict(grouped)
 
 
-def identifier_requires_source_ui_lookup(value: Any) -> bool:
+def build_local_source_ui_index(
+    client: UMLSRelationsClient,
+    *,
+    local_cuis: Sequence[str],
+    source_vocab: str,
+) -> LocalSourceUiIndex:
+    source_ui_to_cuis: dict[str, set[str]] = defaultdict(set)
+    complete_local_cuis: list[str] = []
+    incomplete_local_cuis: list[str] = []
+    source_code_counts_by_cui: dict[str, int] = {}
+    reported_record_counts_by_cui: dict[str, int] = {}
+
+    for cui in sorted({normalize_cui(value) for value in local_cuis if normalize_cui(value)}):
+        codes, rec_count, complete = client.lookup_source_codes_for_cui(
+            cui=cui,
+            root_source=source_vocab,
+        )
+        source_code_counts_by_cui[cui] = len(codes)
+        if rec_count is not None:
+            reported_record_counts_by_cui[cui] = rec_count
+        if complete:
+            complete_local_cuis.append(cui)
+        else:
+            incomplete_local_cuis.append(cui)
+        for source_ui in codes:
+            source_ui_to_cuis[source_ui].add(cui)
+
+    ambiguous_source_uis = tuple(
+        sorted(source_ui for source_ui, cuis in source_ui_to_cuis.items() if len(cuis) > 1)
+    )
+    frozen_map = {
+        source_ui: tuple(sorted(cuis))
+        for source_ui, cuis in sorted(source_ui_to_cuis.items())
+    }
+    return LocalSourceUiIndex(
+        source_vocab=clean_text(source_vocab),
+        source_ui_to_cuis=frozen_map,
+        queried_local_cuis=tuple(sorted(source_code_counts_by_cui)),
+        complete_local_cuis=tuple(sorted(complete_local_cuis)),
+        incomplete_local_cuis=tuple(sorted(incomplete_local_cuis)),
+        source_code_counts_by_cui=source_code_counts_by_cui,
+        reported_record_counts_by_cui=reported_record_counts_by_cui,
+        ambiguous_source_uis=ambiguous_source_uis,
+    )
+
+
+def local_source_ui_index_statistics(index: Optional[LocalSourceUiIndex]) -> dict[str, Any]:
+    if index is None:
+        return {
+            "local_source_ui_index_enabled": False,
+            "local_source_ui_index_globally_complete": False,
+            "local_source_ui_index_local_cuis": 0,
+            "local_source_ui_index_complete_cuis": 0,
+            "local_source_ui_index_incomplete_cuis": [],
+            "local_source_ui_index_source_uis": 0,
+            "local_source_ui_index_ambiguous_source_uis": [],
+            "local_source_ui_index_hits": 0,
+            "local_source_ui_index_ambiguous_hits": 0,
+            "local_source_ui_index_external_shortcuts": 0,
+            "local_source_ui_index_fallback_lookups": 0,
+        }
+    return {
+        "local_source_ui_index_enabled": True,
+        "local_source_ui_index_source_vocab": index.source_vocab,
+        "local_source_ui_index_globally_complete": index.globally_complete,
+        "local_source_ui_index_local_cuis": len(index.queried_local_cuis),
+        "local_source_ui_index_complete_cuis": len(index.complete_local_cuis),
+        "local_source_ui_index_incomplete_cuis": list(index.incomplete_local_cuis),
+        "local_source_ui_index_source_uis": len(index.source_ui_to_cuis),
+        "local_source_ui_index_ambiguous_source_uis": list(index.ambiguous_source_uis),
+        "local_source_ui_index_hits": index.hits,
+        "local_source_ui_index_ambiguous_hits": index.ambiguous_hits,
+        "local_source_ui_index_external_shortcuts": index.external_shortcuts,
+        "local_source_ui_index_fallback_lookups": index.fallback_lookups,
+    }
+
+
+def identifier_requires_source_ui_lookup(
+    value: Any,
+    *,
+    record: Optional[dict[str, Any]] = None,
+    source_vocab: str = "",
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None,
+) -> bool:
     text = clean_text(value)
     if not text or extract_cui(text):
         return False
-    return parse_source_identifier(text) is not None
+    source_identifier = parse_source_identifier(text)
+    if source_identifier is None:
+        return False
+
+    root_source = source_identifier.root_source
+    if not root_source and record is not None:
+        root_source = clean_text(record.get("rootSource"))
+    root_source = root_source or clean_text(source_vocab)
+
+    if (
+        local_source_ui_index is not None
+        and root_source.casefold() == local_source_ui_index.source_vocab.casefold()
+    ):
+        if local_source_ui_index.lookup(source_identifier.source_ui):
+            return False
+        if local_source_ui_index.globally_complete:
+            return False
+    return True
 
 
-def relation_source_ui_lookup_count(record: dict[str, Any]) -> int:
+def relation_source_ui_lookup_count(
+    record: dict[str, Any],
+    *,
+    source_vocab: str = "",
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None,
+) -> int:
     return sum(
         1
         for value in (
             record.get("relatedFromId") or record.get("relatedFromID"),
             record.get("relatedId") or record.get("relatedID"),
         )
-        if identifier_requires_source_ui_lookup(value)
+        if identifier_requires_source_ui_lookup(
+            value,
+            record=record,
+            source_vocab=source_vocab,
+            local_source_ui_index=local_source_ui_index,
+        )
     )
 
 
-def relation_requires_source_ui_lookup(record: dict[str, Any]) -> bool:
+def relation_requires_source_ui_lookup(
+    record: dict[str, Any],
+    *,
+    source_vocab: str = "",
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None,
+) -> bool:
     """Backward-compatible boolean wrapper."""
-    return relation_source_ui_lookup_count(record) > 0
+    return relation_source_ui_lookup_count(
+        record,
+        source_vocab=source_vocab,
+        local_source_ui_index=local_source_ui_index,
+    ) > 0
 
 
 def build_initial_relation_stats(
@@ -2061,6 +2403,7 @@ def build_initial_relation_stats(
     strong_relations_only: bool,
     relation_profile: Optional[str],
     materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
+    use_local_source_ui_index: bool = False,
 ) -> dict[str, Any]:
     failures: list[dict[str, str]] = []
     return {
@@ -2089,6 +2432,7 @@ def build_initial_relation_stats(
         "canonical_direction_policy": CANONICAL_DIRECTION_POLICY,
         "canonical_direction_description": CANONICAL_DIRECTION_DESCRIPTION,
         "materialization_mode": materialization_mode,
+        "use_local_source_ui_index": bool(use_local_source_ui_index),
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
         "final_export_written": False,
@@ -2103,6 +2447,11 @@ def build_initial_relation_stats(
         "direction_resolution_failures": 0,
         "direction_resolution_failure_reasons": {},
         "direction_resolution_failure_examples": [],
+        "endpoint_resolution_failures": 0,
+        "endpoint_resolution_failure_reasons": {},
+        "endpoint_resolution_failure_examples": [],
+        "orientation_validation_failures": 0,
+        "local_source_ui_index_external_relation_skips": 0,
         "missing_related_from_id_relations_skipped": 0,
         "query_cui_not_endpoint_relations_skipped": 0,
         "inverse_relations_canonicalized": 0,
@@ -2432,6 +2781,7 @@ def build_candidate_edges(
     strong_relations_only: bool = False,
     relation_profile: Optional[str] = None,
     materialization_mode: str = DEFAULT_MATERIALIZATION_MODE,
+    use_local_source_ui_index: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     materialization_mode = normalize_materialization_mode(materialization_mode)
     by_cui = concepts_by_cui(concepts)
@@ -2475,8 +2825,33 @@ def build_candidate_edges(
         strong_relations_only=strong_relations_only,
         relation_profile=selected_relation_profile,
         materialization_mode=materialization_mode,
+        use_local_source_ui_index=use_local_source_ui_index,
     )
     stats["ignore_negative_cache"] = bool(getattr(client, "ignore_negative_cache", False))
+
+    local_source_ui_index: Optional[LocalSourceUiIndex] = None
+    if use_local_source_ui_index:
+        logger.info(
+            "Building local sourceUi index | local_cuis=%d | source_vocab=%s",
+            len(local_cuis),
+            source_vocab or "ALL",
+        )
+        local_source_ui_index = build_local_source_ui_index(
+            client,
+            local_cuis=sorted(local_cuis),
+            source_vocab=source_vocab,
+        )
+        stats.update(local_source_ui_index_statistics(local_source_ui_index))
+        logger.info(
+            "Local sourceUi index ready | source_uis=%d | complete_cuis=%d/%d | globally_complete=%s | ambiguous_source_uis=%d",
+            len(local_source_ui_index.source_ui_to_cuis),
+            len(local_source_ui_index.complete_local_cuis),
+            len(local_source_ui_index.queried_local_cuis),
+            local_source_ui_index.globally_complete,
+            len(local_source_ui_index.ambiguous_source_uis),
+        )
+    else:
+        stats.update(local_source_ui_index_statistics(None))
 
     total_cuis = len(source_cuis)
     logger.info(
@@ -2651,7 +3026,11 @@ def build_candidate_edges(
                 stats["equivalence_relations_skipped"] += 1
                 continue
 
-            required_source_ui_lookups = relation_source_ui_lookup_count(record)
+            required_source_ui_lookups = relation_source_ui_lookup_count(
+                record,
+                source_vocab=source_vocab,
+                local_source_ui_index=local_source_ui_index,
+            )
             if (
                 per_source_ui_lookups_attempted + required_source_ui_lookups
                 > max_source_ui_lookups_per_cui
@@ -2672,9 +3051,53 @@ def build_candidate_edges(
                 client=client,
                 record=record,
                 source_vocab=source_vocab,
+                local_source_ui_index=local_source_ui_index,
             )
+            if resolution_error == "source_ui_not_in_complete_local_index":
+                stats["external_target_relations_skipped"] += 1
+                stats["local_source_ui_index_external_relation_skips"] = (
+                    int_or_zero(stats.get("local_source_ui_index_external_relation_skips")) + 1
+                )
+                continue
             if resolution_error is not None:
                 stats["unresolved_target_relations_skipped"] += 1
+                stats["endpoint_resolution_failures"] = (
+                    int_or_zero(stats.get("endpoint_resolution_failures")) + 1
+                )
+                endpoint_reason_counts = stats.setdefault(
+                    "endpoint_resolution_failure_reasons", {}
+                )
+                endpoint_reason_counts[resolution_error] = int_or_zero(
+                    endpoint_reason_counts.get(resolution_error)
+                ) + 1
+                endpoint_examples = stats.setdefault(
+                    "endpoint_resolution_failure_examples", []
+                )
+                if len(endpoint_examples) < 20:
+                    endpoint_examples.append(
+                        {
+                            "query_cui": source_cui,
+                            "reason": resolution_error,
+                            "relation_label": relation_label,
+                            "raw_relation_name": raw_relation_name,
+                            "related_from_id": clean_text(
+                                record.get("relatedFromId") or record.get("relatedFromID")
+                            ),
+                            "related_from_name": clean_text(
+                                record.get("relatedFromIdName")
+                                or record.get("relatedFromIDName")
+                            ),
+                            "related_id": clean_text(
+                                record.get("relatedId") or record.get("relatedID")
+                            ),
+                            "related_id_name": clean_text(
+                                record.get("relatedIdName")
+                                or record.get("relatedIDName")
+                                or record.get("relatedName")
+                            ),
+                        }
+                    )
+                # Legacy aggregate retained for backward-compatible reports.
                 stats["direction_resolution_failures"] += 1
                 reason_counts = stats["direction_resolution_failure_reasons"]
                 reason_counts[resolution_error] = int_or_zero(
@@ -2715,6 +3138,9 @@ def build_candidate_edges(
                 # direction cannot be trusted and the row is kept out of the
                 # local candidate graph.
                 stats["query_cui_not_endpoint_relations_skipped"] += 1
+                stats["orientation_validation_failures"] = (
+                    int_or_zero(stats.get("orientation_validation_failures")) + 1
+                )
                 stats["direction_resolution_failures"] += 1
                 reason = "query_cui_not_in_resolved_endpoints"
                 reason_counts = stats["direction_resolution_failure_reasons"]
@@ -2840,6 +3266,8 @@ def build_candidate_edges(
 
         deduped_so_far = deduplicate_edges(edges)
         stats["internal_candidate_edges_retained"] = len(deduped_so_far)
+        if local_source_ui_index is not None:
+            stats.update(local_source_ui_index_statistics(local_source_ui_index))
 
         if per_source_ui_lookups_skipped:
             stats["cuis_truncated_by_source_ui_lookups"].append(
@@ -3734,9 +4162,11 @@ def traversal_policy_for_relation(
         return "review"
 
     if spec.validation_mode == "hierarchy":
-        if compatibility_status == "compatible":
-            return "hierarchy"
-        if compatibility_status == "compatible_broad":
+        # Even same-type ISA edges remain review-gated. UMLS/SNOMED source
+        # assertions can be ontologically valid yet still be unhelpful or
+        # misleading for this document-local retrieval graph. Direction is
+        # preserved canonically; traversal safety is decided by the retriever.
+        if compatibility_status in {"compatible", "compatible_broad"}:
             return "hierarchy_review"
         return "review"
 
@@ -4115,7 +4545,9 @@ def build_summary_markdown(
         f"- valid CUIs with no relations in selected source vocabulary: {stats.get('source_vocab_relations_absent', 0)}",
         f"- source-vocabulary absence results served from cache: {stats.get('source_vocab_relations_absent_cache_hits', 0)}",
         f"- unresolved target relations skipped: {stats.get('unresolved_target_relations_skipped', 0)}",
-        f"- relation direction resolution failures: {stats.get('direction_resolution_failures', 0)}",
+        f"- endpoint resolution failures: {stats.get('endpoint_resolution_failures', 0)}",
+        f"- orientation validation failures: {stats.get('orientation_validation_failures', 0)}",
+        f"- legacy aggregate resolution/direction failures: {stats.get('direction_resolution_failures', 0)}",
         f"- relations missing relatedFromId skipped: {stats.get('missing_related_from_id_relations_skipped', 0)}",
         f"- queried-CUI endpoint mismatches skipped: {stats.get('query_cui_not_endpoint_relations_skipped', 0)}",
         f"- raw inverse relations canonicalized: {stats.get('inverse_relations_canonicalized', 0)}",
@@ -4123,6 +4555,14 @@ def build_summary_markdown(
         f"- same-CUI/equivalence relations skipped: {stats.get('same_cui_relations_skipped', 0) + stats.get('equivalence_relations_skipped', 0)}",
         f"- sourceUi target lookups attempted: {stats.get('source_ui_lookups_attempted', 0)}",
         f"- sourceUi target lookups skipped by per-CUI limit: {stats.get('source_ui_lookups_skipped_by_limit', 0)}",
+        f"- local sourceUi index enabled: `{str(bool(stats.get('local_source_ui_index_enabled'))).lower()}`",
+        f"- local sourceUi index globally complete: `{str(bool(stats.get('local_source_ui_index_globally_complete'))).lower()}`",
+        f"- local sourceUi index complete CUIs: {stats.get('local_source_ui_index_complete_cuis', 0)} / {stats.get('local_source_ui_index_local_cuis', 0)}",
+        f"- local sourceUi index source identifiers: {stats.get('local_source_ui_index_source_uis', 0)}",
+        f"- local sourceUi index hits: {stats.get('local_source_ui_index_hits', 0)}",
+        f"- local sourceUi index ambiguous hits: {stats.get('local_source_ui_index_ambiguous_hits', 0)}",
+        f"- local sourceUi index external shortcuts: {stats.get('local_source_ui_index_external_shortcuts', 0)}",
+        f"- local sourceUi index fallback lookups: {stats.get('local_source_ui_index_fallback_lookups', 0)}",
         "",
         "## Review Notes",
         "",
@@ -4141,6 +4581,7 @@ def build_summary_markdown(
         f"- included CUIs: `{', '.join(stats.get('include_cuis') or []) or '(none)'}`",
         f"- skipped CUIs: `{', '.join(stats.get('skip_cuis') or []) or '(none)'}`",
         f"- ignore_negative_cache: `{str(bool(stats.get('ignore_negative_cache'))).lower()}`",
+        f"- use_local_source_ui_index: `{str(bool(stats.get('use_local_source_ui_index'))).lower()}`",
         f"- Neo4j writes enabled: `{str(bool((materialization_report or {}).get('write_neo4j'))).lower()}`",
         f"- included relation names: `{', '.join(stats.get('include_relation_names') or []) or '(none)'}`",
         f"- excluded relation names: `{', '.join(stats.get('exclude_relation_names') or []) or '(none)'}`",
@@ -4288,7 +4729,48 @@ def build_summary_markdown(
         )
     )
 
-    lines.extend(["", "## Direction Resolution Failure Reasons", ""])
+    lines.extend(["", "## Endpoint Resolution Failure Reasons", ""])
+    endpoint_failure_rows = [
+        (reason, count)
+        for reason, count in sorted(
+            (stats.get("endpoint_resolution_failure_reasons") or {}).items(),
+            key=lambda item: (-int_or_zero(item[1]), str(item[0])),
+        )
+    ]
+    lines.extend(
+        markdown_count_table(
+            ["reason", "count"],
+            endpoint_failure_rows,
+        )
+    )
+    lines.extend(["", "## Endpoint Resolution Failure Examples", ""])
+    endpoint_example_rows = [
+        (
+            item.get("query_cui"),
+            item.get("reason"),
+            item.get("relation_label"),
+            item.get("raw_relation_name"),
+            item.get("related_from_id"),
+            item.get("related_id"),
+        )
+        for item in (stats.get("endpoint_resolution_failure_examples") or [])
+        if isinstance(item, dict)
+    ]
+    lines.extend(
+        markdown_count_table(
+            [
+                "query_cui",
+                "reason",
+                "REL",
+                "RELA",
+                "relatedFromId",
+                "relatedId",
+            ],
+            endpoint_example_rows,
+        )
+    )
+
+    lines.extend(["", "## Legacy Aggregate Resolution/Direction Failure Reasons", ""])
     direction_failure_rows = [
         (reason, count)
         for reason, count in sorted(
@@ -4302,7 +4784,7 @@ def build_summary_markdown(
             direction_failure_rows,
         )
     )
-    lines.extend(["", "## Direction Resolution Failure Examples", ""])
+    lines.extend(["", "## Legacy Aggregate Resolution/Direction Failure Examples", ""])
     direction_example_rows = [
         (
             item.get("query_cui"),
@@ -5323,6 +5805,7 @@ def run_umls_connections(
     strong_relations_only: bool = False,
     relation_profile: Optional[str] = None,
     ignore_negative_cache: bool = False,
+    use_local_source_ui_index: bool = False,
 ) -> dict[str, Any]:
     materialization_mode = normalize_materialization_mode(materialization_mode)
     if max_cuis is not None and max_cuis < 0:
@@ -5458,6 +5941,7 @@ def run_umls_connections(
         "replace_existing_connections": replace_existing_connections,
         "materialization_mode": materialization_mode,
         "ignore_negative_cache": ignore_negative_cache,
+        "use_local_source_ui_index": bool(use_local_source_ui_index),
         "partial_exports_written": 0,
         "last_partial_export_processed_cuis": 0,
         "final_export_written": False,
@@ -5472,6 +5956,11 @@ def run_umls_connections(
         "direction_resolution_failures": 0,
         "direction_resolution_failure_reasons": {},
         "direction_resolution_failure_examples": [],
+        "endpoint_resolution_failures": 0,
+        "endpoint_resolution_failure_reasons": {},
+        "endpoint_resolution_failure_examples": [],
+        "orientation_validation_failures": 0,
+        "local_source_ui_index_external_relation_skips": 0,
         "missing_related_from_id_relations_skipped": 0,
         "query_cui_not_endpoint_relations_skipped": 0,
         "inverse_relations_canonicalized": 0,
@@ -5534,6 +6023,7 @@ def run_umls_connections(
             strong_relations_only=strong_relations_only,
             relation_profile=relation_profile,
             materialization_mode=materialization_mode,
+            use_local_source_ui_index=use_local_source_ui_index,
         )
         client_stats = dict(client.stats)
     else:
@@ -5548,6 +6038,7 @@ def run_umls_connections(
             "replace_existing_connections": replace_existing_connections,
             "include_cuis": normalized_include_cuis,
             "skip_cuis": normalized_skip_cuis,
+            "use_local_source_ui_index": bool(use_local_source_ui_index),
         }
     )
 
@@ -5782,6 +6273,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--use-local-source-ui-index",
+        action="store_true",
+        help=(
+            "Build a cached SNOMED sourceUi->local-CUI index from the local CUI set. "
+            "When the CUI-to-source-code audit is complete, unknown sourceUi values "
+            "are classified as external without per-endpoint UMLS lookups; otherwise "
+            "the resolver falls back to the legacy exact sourceUi search."
+        ),
+    )
+    parser.add_argument(
         "--max-source-ui-lookups-per-cui",
         type=int,
         default=DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI,
@@ -5877,6 +6378,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             strong_relations_only=args.strong_relations_only,
             relation_profile=args.relation_profile,
             ignore_negative_cache=args.ignore_negative_cache,
+            use_local_source_ui_index=args.use_local_source_ui_index,
         )
     except ValueError as e:
         parser.error(str(e))

@@ -1,0 +1,252 @@
+{
+  "cardiology_rag_fixed_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/fixed/Cardiomyopathies_2023_fixed_chunks_c2000_o300.json",
+      "source_type": "fixed_chunks",
+      "expected_chunk_count": 293
+    },
+    "indexing": {
+      "name": "cardiomyopathies_fixed_c2000_o300_openai3small_prototype",
+      "description": "Single-guideline fixed-size RAG prototype built from Cardiomyopathies_2023.",
+      "type": "faiss",
+      "distance": "cosine",
+      "retrieval_mode": "dense",
+      "folder": "prototype/vectorstores/fixed_c2000_o300_openai3small"
+    },
+    "embeddings": {
+      "deployment": "text-embedding-3-small",
+      "kwargs": {}
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "prototype",
+        "input_folder": "input",
+        "output_folder": "rag_metadata/fixed_c2000_o300",
+        "allowed_extensions": [
+          "json"
+        ]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {}
+    }
+  },
+  "cardiology_rag_hierarchical_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/hierarchical/Cardiomyopathies_2023_section_view_L4.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 166
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_L4_openai3small_prototype",
+      "description": "Single-guideline hierarchical Section-view L4 RAG prototype built from Cardiomyopathies_2023.",
+      "type": "faiss",
+      "distance": "cosine",
+      "retrieval_mode": "dense",
+      "folder": "prototype/vectorstores/hierarchical_L4_openai3small"
+    },
+    "embeddings": {
+      "deployment": "text-embedding-3-small",
+      "kwargs": {}
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "prototype",
+        "input_folder": "input",
+        "output_folder": "rag_metadata/hierarchical_L4",
+        "allowed_extensions": [
+          "json"
+        ]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {}
+    }
+  },
+  "cardiology_rag_fixed_bm25plus_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/fixed/Cardiomyopathies_2023_fixed_chunks_c2000_o300.json",
+      "source_type": "fixed_chunks",
+      "expected_chunk_count": 293
+    },
+    "indexing": {
+      "name": "cardiomyopathies_fixed_c2000_o300_bm25plus_prototype",
+      "description": "BM25Plus baseline over the fixed-size Cardiomyopathies_2023 corpus.",
+      "type": "bm25",
+      "retrieval_mode": "sparse",
+      "folder": "prototype/vectorstores/fixed_c2000_o300_bm25plus"
+    },
+    "baseline": {
+      "algorithm": "BM25Plus",
+      "tokenizer": "lowercase_regex_word_tokens",
+      "source_app_id": "cardiology_rag_fixed_prototype",
+      "source_backend": "faiss_docstore"
+    }
+  },
+  "cardiology_rag_hierarchical_bm25plus_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/hierarchical/Cardiomyopathies_2023_section_view_L4.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 166
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_L4_bm25plus_prototype",
+      "description": "BM25Plus baseline over the hierarchical L4 Cardiomyopathies_2023 section-view corpus.",
+      "type": "bm25",
+      "retrieval_mode": "sparse",
+      "folder": "prototype/vectorstores/hierarchical_L4_bm25plus"
+    },
+    "baseline": {
+      "algorithm": "BM25Plus",
+      "tokenizer": "lowercase_regex_word_tokens",
+      "source_app_id": "cardiology_rag_hierarchical_prototype",
+      "source_backend": "faiss_docstore"
+    }
+  },
+  "cardiology_rag_hierarchical_sections_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/hierarchical/Cardiomyopathies_2023_section_view_sections.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 170
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_sections_openai3small_prototype",
+      "description": "Cardiomyopathies section-view without aggregation (max_level=None).",
+      "type": "faiss",
+      "distance": "cosine",
+      "retrieval_mode": "dense",
+      "folder": "prototype/vectorstores/hierarchical_sections_openai3small"
+    },
+    "embeddings": {
+      "deployment": "text-embedding-3-small",
+      "kwargs": {}
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "prototype",
+        "input_folder": "input",
+        "output_folder": "prototype/rag_metadata/hierarchical_sections",
+        "allowed_extensions": [
+          "json"
+        ]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {}
+    }
+  },
+  "cardiology_rag_hierarchical_sections_bm25plus_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/hierarchical/Cardiomyopathies_2023_section_view_sections.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 170
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_sections_bm25plus_prototype",
+      "description": "BM25Plus over Cardiomyopathies section-view without aggregation (max_level=None).",
+      "type": "bm25",
+      "retrieval_mode": "sparse",
+      "folder": "prototype/vectorstores/hierarchical_sections_bm25plus"
+    },
+    "baseline": {
+      "algorithm": "BM25Plus",
+      "tokenizer": "lowercase_regex_word_tokens",
+      "source_app_id": "cardiology_rag_hierarchical_sections_prototype",
+      "source_backend": "faiss_docstore"
+    },
+    "preprocessing": {
+      "storage": {
+        "output_folder": "prototype/rag_metadata/hierarchical_sections"
+      }
+    }
+  },
+  "cardiology_rag_hierarchical_L3_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/hierarchical/Cardiomyopathies_2023_section_view_L3.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 94
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_L3_openai3small_prototype",
+      "description": "Cardiomyopathies section-view aggregated below hierarchy level 3.",
+      "type": "faiss",
+      "distance": "cosine",
+      "retrieval_mode": "dense",
+      "folder": "prototype/vectorstores/hierarchical_L3_openai3small"
+    },
+    "embeddings": {
+      "deployment": "text-embedding-3-small",
+      "kwargs": {}
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "prototype",
+        "input_folder": "input",
+        "output_folder": "prototype/rag_metadata/hierarchical_L3",
+        "allowed_extensions": [
+          "json"
+        ]
+      },
+      "images": {
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {}
+    }
+  },
+  "cardiology_rag_hierarchical_L3_bm25plus_prototype": {
+    "run": {
+      "mode": "prebuilt",
+      "source_path": "prototype/retrieval_inputs/cm_single_v1/hierarchical/Cardiomyopathies_2023_section_view_L3.json",
+      "source_type": "hierarchical_section_view",
+      "expected_chunk_count": 94
+    },
+    "indexing": {
+      "name": "cardiomyopathies_hierarchical_L3_bm25plus_prototype",
+      "description": "BM25Plus over Cardiomyopathies section-view aggregated below hierarchy level 3.",
+      "type": "bm25",
+      "retrieval_mode": "sparse",
+      "folder": "prototype/vectorstores/hierarchical_L3_bm25plus"
+    },
+    "baseline": {
+      "algorithm": "BM25Plus",
+      "tokenizer": "lowercase_regex_word_tokens",
+      "source_app_id": "cardiology_rag_hierarchical_L3_prototype",
+      "source_backend": "faiss_docstore"
+    },
+    "preprocessing": {
+      "storage": {
+        "output_folder": "prototype/rag_metadata/hierarchical_L3"
+      }
+    }
+  }
+}
