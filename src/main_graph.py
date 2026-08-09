@@ -46,6 +46,12 @@ class GraphPipelineConfig:
     force_retrieval_view: bool = False
     force_acronyms: bool = False
 
+    # Text-cleaning source used by retrieval Section views
+    run_text_cleaning: bool | None = None
+    force_text_cleaning: bool | None = None
+    clean_chunk_dir: Path | None = None
+    text_cleaning_audit_dir: Path | None = None
+
     # Retrieval Section view
     retrieval_max_level: Optional[int] = None
     retrieval_include_descendant_titles: bool = True
@@ -1184,6 +1190,47 @@ def main(
         sanity_log_samples=sanity_log_samples,
         quality_max_chunk_chars=quality_max_chunk_chars,
     )
+
+    # Explicit retrieval text-cleaning configuration.
+    # When this block exists in config.json it is authoritative.
+    # Legacy programmatic callers without it retain environment fallback.
+    text_cleaning_config = (
+        app_config
+        .get("knowledge_graph", {})
+        .get("text_cleaning")
+    )
+
+    if isinstance(text_cleaning_config, dict):
+        if "enabled" in text_cleaning_config:
+            config.run_text_cleaning = _coerce_bool(
+                text_cleaning_config["enabled"],
+                "knowledge_graph.text_cleaning.enabled",
+            )
+
+        if "force" in text_cleaning_config:
+            config.force_text_cleaning = _coerce_bool(
+                text_cleaning_config["force"],
+                "knowledge_graph.text_cleaning.force",
+            )
+
+        project_root = Path(__file__).resolve().parent.parent
+
+        clean_chunk_dir = text_cleaning_config.get("clean_chunk_dir")
+        if clean_chunk_dir not in (None, ""):
+            config.clean_chunk_dir = _resolve_project_path(
+                clean_chunk_dir,
+                work_root / "clean_chunks",
+                project_root,
+            )
+
+        audit_dir = text_cleaning_config.get("audit_dir")
+        if audit_dir not in (None, ""):
+            config.text_cleaning_audit_dir = _resolve_project_path(
+                audit_dir,
+                work_root / "text_cleaning_audit",
+                project_root,
+            )
+
 
     if clear_neo4j_before_run:
         clear_graph_data()

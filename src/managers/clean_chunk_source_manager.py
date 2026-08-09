@@ -38,14 +38,15 @@ def sha256_file(path: Path) -> str:
 
 def text_cleaning_enabled(config: Any) -> bool:
     configured = getattr(config, "run_text_cleaning", None)
-    default = True if configured is None else bool(configured)
-    return _env_bool("KG_RUN_TEXT_CLEANING", default)
-
+    if configured is not None:
+        return bool(configured)
+    return _env_bool("KG_RUN_TEXT_CLEANING", True)
 
 def force_text_cleaning(config: Any) -> bool:
-    configured = bool(getattr(config, "force_text_cleaning", False))
-    return _env_bool("KG_FORCE_TEXT_CLEANING", configured)
-
+    configured = getattr(config, "force_text_cleaning", None)
+    if configured is not None:
+        return bool(configured)
+    return _env_bool("KG_FORCE_TEXT_CLEANING", False)
 
 def get_clean_chunk_dir(config: Any) -> Path:
     configured = getattr(config, "clean_chunk_dir", None)

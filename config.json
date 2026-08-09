@@ -87,6 +87,12 @@
         "sample_size": 0,
         "print_all": false
       },
+      "text_cleaning": {
+        "enabled": true,
+        "force": false,
+        "clean_chunk_dir": "mineru_test/clean_chunks",
+        "audit_dir": "mineru_test/text_cleaning_audit/safe_v2_2"
+      },
       "retrieval_view": {
         "max_level": 4,
         "include_descendant_titles": true,

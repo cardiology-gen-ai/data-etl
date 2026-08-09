@@ -116,6 +116,13 @@
         "sample_size": 0,
         "print_all": false
       },
+      "text_cleaning": {
+        "_comment": "Explicit text-cleaning policy for retrieval Section views. When present, config values are authoritative; environment variables remain a fallback for legacy callers.",
+        "enabled": true,
+        "force": false,
+        "clean_chunk_dir": null,
+        "audit_dir": null
+      },
       "retrieval_view": {
         "_comment": "Mandatory derived Section view consumed by the graph loader. Canonical hierarchical chunks remain immutable.",
         "_fields": {
