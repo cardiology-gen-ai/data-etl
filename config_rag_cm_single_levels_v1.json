@@ -142,7 +142,7 @@
       "storage": {
         "parent_folder": "prototype",
         "input_folder": "input",
-        "output_folder": "prototype/rag_metadata/hierarchical_sections",
+        "output_folder": "rag_metadata/hierarchical_sections",
         "allowed_extensions": [
           "json"
         ]
@@ -180,7 +180,7 @@
     },
     "preprocessing": {
       "storage": {
-        "output_folder": "prototype/rag_metadata/hierarchical_sections"
+        "output_folder": "rag_metadata/hierarchical_sections"
       }
     }
   },
@@ -207,7 +207,7 @@
       "storage": {
         "parent_folder": "prototype",
         "input_folder": "input",
-        "output_folder": "prototype/rag_metadata/hierarchical_L3",
+        "output_folder": "rag_metadata/hierarchical_L3",
         "allowed_extensions": [
           "json"
         ]
@@ -245,7 +245,7 @@
     },
     "preprocessing": {
       "storage": {
-        "output_folder": "prototype/rag_metadata/hierarchical_L3"
+        "output_folder": "rag_metadata/hierarchical_L3"
       }
     }
   }

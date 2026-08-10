@@ -15,7 +15,7 @@
     },
     "preprocessing": {
       "storage": {
-        "parent_folder": "mineru_test",
+        "parent_folder": "prototype",
         "input_folder": "pdfdocs",
         "output_folder": "mddocs",
         "allowed_extensions": [
@@ -40,10 +40,10 @@
       },
       "tables": {
         "enabled": true,
-        "source_dir": "mineru_test/content_list",
-        "chunk_dir": "mineru_test/clean_chunks",
-        "catalog_dir": "mineru_test/table_catalogs/raw",
-        "processed_dir": "mineru_test/table_catalogs/processed",
+        "source_dir": "prototype/content_list",
+        "chunk_dir": "prototype/clean_chunks",
+        "catalog_dir": "prototype/table_catalogs/raw",
+        "processed_dir": "prototype/table_catalogs/processed",
         "source_format": "auto",
         "link_to_chunks": true,
         "parse_recommendations": true,
@@ -55,9 +55,9 @@
     "knowledge_graph": {
       "pipeline": {
         "phase": "entities",
-        "pdf_dir": "mineru_test/pdfdocs",
-        "work_root": "mineru_test",
-        "mineru_markdown_root": "mineru_test/mddocs",
+        "pdf_dir": "prototype/pdfdocs",
+        "work_root": "prototype",
+        "mineru_markdown_root": "prototype/mddocs",
         "clear_neo4j_before_run": false,
         "force_toc": false,
         "force_markdown": false,
@@ -67,7 +67,7 @@
       },
       "logging": {
         "enabled": true,
-        "dir": "mineru_test/logs"
+        "dir": "prototype/logs"
       },
       "providers": {
         "chat_provider": "openai",
@@ -90,8 +90,8 @@
       "text_cleaning": {
         "enabled": true,
         "force": false,
-        "clean_chunk_dir": "mineru_test/clean_chunks",
-        "audit_dir": "mineru_test/text_cleaning_audit/safe_v2_2"
+        "clean_chunk_dir": "prototype/clean_chunks",
+        "audit_dir": "prototype/text_cleaning_audit/safe_v2_2"
       },
       "retrieval_view": {
         "max_level": 4,
@@ -116,7 +116,7 @@
         "use_acronym_validation": true,
         "acronym_dir": null,
         "export_review": true,
-        "review_output_dir": "mineru_test/entity_extraction_review",
+        "review_output_dir": "prototype/entity_extraction_review",
         "clear_previous_review": true,
         "include_source_preview_in_review": false
       },
@@ -137,11 +137,11 @@
       "force": false,
       "dry_run": true,
       "export_review": true,
-      "review_output_dir": "mineru_test/entity_normalization_review",
+      "review_output_dir": "prototype/entity_normalization_review",
       "create_same_as_edges": false,
       "create_fuzzy_candidate_edges": false,
       "fuzzy_threshold": 90,
-      "api_cache_dir": "mineru_test/umls_api_cache",
+      "api_cache_dir": "prototype/umls_api_cache",
       "api_timeout": 30,
       "api_rate_limit_per_second": 2,
       "local_files_only": false,
