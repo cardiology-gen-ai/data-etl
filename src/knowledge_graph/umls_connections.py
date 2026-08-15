@@ -116,6 +116,7 @@ DEFAULT_RELATION_CACHE_DIR = ROOT_DIR / "umls_test" / "umls_api_cache" / "relati
 DEFAULT_SOURCE_VOCAB = "SNOMEDCT_US"
 DEFAULT_RELATION_PAGE_SIZE = 200
 DEFAULT_MAX_RELATIONS_PER_CUI = 500
+DEFAULT_RELATION_LABEL_BATCH_SIZE = 20
 DEFAULT_MAX_SOURCE_UI_LOOKUPS_PER_CUI = 100
 DEFAULT_WRITE_PARTIAL_EVERY = 25
 RELATIONS_404_NEGATIVE_CACHE_THRESHOLD = 3
@@ -313,6 +314,38 @@ def canonicalize_raw_relation_name(value: Any) -> tuple[str, bool]:
     return RAW_RELATION_CANONICALIZATION.get(raw_name, (raw_name, False))
 
 
+def raw_relation_names_for_canonical_names(
+    canonical_names: Sequence[str],
+) -> tuple[str, ...]:
+    """Expand canonical local relation names to raw UMLS RELA labels.
+
+    Server-side filtering must request both the forward and inverse raw labels
+    that collapse to one canonical local direction. For example, canonical
+    ``isa`` expands to ``isa`` and ``inverse_isa``.
+    """
+    requested = normalize_relation_name_set(canonical_names)
+    if not requested:
+        return ()
+
+    raw_names = {
+        raw_name
+        for raw_name, (canonical_name, _swap_endpoints)
+        in RAW_RELATION_CANONICALIZATION.items()
+        if canonical_name in requested
+    }
+    mapped_canonical_names = {
+        canonical_name
+        for canonical_name, _swap_endpoints
+        in RAW_RELATION_CANONICALIZATION.values()
+    }
+    raw_names.update(
+        canonical_name
+        for canonical_name in requested
+        if canonical_name not in mapped_canonical_names
+    )
+    return tuple(sorted(raw_names))
+
+
 ISA_ONLY_RELATION_NAMES = frozenset({"isa"})
 
 # Retrieval-oriented experimental families selected after the full 587-CUI
@@ -445,6 +478,89 @@ AUDIT_ALL_SNOMED_RELATION_NAMES = frozenset(
     EXPANDED_SNOMED_RELATION_NAMES
     | AUDIT_ONLY_RELATION_NAMES
     | EXPERIMENTAL_FAMILY_RELATION_NAMES
+)
+
+# Broad read-only non-hierarchical discovery profile. The extra labels below
+# were observed in the earlier unfiltered SNOMEDCT_US relation census for the
+# cardiomyopathy graph but are not yet part of RELATION_SPECS. They are kept
+# review-only by the generic unsupported-relation policy. The purpose of this
+# profile is to measure what additional *local-to-local* semantic structure is
+# available before selecting a retrieval whitelist.
+#
+# Deliberately excluded here:
+#   * hierarchy/history: isa, inverse_isa, was_a, inverse_was_a
+#   * identity/equivalence: same_as, possibly_equivalent_to,
+#     partially_equivalent_to, alternative_of/has_alternative
+#   * mappings/deprecation/reference maintenance: mapped_from, mapped_to,
+#     replaced_by, replaces, possibly_replaces, moved_to,
+#     referred_to_by, refers_to
+# These can be audited separately but should not be mixed with semantic
+# non-hierarchical expansion.
+BROAD_NONHIER_EXTRA_RELATION_NAMES = frozenset(
+    {
+        "acted_on_by_process",
+        "associated_function_of",
+        "associated_procedure_of",
+        "associated_with",
+        "basis_of_strength_substance_of",
+        "characterizes",
+        "component_of",
+        "direct_substance_of",
+        "energy_used_by",
+        "has_approach",
+        "has_component",
+        "has_course",
+        "has_direct_substance",
+        "has_disposition",
+        "has_entire_anatomy_structure",
+        "has_finding_context",
+        "has_finding_informer",
+        "has_intent",
+        "has_manufactured_dose_form",
+        "has_modification",
+        "has_occurrence",
+        "has_onset",
+        "has_part",
+        "has_part_anatomy_structure",
+        "has_precondition",
+        "has_procedure_approach",
+        "has_process_output",
+        "has_property",
+        "has_property_type",
+        "has_scale_type",
+        "has_specimen",
+        "has_subject_relationship_context",
+        "has_temporal_context",
+        "inheres_in",
+        "occurs_after",
+        "occurs_before",
+        "occurs_in",
+        "part_of",
+        "plays_role",
+        "process_acts_on",
+        "process_output_of",
+        "realization_of",
+        "recipient_category_of",
+        "specimen_procedure_of",
+        "specimen_source_identity_of",
+        "specimen_source_morphology_of",
+        "specimen_source_topography_of",
+        "specimen_substance_of",
+        "subject_of_information_of",
+        "subject_relationship_context_of",
+        "substance_used_by",
+        "temporally_followed_by",
+        "temporally_follows",
+        "temporally_related_to",
+        "used_by",
+        "uses",
+        "uses_substance",
+    }
+)
+
+BROAD_NONHIER_AUDIT_RELATION_NAMES = frozenset(
+    (AUDIT_ALL_SNOMED_RELATION_NAMES - ISA_ONLY_RELATION_NAMES)
+    | BROAD_NONHIER_EXTRA_RELATION_NAMES
 )
 
 # Backward-compatible alias. "Strong" means the canonical expanded profile.
@@ -745,6 +861,7 @@ RELATION_NAMES_BY_PROFILE = {
     "etiology_extension_relations": ETIOLOGY_EXTENSION_RELATION_NAMES,
     "drug_composition_relations": DRUG_COMPOSITION_RELATION_NAMES,
     "explore_known": AUDIT_ALL_SNOMED_RELATION_NAMES,
+    "nonhier_broad_audit": BROAD_NONHIER_AUDIT_RELATION_NAMES,
     "discover": frozenset(),
     # Backward-compatible aliases. These are exploratory legacy names.
     "core": CORE_SNOMED_RELATION_NAMES,
@@ -774,6 +891,12 @@ RELATION_PROFILE_DESCRIPTIONS = {
         "local drug/drug-class concepts; review-only"
     ),
     "explore_known": "all currently catalogued exploratory relation names",
+    "nonhier_broad_audit": (
+        "broad read-only non-hierarchical audit: catalogued semantic relations "
+        "plus additional SNOMEDCT_US relation labels observed in the earlier "
+        "unfiltered census; hierarchy, equivalence, mapping and historical "
+        "maintenance relations are excluded"
+    ),
     "discover": "unfiltered SNOMED RELA discovery; unsupported labels are review-only",
     "core": "legacy alias of seed_core; not a validated core",
     "expanded": "legacy alias of seed_expanded; not a validated set",
@@ -1403,6 +1526,7 @@ class UMLSRelationsClient:
             "relation_negative_cache_writes": 0,
             "source_vocab_absence_checks": 0,
             "source_vocab_absence_confirmed": 0,
+            "filtered_relation_absence_confirmed": 0,
         }
 
     def cache_path(self, namespace: str, payload: dict[str, Any]) -> Path:
@@ -1476,8 +1600,11 @@ class UMLSRelationsClient:
                 self.stats["api_errors"] += 1
             else:
                 status_code = int(getattr(response, "status_code", 0))
-                if status_code in {401, 403}:
+                if status_code == 401:
                     raise UMLSAPIAuthError("UMLS_API_KEY is missing/invalid")
+                if status_code == 403:
+                    self.stats["api_errors"] += 1
+                    raise UMLSAPIHTTPStatusError(status_code)
                 if status_code == 429 or status_code >= 500:
                     last_error = UMLSAPIError(
                         f"UMLS API temporary failure: HTTP {status_code}"
@@ -1514,6 +1641,7 @@ class UMLSRelationsClient:
         source_vocab: str,
         page_number: int,
         page_size: Optional[int] = None,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             "pageNumber": page_number,
@@ -1523,18 +1651,40 @@ class UMLSRelationsClient:
         }
         if source_vocab:
             params["sabs"] = source_vocab
+        relation_labels = tuple(
+            sorted(
+                {
+                    normalize_relation_term(value)
+                    for value in (include_additional_relation_labels or ())
+                    if normalize_relation_term(value)
+                }
+            )
+        )
+        if relation_labels:
+            params["includeAdditionalRelationLabels"] = ",".join(relation_labels)
         return params
 
     def relation_negative_cache_key(
         self,
         cui: str,
         source_vocab: str,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> dict[str, Any]:
+        relation_labels = tuple(
+            sorted(
+                {
+                    normalize_relation_term(value)
+                    for value in (include_additional_relation_labels or ())
+                    if normalize_relation_term(value)
+                }
+            )
+        )
         return {
             "endpoint": "relations",
             "cui": normalize_cui(cui),
             "source_vocab": clean_text(source_vocab),
             "version": self.version,
+            "include_additional_relation_labels": list(relation_labels),
             "http_status": 404,
         }
 
@@ -1562,10 +1712,15 @@ class UMLSRelationsClient:
         cui: str,
         source_vocab: str,
         count_hit: bool = True,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> Optional[dict[str, Any]]:
         cached = self.get_cached_payload(
             "relations_negative",
-            self.relation_negative_cache_key(cui, source_vocab),
+            self.relation_negative_cache_key(
+                cui,
+                source_vocab,
+                include_additional_relation_labels=include_additional_relation_labels,
+            ),
             count_hit=False,
         )
         if cached is None:
@@ -1575,6 +1730,7 @@ class UMLSRelationsClient:
             clean_text(cached.get("status")) in {
                 "relations_unavailable",
                 "source_vocab_relations_absent",
+                "filtered_relations_absent",
             }
             and int_or_zero(cached.get("http_status")) == 404
         ):
@@ -1589,8 +1745,13 @@ class UMLSRelationsClient:
         self,
         cui: str,
         source_vocab: str,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> dict[str, Any]:
-        cache_key_payload = self.relation_negative_cache_key(cui, source_vocab)
+        cache_key_payload = self.relation_negative_cache_key(
+            cui,
+            source_vocab,
+            include_additional_relation_labels=include_additional_relation_labels,
+        )
         previous = self.get_cached_payload(
             "relations_negative",
             cache_key_payload,
@@ -1613,6 +1774,15 @@ class UMLSRelationsClient:
             "cui": normalize_cui(cui),
             "source_vocab": clean_text(source_vocab),
             "version": self.version,
+            "include_additional_relation_labels": list(
+                sorted(
+                    {
+                        normalize_relation_term(value)
+                        for value in (include_additional_relation_labels or ())
+                        if normalize_relation_term(value)
+                    }
+                )
+            ),
             "http_status": 404,
             "failure_count": failure_count,
             "records": [],
@@ -1680,13 +1850,28 @@ class UMLSRelationsClient:
         self,
         cui: str,
         source_vocab: str,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> dict[str, Any]:
+        relation_labels = tuple(
+            sorted(
+                {
+                    normalize_relation_term(value)
+                    for value in (include_additional_relation_labels or ())
+                    if normalize_relation_term(value)
+                }
+            )
+        )
         payload = {
             "endpoint": "relations",
-            "status": "source_vocab_relations_absent",
+            "status": (
+                "filtered_relations_absent"
+                if relation_labels
+                else "source_vocab_relations_absent"
+            ),
             "cui": normalize_cui(cui),
             "source_vocab": clean_text(source_vocab),
             "version": self.version,
+            "include_additional_relation_labels": list(relation_labels),
             "http_status": 404,
             "failure_count": 1,
             "records": [],
@@ -1699,21 +1884,33 @@ class UMLSRelationsClient:
         }
         self.write_cached_payload(
             "relations_negative",
-            self.relation_negative_cache_key(cui, source_vocab),
+            self.relation_negative_cache_key(
+                cui,
+                source_vocab,
+                include_additional_relation_labels=relation_labels,
+            ),
             payload,
         )
         self.stats["relation_negative_cache_writes"] += 1
-        self.stats["source_vocab_absence_confirmed"] += 1
+        if relation_labels:
+            self.stats["filtered_relation_absence_confirmed"] += 1
+        else:
+            self.stats["source_vocab_absence_confirmed"] += 1
         return payload
 
     def clear_relations_negative_cache(
         self,
         cui: str,
         source_vocab: str,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> None:
         path = self.cache_path(
             "relations_negative",
-            self.relation_negative_cache_key(cui, source_vocab),
+            self.relation_negative_cache_key(
+                cui,
+                source_vocab,
+                include_additional_relation_labels=include_additional_relation_labels,
+            ),
         )
         try:
             path.unlink()
@@ -1725,9 +1922,19 @@ class UMLSRelationsClient:
         cui: str,
         source_vocab: str,
         max_records: Optional[int] = DEFAULT_MAX_RELATIONS_PER_CUI,
+        include_additional_relation_labels: Optional[Sequence[str]] = None,
     ) -> RelationFetchResult:
         cui = normalize_cui(cui)
         source_vocab = clean_text(source_vocab)
+        relation_labels = tuple(
+            sorted(
+                {
+                    normalize_relation_term(value)
+                    for value in (include_additional_relation_labels or ())
+                    if normalize_relation_term(value)
+                }
+            )
+        )
         max_records = int(max_records) if max_records is not None else None
         if max_records is not None and max_records < 1:
             max_records = None
@@ -1743,6 +1950,7 @@ class UMLSRelationsClient:
             "version": self.version,
             "page_size": effective_page_size,
             "max_records": max_records,
+            "include_additional_relation_labels": list(relation_labels),
             "include_obsolete": False,
             "include_suppressible": False,
         }
@@ -1751,6 +1959,7 @@ class UMLSRelationsClient:
             unavailable_cache = self.get_unavailable_relations_cache(
                 cui=cui,
                 source_vocab=source_vocab,
+                include_additional_relation_labels=relation_labels,
             )
             if unavailable_cache is not None:
                 return self.relation_result_from_negative_cache(
@@ -1789,6 +1998,7 @@ class UMLSRelationsClient:
                         source_vocab=source_vocab,
                         page_number=page_number,
                         page_size=effective_page_size,
+                        include_additional_relation_labels=relation_labels,
                     ),
                     ignored_error_statuses=(404,),
                 )
@@ -1800,11 +2010,13 @@ class UMLSRelationsClient:
                     negative_payload = self.record_source_vocab_relations_absent(
                         cui=cui,
                         source_vocab=source_vocab,
+                        include_additional_relation_labels=relation_labels,
                     )
                     logger.info(
-                        "No relations for source vocabulary | cui=%s | source_vocab=%s",
+                        "No relations for source vocabulary/filter | cui=%s | source_vocab=%s | relation_labels=%s",
                         cui,
                         source_vocab,
+                        ",".join(relation_labels) or "ALL",
                     )
                     return self.relation_result_from_negative_cache(
                         negative_payload,
@@ -1814,6 +2026,7 @@ class UMLSRelationsClient:
                 negative_payload = self.record_relations_404(
                     cui=cui,
                     source_vocab=source_vocab,
+                    include_additional_relation_labels=relation_labels,
                 )
                 if clean_text(negative_payload.get("status")) == "relations_unavailable":
                     logger.info(
@@ -1856,7 +2069,11 @@ class UMLSRelationsClient:
             "truncated_by_limit": truncated_by_limit,
             "page_count": page_count,
         }
-        self.clear_relations_negative_cache(cui=cui, source_vocab=source_vocab)
+        self.clear_relations_negative_cache(
+            cui=cui,
+            source_vocab=source_vocab,
+            include_additional_relation_labels=relation_labels,
+        )
         self.write_cached_payload("relations", cache_payload, response_payload)
         return RelationFetchResult(
             records=records,
@@ -2480,6 +2697,120 @@ def build_initial_relation_stats(
 RELATION_CENSUS_EXAMPLE_LIMIT = 5
 
 
+def relation_label_batches(
+    relation_labels: Sequence[str],
+    batch_size: int = DEFAULT_RELATION_LABEL_BATCH_SIZE,
+) -> tuple[tuple[str, ...], ...]:
+    """Return stable, deduplicated batches for server-side RELA filtering."""
+    labels = tuple(
+        sorted(
+            {
+                normalize_relation_term(value)
+                for value in relation_labels
+                if normalize_relation_term(value)
+            }
+        )
+    )
+    if not labels:
+        return ((),)
+    size = max(int(batch_size), 1)
+    return tuple(labels[i : i + size] for i in range(0, len(labels), size))
+
+
+def get_relations_with_batched_filter(
+    client: "UMLSRelationsClient",
+    *,
+    cui: str,
+    source_vocab: str,
+    max_records: Optional[int],
+    relation_labels: Sequence[str],
+    batch_size: int = DEFAULT_RELATION_LABEL_BATCH_SIZE,
+) -> RelationFetchResult:
+    """Fetch a broad RELA whitelist in bounded URL-sized batches.
+
+    Each batch is fetched exhaustively because the labels are already filtered
+    server-side. The per-CUI guardrail is applied only after all batches are
+    merged, avoiding order-dependent loss of later relation families.
+    """
+    batches = relation_label_batches(relation_labels, batch_size=batch_size)
+    if batches == ((),):
+        return client.get_relations(
+            cui=cui,
+            source_vocab=source_vocab,
+            max_records=max_records,
+            include_additional_relation_labels=(),
+        )
+    if len(batches) == 1:
+        return client.get_relations(
+            cui=cui,
+            source_vocab=source_vocab,
+            max_records=max_records,
+            include_additional_relation_labels=batches[0],
+        )
+
+    results: list[RelationFetchResult] = []
+    merged_records: list[dict[str, Any]] = []
+    for batch in batches:
+        result = client.get_relations(
+            cui=cui,
+            source_vocab=source_vocab,
+            max_records=None,
+            include_additional_relation_labels=batch,
+        )
+        results.append(result)
+        merged_records.extend(result.records)
+
+    # Batches contain disjoint additionalRelationLabels, but deduplicate by
+    # relation UI defensively in case the upstream API returns duplicates.
+    deduplicated: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for record in merged_records:
+        relation_ui = clean_text(record.get("ui"))
+        if relation_ui:
+            key = f"ui:{relation_ui}"
+        else:
+            key = "json:" + json.dumps(record, ensure_ascii=False, sort_keys=True)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduplicated.append(record)
+
+    fetched_records = len(deduplicated)
+    record_limit = int(max_records) if max_records is not None else None
+    if record_limit is not None and record_limit < 1:
+        record_limit = None
+    truncated_by_limit = record_limit is not None and fetched_records > record_limit
+    skipped_by_limit = max(fetched_records - record_limit, 0) if truncated_by_limit else 0
+    records = deduplicated[:record_limit] if truncated_by_limit and record_limit is not None else deduplicated
+
+    statuses = {result.status for result in results}
+    if records:
+        status = "processed"
+    elif statuses == {"source_vocab_relations_absent"}:
+        status = "source_vocab_relations_absent"
+    elif statuses == {"relations_unavailable"}:
+        status = "relations_unavailable"
+    else:
+        status = "processed"
+
+    page_counts = [result.page_count for result in results]
+    page_count = (
+        sum(int(value) for value in page_counts if value is not None)
+        if page_counts and all(value is not None for value in page_counts)
+        else None
+    )
+    return RelationFetchResult(
+        records=records,
+        fetched_records=fetched_records,
+        skipped_by_limit=skipped_by_limit,
+        truncated_by_limit=truncated_by_limit,
+        page_count=page_count,
+        status=status,
+        failure_count=max((result.failure_count for result in results), default=0),
+        from_negative_cache=bool(results) and all(result.from_negative_cache for result in results),
+    )
+
+
 def record_observed_relation_census(
     stats: dict[str, Any],
     *,
@@ -2809,6 +3140,9 @@ def build_candidate_edges(
         strong_relations_only=strong_relations_only,
         relation_profile=relation_profile,
     )
+    server_relation_labels = raw_relation_names_for_canonical_names(
+        sorted(resolved_include_names)
+    )
     edges: list[dict[str, Any]] = []
     stats = build_initial_relation_stats(
         local_cuis=local_cuis,
@@ -2828,6 +3162,16 @@ def build_candidate_edges(
         use_local_source_ui_index=use_local_source_ui_index,
     )
     stats["ignore_negative_cache"] = bool(getattr(client, "ignore_negative_cache", False))
+    stats["server_side_relation_filter_enabled"] = bool(server_relation_labels)
+    stats["server_side_additional_relation_labels"] = list(server_relation_labels)
+    server_relation_batches = relation_label_batches(server_relation_labels) if server_relation_labels else ((),)
+    stats["server_side_relation_filter_batch_size"] = DEFAULT_RELATION_LABEL_BATCH_SIZE
+    stats["server_side_relation_filter_batch_count"] = (
+        len(server_relation_batches) if server_relation_labels else 0
+    )
+    stats["server_side_relation_filter_batched"] = bool(
+        server_relation_labels and len(server_relation_batches) > 1
+    )
 
     local_source_ui_index: Optional[LocalSourceUiIndex] = None
     if use_local_source_ui_index:
@@ -2855,11 +3199,13 @@ def build_candidate_edges(
 
     total_cuis = len(source_cuis)
     logger.info(
-        "Fetching UMLS relations for %d source CUIs | local_cuis=%d | skipped_cuis=%d | source_vocab=%s",
+        "Fetching UMLS relations for %d source CUIs | local_cuis=%d | skipped_cuis=%d | source_vocab=%s | server_relation_filter_labels=%d | filter_batches=%d",
         total_cuis,
         len(local_cuis),
         len(skipped_cuis),
         source_vocab or "ALL",
+        len(server_relation_labels),
+        len(server_relation_batches) if server_relation_labels else 0,
     )
 
     for index, source_cui in enumerate(source_cuis, start=1):
@@ -2868,10 +3214,12 @@ def build_candidate_edges(
         per_source_ui_lookups_skipped = 0
         relation_records_fetched = 0
         try:
-            relation_result = client.get_relations(
+            relation_result = get_relations_with_batched_filter(
+                client,
                 cui=source_cui,
                 source_vocab=source_vocab,
                 max_records=max_relations_per_cui,
+                relation_labels=server_relation_labels,
             )
         except UMLSAPIAuthError:
             raise
@@ -4510,6 +4858,8 @@ def build_summary_markdown(
         f"- dry-run/read-only: `{str(dry_run).lower()}`",
         f"- selected relation profile: `{stats.get('selected_relation_profile') or '(none)'}`",
         f"- relation profile meaning: `{stats.get('relation_profile_description') or '(none)'}`",
+        f"- server-side relation filter enabled: `{str(bool(stats.get('server_side_relation_filter_enabled'))).lower()}`",
+        f"- server-side additional relation labels: `{', '.join(stats.get('server_side_additional_relation_labels') or []) or '(none)'}`",
         f"- canonical direction policy: `{stats.get('canonical_direction_policy') or CANONICAL_DIRECTION_POLICY}`",
         f"- canonical direction meaning: {stats.get('canonical_direction_description') or CANONICAL_DIRECTION_DESCRIPTION}",
         "- relation profiles are exploratory filters, not validation/approval levels",
@@ -4603,6 +4953,7 @@ def build_summary_markdown(
         f"- relation negative-cache writes: {client_stats.get('relation_negative_cache_writes', 0)}",
         f"- source-vocabulary absence checks: {client_stats.get('source_vocab_absence_checks', 0)}",
         f"- source-vocabulary absences confirmed: {client_stats.get('source_vocab_absence_confirmed', 0)}",
+        f"- filtered relation-family absences confirmed: {client_stats.get('filtered_relation_absence_confirmed', 0)}",
         "",
         "## Observed Relation Names Before Local-Endpoint Filtering",
         "",
@@ -5833,7 +6184,12 @@ def run_umls_connections(
             "UMLS connection materialization is disabled: no relation types "
             "have been explicitly approved after exploratory evaluation"
         )
-    if write_neo4j and selected_relation_profile in {"audit_all", "explore_known", "discover"}:
+    if write_neo4j and selected_relation_profile in {
+        "audit_all",
+        "explore_known",
+        "nonhier_broad_audit",
+        "discover",
+    }:
         raise ValueError(
             "exploratory relation profiles are export-only and cannot write to Neo4j"
         )
@@ -5992,6 +6348,7 @@ def run_umls_connections(
         "relation_negative_cache_writes": 0,
         "source_vocab_absence_checks": 0,
         "source_vocab_absence_confirmed": 0,
+        "filtered_relation_absence_confirmed": 0,
     }
 
     if concepts:
@@ -6411,6 +6768,8 @@ __all__ = [
     "BALANCED_CORE_SNOMED_RELATION_NAMES",
     "AUDIT_ONLY_RELATION_NAMES",
     "AUDIT_ALL_SNOMED_RELATION_NAMES",
+    "BROAD_NONHIER_EXTRA_RELATION_NAMES",
+    "BROAD_NONHIER_AUDIT_RELATION_NAMES",
     "STRONG_RELATION_NAMES",
     "RELATION_NAMES_BY_PROFILE",
     "RELATION_PROFILE_DESCRIPTIONS",

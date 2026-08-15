@@ -108,7 +108,7 @@ DISEASE_NARROWING_MODIFIER_PHRASES = (
 )
 
 CANDIDATE_TRACE_VERSION = "umls_candidate_trace_v2"
-RANKING_POLICY_VERSION = "umls_candidate_quality_v7"
+RANKING_POLICY_VERSION = "umls_candidate_quality_v8_acronym_provenance"
 NO_PLAUSIBLE_MATCH_STATUS = "umls_no_plausible_match"
 API_NO_PLAUSIBLE_MATCH_METHOD = "umls_api_no_plausible_match"
 NO_PLAUSIBLE_MATCH_METHOD = "umls_no_plausible_match"
@@ -1273,21 +1273,75 @@ def is_strong_compatible_exact_match(match: UMLSMatch) -> bool:
     )
 
 
+PRIMARY_ACRONYM_ALIAS_SOURCES = frozenset({
+    "mention_acronym_expansion",
+    "mention_acronym_expansion_canonicalized",
+    "document_acronym_expansion",
+    "document_acronym_expansion_canonicalized",
+})
+
+
+def has_primary_acronym_provenance(
+    provenance: Optional[Dict[str, Any]],
+) -> bool:
+    """Return whether an alias is a validated primary acronym expansion."""
+    if not provenance:
+        return False
+    sources = {
+        str(value).strip()
+        for value in (provenance.get("alias_sources") or [])
+        if str(value).strip()
+    }
+    acronym_shorts = [
+        str(value).strip()
+        for value in (provenance.get("acronym_shorts") or [])
+        if str(value).strip()
+    ]
+    return bool(acronym_shorts and (sources & PRIMARY_ACRONYM_ALIAS_SOURCES))
+
+
+def is_supported_primary_acronym_match(
+    match: UMLSMatch,
+    provenance: Optional[Dict[str, Any]],
+) -> bool:
+    """Return whether document-specific acronym evidence may affect selection.
+
+    Provenance alone never makes a candidate acceptable. The candidate must
+    already be semantically compatible and independently supported either by
+    atom/synonym evidence or by the existing strong-compatible-exact rule.
+    """
+    return bool(
+        has_primary_acronym_provenance(provenance)
+        and not has_disease_specificity_conflict(match)
+        and str(match.semantic_compatibility or "") == SEMANTIC_COMPATIBLE
+        and (
+            match.synonym_supported
+            or is_strong_compatible_exact_match(match)
+        )
+    )
+
+
 def _ranked_match_tuple(
     match: UMLSMatch,
     alias_index: int,
     search_index: int,
-) -> Tuple[int, int, int, float, float, int, int, int, UMLSMatch]:
-    """Return the cross-strategy ranking key.
+    alias_provenance: Optional[Dict[str, Any]] = None,
+) -> Tuple[int, int, int, int, float, float, int, int, int, UMLSMatch]:
+    """Return the evidence-aware cross-strategy ranking key.
 
-    Candidates without a disease-specific narrowing conflict are preferred
-    first. Among those, independently supported synonyms remain the strongest
-    evidence, followed by strong semantically compatible exact matches and the
-    ordinary conservative scores. Exact API rank still has no score floor.
+    A validated primary acronym long form gets precedence only when its UMLS
+    candidate already has strong compatible evidence. This resolves local
+    document meanings such as FTX -> frataxin without allowing an incompatible
+    long form to override the local canonical type.
     """
     specificity_safe = not has_disease_specificity_conflict(match)
+    acronym_supported = is_supported_primary_acronym_match(
+        match,
+        alias_provenance,
+    )
     return (
         1 if specificity_safe else 0,
+        1 if acronym_supported else 0,
         1 if (specificity_safe and match.synonym_supported) else 0,
         1 if is_strong_compatible_exact_match(match) else 0,
         _resolved_selection_score(match),
@@ -1981,14 +2035,24 @@ def select_best_umls_api_match(
     aliases: Sequence[str],
     client: UMLSAPIClient,
     canonical_type: Optional[str] = None,
+    alias_provenance: Optional[Sequence[Dict[str, Any]]] = None,
 ) -> Optional[UMLSMatch]:
     """Select the best candidate using evidence-aware cross-strategy ranking."""
-    matches: List[Tuple[int, int, int, float, float, int, int, int, UMLSMatch]] = []
+    matches: List[
+        Tuple[int, int, int, int, float, float, int, int, int, UMLSMatch]
+    ] = []
+    provenance_rows = list(alias_provenance or [])
 
     for alias_index, alias in enumerate(aliases):
         alias = str(alias or "").strip()
         if not alias:
             continue
+
+        provenance = (
+            provenance_rows[alias_index]
+            if alias_index < len(provenance_rows)
+            else None
+        )
 
         for search_index, search_type in enumerate(UMLS_API_SEARCH_TYPES):
             match = client.search_alias(
@@ -2000,7 +2064,12 @@ def select_best_umls_api_match(
                 continue
 
             matches.append(
-                _ranked_match_tuple(match, alias_index, search_index)
+                _ranked_match_tuple(
+                    match,
+                    alias_index,
+                    search_index,
+                    alias_provenance=provenance,
+                )
             )
 
     if not matches:
@@ -2020,7 +2089,7 @@ def select_best_umls_api_match_with_trace(
     if trace_limit < 1:
         raise ValueError("trace_limit must be >= 1")
 
-    matches: List[Tuple[int, int, int, float, float, int, int, int, UMLSMatch]] = []
+    matches: List[Tuple[int, int, int, int, float, float, int, int, int, UMLSMatch]] = []
     trace: List[Dict[str, Any]] = []
     provenance_rows = list(alias_provenance or [])
 
@@ -2041,7 +2110,7 @@ def select_best_umls_api_match_with_trace(
             }
         )
         alias_matches: List[
-            Tuple[int, int, int, float, float, int, int, int, UMLSMatch]
+            Tuple[int, int, int, int, float, float, int, int, int, UMLSMatch]
         ] = []
 
         for search_index, search_type in enumerate(UMLS_API_SEARCH_TYPES):
@@ -2077,6 +2146,7 @@ def select_best_umls_api_match_with_trace(
                 match,
                 alias_index,
                 search_index,
+                alias_provenance=provenance,
             )
             alias_matches.append(ranked)
             matches.append(ranked)
@@ -3028,6 +3098,7 @@ def normalize_concepts_with_umls(
                     concept.normalization_status = REVIEW_REQUIRED_STATUS
                     concept.normalization_method = TYPE_REVIEW_REQUIRED_METHOD
                     concept.reason = TYPE_REVIEW_REQUIRED_REASON
+
                     update_stats_for_concept(stats, concept)
                     continue
 
@@ -3055,6 +3126,7 @@ def normalize_concepts_with_umls(
                             aliases=concept.aliases_considered,
                             client=api_client,
                             canonical_type=concept.canonical_type,
+                            alias_provenance=concept.alias_provenance,
                         )
                 else:
                     concept.best_match = None
