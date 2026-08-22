@@ -45,6 +45,7 @@ Main policy:
 import logging
 import re
 from collections import Counter
+from html.parser import HTMLParser
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from knowledge_graph.acronym_utils import (
@@ -536,6 +537,158 @@ _MEDICAL_SPELLING_EQUIVALENTS: Tuple[Tuple[str, str], ...] = (
 )
 
 
+
+_TABLE_RE = re.compile(
+    r"<table\b[^>]*>.*?</table>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_TABLE_CELL_TAGS = {"td", "th"}
+_TABLE_ROW_TAGS = {"tr"}
+_TABLE_BREAK_TAGS = {"br", "p", "div", "li"}
+
+
+def _alpha_run_left(text: str, end_exclusive: int, mode: str) -> int:
+    """Return the alphabetic run length immediately left of one boundary."""
+    i = end_exclusive - 1
+    n = 0
+
+    while i >= 0 and text[i].isalpha():
+        if mode == "lower" and not text[i].islower():
+            break
+        if mode == "upper" and not text[i].isupper():
+            break
+
+        n += 1
+        i -= 1
+
+    return n
+
+
+def restore_likely_table_case_boundaries(text: str) -> str:
+    """
+    Restore likely label boundaries lost while linearising table content.
+
+    The transformation is deliberately narrow and is used ONLY on an auxiliary
+    validation view of HTML table data. It never modifies ``Section.text``.
+
+    Examples:
+        AclarubicinArsenic trioxide -> Aclarubicin Arsenic trioxide
+        dystrophySarcoidosis        -> dystrophy Sarcoidosis
+        CKLiver function            -> CK Liver function
+
+    Guardrails:
+    - lowercase -> uppercase requires at least three lowercase letters on the
+      left, avoiding common biomedical forms such as eGFR and iFR;
+    - acronym -> Titlecase requires at least two uppercase letters on the left;
+    - ordinary prose outside ``<table>`` blocks is never transformed.
+    """
+    if not text:
+        return text
+
+    out: List[str] = []
+
+    for i, ch in enumerate(text):
+        insert_space = False
+
+        if i > 0 and ch.isupper():
+            prev = text[i - 1]
+            nxt = text[i + 1] if i + 1 < len(text) else ""
+
+            if prev.islower():
+                lower_run = _alpha_run_left(text, i, mode="lower")
+                if lower_run >= 3:
+                    insert_space = True
+
+            elif prev.isupper() and nxt.islower():
+                upper_run = _alpha_run_left(text, i, mode="upper")
+                if upper_run >= 2:
+                    insert_space = True
+
+        if insert_space and out and not out[-1].isspace():
+            out.append(" ")
+
+        out.append(ch)
+
+    return "".join(out)
+
+
+class _TableValidationProjector(HTMLParser):
+    """Convert HTML tables into an auxiliary source-grounding text view."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: List[str] = []
+
+    def _separator(self, token: str = " ") -> None:
+        if not self.parts or self.parts[-1] != token:
+            self.parts.append(token)
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        tag = tag.lower()
+
+        if tag in _TABLE_CELL_TAGS:
+            self._separator(" | ")
+        elif tag in _TABLE_ROW_TAGS:
+            self._separator(" \n ")
+        elif tag in _TABLE_BREAK_TAGS:
+            self._separator(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+
+        if tag in _TABLE_CELL_TAGS:
+            self._separator(" | ")
+        elif tag in _TABLE_ROW_TAGS:
+            self._separator(" \n ")
+        elif tag in _TABLE_BREAK_TAGS:
+            self._separator(" ")
+
+    def handle_data(self, data: str) -> None:
+        if data:
+            self.parts.append(
+                restore_likely_table_case_boundaries(data)
+            )
+
+    def text(self) -> str:
+        return "".join(self.parts)
+
+
+def project_structured_tables_for_validation(source_text: str) -> str:
+    """
+    Build a validation-only projection of HTML tables in ``source_text``.
+
+    The original Section text remains untouched. Cell/row boundaries are made
+    explicit and likely case-boundary collisions inside table data are restored.
+    """
+    blocks = _TABLE_RE.findall(str(source_text or ""))
+
+    if not blocks:
+        return ""
+
+    projected: List[str] = []
+
+    for block in blocks:
+        parser = _TableValidationProjector()
+
+        try:
+            parser.feed(block)
+            parser.close()
+        except Exception:
+            logger.exception(
+                "Unable to build structured table validation projection"
+            )
+            continue
+
+        table_text = parser.text().strip()
+
+        if table_text:
+            projected.append(table_text)
+
+    return "\n\n".join(projected)
+
+
+
 def normalize_text_for_matching(text: Any) -> str:
     """
     Normalize text conservatively for surface-form matching.
@@ -769,15 +922,11 @@ def build_support_patterns(name: str) -> List[str]:
     return unique_patterns
 
 
-def get_direct_source_support(name: str, source_text: str) -> Optional[Dict[str, Any]]:
-    """
-    Return direct deterministic source evidence for a concept name.
-
-    Returns metadata if a direct surface-form match is found, otherwise None.
-
-    Note:
-    matched_text is from the normalized source text, not the raw PDF text.
-    """
+def _get_direct_source_support_from_one_view(
+    name: str,
+    source_text: str,
+) -> Optional[Dict[str, Any]]:
+    """Run the existing strict surface matcher against one source view."""
     normalized_source = normalize_text_for_matching(source_text)
 
     if not normalized_source:
@@ -800,6 +949,51 @@ def get_direct_source_support(name: str, source_text: str) -> Optional[Dict[str,
             }
 
     return None
+
+
+def get_direct_source_support(name: str, source_text: str) -> Optional[Dict[str, Any]]:
+    """
+    Return deterministic direct source evidence for a concept name.
+
+    The ordinary Section source is checked first with the existing strict
+    matcher. If that fails, HTML tables are projected into a validation-only
+    view that preserves cell/row boundaries and restores likely lost label
+    boundaries. The SAME strict surface matcher is then applied to that view.
+
+    This is intentionally monotonic:
+    - all previously supported direct matches are unchanged;
+    - ordinary prose is never made more permissive;
+    - no fuzzy/semantic matching is introduced;
+    - ``Section.text`` itself is never modified.
+    """
+    direct_support = _get_direct_source_support_from_one_view(
+        name=name,
+        source_text=source_text,
+    )
+
+    if direct_support is not None:
+        return direct_support
+
+    table_projection = project_structured_tables_for_validation(source_text)
+
+    if not table_projection:
+        return None
+
+    table_support = _get_direct_source_support_from_one_view(
+        name=name,
+        source_text=table_projection,
+    )
+
+    if table_support is None:
+        return None
+
+    return {
+        **table_support,
+        # Keep support_method=direct_source so existing evidence priority and
+        # MENTIONS logic remain unchanged. The validation_reason records the
+        # structured-table provenance explicitly.
+        "support_reason": "accepted_by_structured_table_source_match",
+    }
 
 
 def is_supported_by_source(name: str, source_text: str) -> bool:

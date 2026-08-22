@@ -7,21 +7,24 @@
       "distance": "cosine",
       "alias": "faiss_cardiology_current"
     },
+
     "embeddings": {
       "deployment": "sentence-transformers/all-MiniLM-L6-v2",
       "kwargs": {
         "device": "cpu"
       }
     },
+
     "preprocessing": {
       "storage": {
-        "parent_folder": "prototype",
+        "parent_folder": "two_document_prototype",
         "input_folder": "pdfdocs",
         "output_folder": "mddocs",
         "allowed_extensions": [
           "pdf"
         ]
       },
+
       "images": {
         "enabled": false,
         "dpi": 200,
@@ -31,6 +34,7 @@
           "Figure"
         ]
       },
+
       "chunking": {
         "markdown_first": true,
         "header_levels": 4,
@@ -38,42 +42,50 @@
         "chunk_size": 1000,
         "chunk_overlap": 200
       },
+
       "tables": {
         "enabled": true,
-        "source_dir": "prototype/content_list",
-        "chunk_dir": "prototype/clean_chunks",
-        "catalog_dir": "prototype/table_catalogs/raw",
-        "processed_dir": "prototype/table_catalogs/processed",
+        "source_dir": "two_document_prototype/content_list",
+        "chunk_dir": "two_document_prototype/clean_chunks",
+        "catalog_dir": "two_document_prototype/table_catalogs/raw",
+        "processed_dir": "two_document_prototype/table_catalogs/processed",
         "source_format": "auto",
         "link_to_chunks": true,
         "parse_recommendations": true,
         "render_mode": "conservative",
         "write_back_to_chunks": false,
-        "force": true
+        "force": false
       }
     },
+
     "knowledge_graph": {
       "pipeline": {
-        "phase": "entities",
-        "pdf_dir": "prototype/pdfdocs",
-        "work_root": "prototype",
-        "mineru_markdown_root": "prototype/mddocs",
+        "phase": "preprocess",
+
+        "pdf_dir": "two_document_prototype/pdfdocs",
+        "work_root": "two_document_prototype",
+        "mineru_markdown_root": "two_document_prototype/mddocs",
+
         "clear_neo4j_before_run": false,
+
         "force_toc": false,
         "force_markdown": false,
         "force_anchors": false,
         "force_chunks": false,
         "force_acronyms": false
       },
+
       "logging": {
         "enabled": true,
-        "dir": "prototype/logs"
+        "dir": "two_document_prototype/logs"
       },
+
       "providers": {
         "chat_provider": "openai",
         "embedding_provider": "openai",
         "local_files_only": false
       },
+
       "models": {
         "chat_model": "gpt-4.1-mini",
         "chat_model_path": "",
@@ -82,17 +94,20 @@
         "embedding_model_path": "",
         "chat_max_new_tokens": 2048
       },
+
       "acronyms": {
         "enabled": true,
         "sample_size": 0,
         "print_all": false
       },
+
       "text_cleaning": {
         "enabled": true,
         "force": false,
-        "clean_chunk_dir": "prototype/clean_chunks",
-        "audit_dir": "prototype/text_cleaning_audit/safe_v2_2"
+        "clean_chunk_dir": "two_document_prototype/clean_chunks",
+        "audit_dir": "two_document_prototype/text_cleaning_audit/safe_v2_2"
       },
+
       "retrieval_view": {
         "max_level": 4,
         "include_descendant_titles": true,
@@ -100,101 +115,138 @@
         "force": false,
         "output_dir": null
       },
+
       "graph_loader": {
         "batch_size": 200,
         "min_text_chars_to_embed": 20,
         "replace_existing_document": true
       },
+
       "entities": {
-        "use_section_text": true,
-        "max_sections": null,
-        "max_sections_per_batch": 2,
-        "max_batch_chars": 30000,
-        "emergency_max_single_chars": 12000,
-        "skip_processed": false,
-        "replace_section_mentions": true,
-        "use_acronym_validation": true,
-        "acronym_dir": null,
-        "export_review": true,
-        "review_output_dir": "prototype/entity_extraction_review",
-        "clear_previous_review": true,
-        "include_source_preview_in_review": false
-      },
+      "use_section_text": true,
+      "max_sections": null,
+      "max_sections_per_batch": 2,
+      "max_batch_chars": 30000,
+      "emergency_max_single_chars": 12000,
+
+      "skip_processed": false,
+      "replace_section_mentions": true,
+
+      "use_acronym_validation": true,
+      "acronym_dir": null,
+
+      "export_review": true,
+      "review_output_dir": "two_document_prototype/entity_extraction_review",
+
+      "clear_previous_review": false,
+
+      "include_source_preview_in_review": false
+    },
+
       "entity_disambiguation": {
         "delete_orphans": true
       },
+
       "entity_normalization": {
-      "enabled": false,
-      "doc_id": "Cardiomyopathies_2023",
-      "backend": "umls_api",
-      "model_name": "en_core_sci_sm",
-      "linker_name": "umls",
-      "threshold": 0.85,
-      "exact_threshold": 0.75,
-      "max_candidates": 3,
-      "use_acronyms": true,
-      "acronym_dir": null,
-      "force": false,
-      "dry_run": true,
-      "export_review": true,
-      "review_output_dir": "prototype/entity_normalization_review",
-      "create_same_as_edges": false,
-      "create_fuzzy_candidate_edges": false,
-      "fuzzy_threshold": 90,
-      "api_cache_dir": "prototype/umls_api_cache",
-      "api_timeout": 30,
-      "api_rate_limit_per_second": 2,
-      "local_files_only": false,
-      "min_available_memory_gb": 8.0
-    },
+        "enabled": false,
+
+        "doc_id": "Cardio-oncology_2022",
+
+        "backend": "umls_api",
+        "model_name": "en_core_sci_sm",
+        "linker_name": "umls",
+
+        "threshold": 0.85,
+        "exact_threshold": 0.75,
+        "max_candidates": 3,
+
+        "use_acronyms": true,
+        "acronym_dir": null,
+
+        "force": false,
+        "dry_run": true,
+
+        "export_review": true,
+        "review_output_dir": "two_document_prototype/entity_normalization_review",
+
+        "create_same_as_edges": false,
+        "create_fuzzy_candidate_edges": false,
+        "fuzzy_threshold": 90,
+
+        "api_cache_dir": "two_document_prototype/umls_api_cache",
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+
+        "local_files_only": false,
+        "min_available_memory_gb": 8.0
+      },
+
       "umls_connections": {
         "enabled": false,
-        "doc_id": "Cardiomyopathies_2023",
+
+        "doc_id": "Cardio-oncology_2022",
+
         "source_vocab": "SNOMEDCT_US",
+
         "output_dir": null,
         "cache_dir": null,
         "run_name": null,
+
         "write_neo4j": false,
         "replace_existing_connections": false,
         "materialization_mode": "none",
+
         "umls_version": "current",
+
         "api_timeout": 30,
         "api_rate_limit_per_second": 2,
         "api_page_size": 200,
+
         "max_cuis": null,
         "include_cuis": [],
         "skip_cuis": [],
+
         "max_relations_per_cui": 500,
         "max_source_ui_lookups_per_cui": 300,
         "write_partial_every": 25,
+
         "relation_profile": "core",
+
         "include_relation_names": [],
         "exclude_relation_names": [],
+
         "strong_relations_only": false,
         "ignore_negative_cache": false
       },
+
       "section_embeddings": {
         "max_sections": null,
         "batch_size": 8,
         "force_reembed": false,
+
         "include_title": true,
         "include_body": true,
+
         "max_chars_per_section": 8000,
         "allow_title_only": false
       },
+
       "section_vector_index": {
         "enabled": true,
         "name": "section_embedding_index",
         "similarity": "cosine",
         "recreate_if_mismatch": false
       },
+
       "runtime": {
         "clear_chat_cache_before_embeddings": true
       },
+
       "sanity_checks": {
         "sample_limit": 10,
         "log_samples": true
       },
+
       "quality": {
         "max_chunk_chars": 50000
       }
