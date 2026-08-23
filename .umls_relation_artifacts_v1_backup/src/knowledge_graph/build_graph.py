@@ -1085,39 +1085,9 @@ def process_umls_connections(
     """
     Run optional UMLS/SNOMED relation discovery and materialization.
 
-    ``mode=generic`` preserves the existing connection-discovery behavior.
-    ``mode=frozen_artifacts`` runs the versioned census/policy artifact workflow.
-    Phase A of the frozen workflow is read-only: it exports the current local
-    UMLS scope and regression-tests the historical CM artifacts offline.
+    The underlying module remains read-only by default. Neo4j relationship
+    writes happen only when config.umls_connections_write_neo4j is true.
     """
-    mode = str(getattr(config, "umls_connections_mode", "generic") or "generic")
-    mode = mode.strip().lower()
-
-    if mode == "frozen_artifacts":
-        if bool(getattr(config, "umls_connections_write_neo4j", False)):
-            raise ValueError(
-                "umls_connections.write_neo4j must remain false for the "
-                "frozen artifact workflow until an explicit materialization action"
-            )
-        from knowledge_graph.umls_relation_artifacts import (
-            run_umls_relation_artifact_workflow_from_config,
-        )
-
-        project_root = Path(__file__).resolve().parents[2]
-        work_root = Path(config.chunk_dir).resolve().parent
-        return run_umls_relation_artifact_workflow_from_config(
-            driver,
-            project_root=project_root,
-            work_root=work_root,
-            config=getattr(config, "umls_relation_artifact_config", None),
-        )
-
-    if mode != "generic":
-        raise ValueError(
-            f"Unsupported umls_connections.mode={mode!r}; "
-            "use 'generic' or 'frozen_artifacts'"
-        )
-
     from knowledge_graph.umls_connections import run_umls_connections
 
     write_neo4j = bool(getattr(config, "umls_connections_write_neo4j", False))

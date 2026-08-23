@@ -148,9 +148,6 @@ class GraphPipelineConfig:
     umls_connections_output_dir: Optional[Path] = None
     umls_connections_cache_dir: Optional[Path] = None
     umls_connections_run_name: Optional[str] = None
-    # Dispatch mode: legacy generic discovery or frozen artifact workflow.
-    umls_connections_mode: str = "generic"
-    umls_relation_artifact_config: Optional[dict[str, Any]] = None
     umls_connections_write_neo4j: bool = False
     umls_connections_replace_existing_connections: bool = False
     umls_connections_materialization_mode: str = "none"
@@ -629,8 +626,6 @@ def make_graph_pipeline_config(
     umls_connections_output_dir: Optional[Path] = None,
     umls_connections_cache_dir: Optional[Path] = None,
     umls_connections_run_name: Optional[str] = None,
-    umls_connections_mode: str = "generic",
-    umls_relation_artifact_config: Optional[dict[str, Any]] = None,
     umls_connections_write_neo4j: bool = False,
     umls_connections_replace_existing_connections: bool = False,
     umls_connections_materialization_mode: str = "none",
@@ -793,8 +788,6 @@ def make_graph_pipeline_config(
             if umls_connections_cache_dir else None
         ),
         umls_connections_run_name=umls_connections_run_name,
-        umls_connections_mode=umls_connections_mode,
-        umls_relation_artifact_config=umls_relation_artifact_config,
         umls_connections_write_neo4j=umls_connections_write_neo4j,
         umls_connections_replace_existing_connections=(
             umls_connections_replace_existing_connections
@@ -974,8 +967,6 @@ def main(
     umls_connections_output_dir: Optional[Path] = None,
     umls_connections_cache_dir: Optional[Path] = None,
     umls_connections_run_name: Optional[str] = None,
-    umls_connections_mode: str = "generic",
-    umls_relation_artifact_config: Optional[dict[str, Any]] = None,
     umls_connections_write_neo4j: bool = False,
     umls_connections_replace_existing_connections: bool = False,
     umls_connections_materialization_mode: str = "none",
@@ -1168,8 +1159,6 @@ def main(
         umls_connections_output_dir=umls_connections_output_dir,
         umls_connections_cache_dir=umls_connections_cache_dir,
         umls_connections_run_name=umls_connections_run_name,
-        umls_connections_mode=umls_connections_mode,
-        umls_relation_artifact_config=umls_relation_artifact_config,
         umls_connections_write_neo4j=umls_connections_write_neo4j,
         umls_connections_replace_existing_connections=(
             umls_connections_replace_existing_connections
@@ -1243,53 +1232,10 @@ def main(
             )
 
 
-    artifact_only_actions = {
-        "historical_regression",
-        "resolve_external_labels",
-        "build_current_final",
-        "build_current_generalized",
-    }
-    artifact_action = str(
-        (config.umls_relation_artifact_config or {}).get("action", "")
-    ).strip().lower()
-    if (
-        config.run_umls_connections
-        and config.umls_connections_mode == "frozen_artifacts"
-        and artifact_action in artifact_only_actions
-    ):
-        if clear_neo4j_before_run:
-            raise RuntimeError(
-                "clear_neo4j_before_run is incompatible with artifact-only "
-                f"UMLS action={artifact_action}"
-            )
-        # Bypass run_graph_pipeline entirely so these offline stages do not
-        # create or verify a Neo4j driver merely for interface compatibility.
-        from knowledge_graph.umls_relation_artifacts import (
-            run_umls_relation_artifact_workflow_from_config,
-        )
+    if clear_neo4j_before_run:
+        clear_graph_data()
 
-        logger.info(
-            "Running artifact-only UMLS action without Neo4j driver: %s",
-            artifact_action,
-        )
-        umls_stats = run_umls_relation_artifact_workflow_from_config(
-            None,
-            project_root=Path(__file__).resolve().parent.parent,
-            work_root=work_root.resolve(),
-            config=config.umls_relation_artifact_config,
-        )
-        summary = {
-            "documents_processed": 0,
-            "disambiguation_stats": None,
-            "normalization_stats": None,
-            "umls_connection_stats": umls_stats,
-            "section_vector_index_stats": None,
-            "sanity_summary": None,
-        }
-    else:
-        if clear_neo4j_before_run:
-            clear_graph_data()
-        summary = run_graph_pipeline(config)
+    summary = run_graph_pipeline(config)
     logger.info("Documents processed: %d", summary["documents_processed"])
 
     if summary.get("disambiguation_stats") is not None:
@@ -1523,20 +1469,6 @@ def _resolve_umls_connection_kwargs(
         "cache_dir"
     )
 
-    artifact_workflow = dict(config.get("artifact_workflow") or {})
-    artifact_workflow["action"] = _get_env_or_config_str(
-        "KG_UMLS_ARTIFACT_ACTION",
-        artifact_workflow.get("action"),
-        "scope",
-    ) or "scope"
-    artifact_sources_override = _get_optional_env("KG_UMLS_ARTIFACT_SOURCES")
-    if artifact_sources_override:
-        artifact_workflow["sources"] = [
-            item.strip()
-            for item in artifact_sources_override.split(",")
-            if item.strip()
-        ]
-
     return {
         "umls_connections_doc_id": _get_env_or_config_str(
             "KG_UMLS_CONNECTIONS_DOC_ID",
@@ -1561,12 +1493,6 @@ def _resolve_umls_connection_kwargs(
             "KG_UMLS_CONNECTIONS_RUN_NAME",
             config.get("run_name"),
         ),
-        "umls_connections_mode": _get_env_or_config_str(
-            "KG_UMLS_CONNECTIONS_MODE",
-            config.get("mode"),
-            "generic",
-        ) or "generic",
-        "umls_relation_artifact_config": artifact_workflow,
         "umls_connections_write_neo4j": _get_env_or_config_bool(
             "KG_UMLS_CONNECTIONS_WRITE_NEO4J",
             config.get("write_neo4j"),
@@ -2020,31 +1946,6 @@ def run_cli() -> Any:
         clear_neo4j_before_run=clear_neo4j,
         run_acronym_extraction=acronyms_enabled,
     )
-
-    # Artifact-only frozen UMLS actions should not trigger unrelated global
-    # Neo4j sanity reads. main() also bypasses run_graph_pipeline for these
-    # actions so no Neo4j driver is created merely for interface compatibility.
-    if (
-        phase == "umls_connections"
-        and umls_connection_kwargs.get("umls_connections_mode") == "frozen_artifacts"
-    ):
-        artifact_action = str(
-            (umls_connection_kwargs.get("umls_relation_artifact_config") or {}).get(
-                "action", ""
-            )
-        ).strip().lower()
-        if artifact_action in {
-            "historical_regression",
-            "resolve_external_labels",
-            "build_current_final",
-            "build_current_generalized",
-        }:
-            phase_kwargs["run_sanity_checks"] = False
-            logger.info(
-                "Skipping global Neo4j sanity checks for artifact-only UMLS "
-                "action=%s",
-                artifact_action,
-            )
 
     logger.info(
         "Resolved pipeline phase=%s | embedding_provider=%s | "
