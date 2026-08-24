@@ -385,8 +385,9 @@ class IndexManager(metaclass=Singleton):
         """Return deterministic backend-safe IDs for prebuilt records.
 
         Legacy Markdown chunks have no ``record_id`` and retain LangChain-generated
-        IDs. Prebuilt corpora must define ``record_id`` for every document. UUID5
-        keeps the ID deterministic while remaining valid for both FAISS and Qdrant.
+        IDs. Prebuilt records are scoped by ``retrieval_unit_key`` when available,
+        otherwise by ``source_key`` + ``record_id``. This prevents collisions when
+        two guidelines contain the same local record/section identifier.
         """
         record_ids = [
             str(document.metadata.get("record_id") or "").strip()
@@ -399,13 +400,29 @@ class IndexManager(metaclass=Singleton):
             )
         if not any(has_record_ids):
             return None
-        if len(record_ids) != len(set(record_ids)):
-            raise ValueError("Duplicate metadata['record_id'] values in indexing batch")
-        return [
-            str(uuid5(NAMESPACE_URL, f"cardiology-rag:{record_id}"))
-            for record_id in record_ids
-        ]
 
+        identities: List[str] = []
+        for document, record_id in zip(documents, record_ids):
+            retrieval_unit_key = str(
+                document.metadata.get("retrieval_unit_key") or ""
+            ).strip()
+            if retrieval_unit_key:
+                identities.append(retrieval_unit_key)
+                continue
+
+            source_key = str(document.metadata.get("source_key") or "").strip()
+            identities.append(
+                f"{source_key}::{record_id}" if source_key else record_id
+            )
+
+        if len(identities) != len(set(identities)):
+            raise ValueError(
+                "Duplicate document-scoped retrieval identities in indexing batch"
+            )
+        return [
+            str(uuid5(NAMESPACE_URL, f"cardiology-rag:{identity}"))
+            for identity in identities
+        ]
     def create_index(self) -> None:
         try:
             self.vectorstore.create_vectorstore(embeddings_model=self.embeddings)
@@ -496,7 +513,7 @@ class IndexManager(metaclass=Singleton):
         Prebuilt records are replaced by a stable ``metadata['source_key']``
         independent of the local filesystem path. Legacy Markdown chunks keep
         the historical filename-based replacement. Deterministic vector-store
-        IDs continue to derive from ``metadata['record_id']``.
+        IDs derive from the document-scoped retrieval identity.
         """
         documents = self._normalize_documents(doc)
         stable_ids = self._stable_vector_ids(documents)

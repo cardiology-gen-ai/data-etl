@@ -1,0 +1,381 @@
+{
+  "cardiology_protocols": {
+    "indexing": {
+      "name": "all_mini_cardiology_protocols_two_docs",
+      "description": "Documents containing medical protocols for cardiologic patients.",
+      "type": "faiss",
+      "distance": "cosine",
+      "alias": "faiss_cardiology_two_docs_current"
+    },
+    "embeddings": {
+      "deployment": "sentence-transformers/all-MiniLM-L6-v2",
+      "kwargs": {
+        "device": "cpu"
+      }
+    },
+    "preprocessing": {
+      "storage": {
+        "parent_folder": "two_document_prototype",
+        "input_folder": "pdfdocs",
+        "output_folder": "mddocs",
+        "allowed_extensions": [
+          "pdf"
+        ]
+      },
+      "images": {
+        "enabled": false,
+        "dpi": 200,
+        "tol": 40.0,
+        "pad": 16.0,
+        "caption_keywords": [
+          "Figure"
+        ]
+      },
+      "chunking": {
+        "markdown_first": true,
+        "header_levels": 4,
+        "splitter": "recursive",
+        "chunk_size": 1000,
+        "chunk_overlap": 200
+      },
+      "tables": {
+        "enabled": true,
+        "source_dir": "two_document_prototype/content_list",
+        "chunk_dir": "two_document_prototype/clean_chunks",
+        "catalog_dir": "two_document_prototype/table_catalogs/raw",
+        "processed_dir": "two_document_prototype/table_catalogs/processed",
+        "source_format": "auto",
+        "link_to_chunks": true,
+        "parse_recommendations": true,
+        "render_mode": "conservative",
+        "write_back_to_chunks": false,
+        "force": false
+      }
+    },
+    "knowledge_graph": {
+      "pipeline": {
+        "phase": "preprocess",
+        "pdf_dir": "two_document_prototype/pdfdocs",
+        "work_root": "two_document_prototype",
+        "mineru_markdown_root": "two_document_prototype/mddocs",
+        "clear_neo4j_before_run": false,
+        "force_toc": false,
+        "force_markdown": false,
+        "force_anchors": false,
+        "force_chunks": false,
+        "force_acronyms": false
+      },
+      "logging": {
+        "enabled": true,
+        "dir": "two_document_prototype/logs"
+      },
+      "providers": {
+        "chat_provider": "openai",
+        "embedding_provider": "openai",
+        "local_files_only": false
+      },
+      "models": {
+        "chat_model": "gpt-4.1-mini",
+        "chat_model_path": "",
+        "embedding_model": "text-embedding-3-small",
+        "embedding_dimensions": null,
+        "embedding_model_path": "",
+        "chat_max_new_tokens": 2048
+      },
+      "acronyms": {
+        "enabled": true,
+        "sample_size": 0,
+        "print_all": false
+      },
+      "text_cleaning": {
+        "enabled": true,
+        "force": false,
+        "clean_chunk_dir": "two_document_prototype/clean_chunks",
+        "audit_dir": "two_document_prototype/text_cleaning_audit/safe_v2_2"
+      },
+      "retrieval_view": {
+        "max_level": 4,
+        "include_descendant_titles": true,
+        "include_section_ids_in_titles": true,
+        "force": false,
+        "output_dir": null
+      },
+      "graph_loader": {
+        "batch_size": 200,
+        "min_text_chars_to_embed": 20,
+        "replace_existing_document": true
+      },
+      "entities": {
+        "use_section_text": true,
+        "max_sections": null,
+        "max_sections_per_batch": 2,
+        "max_batch_chars": 30000,
+        "emergency_max_single_chars": 12000,
+        "skip_processed": true,
+        "replace_section_mentions": true,
+        "use_acronym_validation": true,
+        "acronym_dir": null,
+        "export_review": true,
+        "review_output_dir": "two_document_prototype/entity_extraction_review",
+        "clear_previous_review": false,
+        "include_source_preview_in_review": false
+      },
+      "entity_disambiguation": {
+        "delete_orphans": true
+      },
+      "entity_normalization": {
+        "enabled": false,
+        "doc_id": null,
+        "backend": "umls_api",
+        "model_name": "en_core_sci_sm",
+        "linker_name": "umls",
+        "threshold": 0.85,
+        "exact_threshold": 0.75,
+        "max_candidates": 3,
+        "use_acronyms": true,
+        "acronym_dir": null,
+        "force": false,
+        "dry_run": false,
+        "export_review": true,
+        "review_output_dir": "two_document_prototype/entity_normalization_review",
+        "create_same_as_edges": false,
+        "create_fuzzy_candidate_edges": false,
+        "fuzzy_threshold": 90,
+        "api_cache_dir": "two_document_prototype/umls_api_cache",
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+        "local_files_only": false,
+        "min_available_memory_gb": 8.0
+      },
+      "umls_connections": {
+        "enabled": false,
+        "mode": "frozen_artifacts",
+        "artifact_workflow": {
+          "action": "scope",
+          "scope_name": "two_document_prototype",
+          "document_ids": [
+            "Cardiomyopathies_2023",
+            "Cardio-oncology_2022"
+          ],
+          "previous_scope_path": "prototype/umls_connections/cm_bridge_feasibility_v2/inputs/local_cui_universe_v1.json",
+          "expected_cui_count": 1007,
+          "expected_new_cui_count": 427,
+          "expected_retired_cui_count": 4,
+          "umls_version": "2026AA",
+          "sources": [
+            "SNOMEDCT_US",
+            "NCI",
+            "OMIM",
+            "RXNORM",
+            "GO",
+            "LNC"
+          ],
+          "max_relations_per_cui": 1000,
+          "historical_regression": {
+            "direct_census_dir": "prototype/umls_connections/cm_direct_local_census_v1_2",
+            "direct_policy": "prototype/umls_connections/config/direct_relation_policy_v1.json",
+            "expected_direct_artifact_dir": "prototype/umls_connections/cm_direct_local_artifact_v1",
+            "bridge_root": "prototype/umls_connections/cm_bridge_feasibility_v2/b0_full_v2_1",
+            "historical_scope": "prototype/umls_connections/cm_bridge_feasibility_v2/inputs/local_cui_universe_v1.json",
+            "bridge_policy": "prototype/umls_connections/cm_bridge_feasibility_v2/config/relation_pair_policy_v1_1.json",
+            "expected_bridge_artifact_dir": "prototype/umls_connections/cm_bridge_feasibility_v2/ontology_bridge_artifact_v1_1",
+            "external_label_map": "prototype/umls_connections/cm_bridge_feasibility_v2/external_cui_labels_v1.json",
+            "direct_builder": "prototype/umls_connections/build_direct_local_artifact_v1.py",
+            "bridge_builder": "prototype/umls_connections/build_ontology_bridge_artifact_v1_1.py"
+          },
+          "artifact_build": {
+            "direct_census_script": "prototype/umls_connections/direct_local_census_v1.py",
+            "bridge_prelabel_builder": "prototype/umls_connections/build_ontology_bridge_artifact_v1.py",
+            "bridge_prelabel_policy": "prototype/umls_connections/cm_bridge_feasibility_v2/config/relation_pair_policy_v1.json",
+            "bridge_final_builder": "prototype/umls_connections/build_ontology_bridge_artifact_v1_1.py",
+            "bridge_final_policy": "prototype/umls_connections/cm_bridge_feasibility_v2/config/relation_pair_policy_v1_1.json",
+            "bridge_generalized_policy": "prototype/umls_connections/config/relation_pair_policy_v2_general.json",
+            "frozen_v1_1_policy_sha256": "791f4451f21fd2e188b0a0946a47227be8ef753d37bbe9ac3f29f9d14c5661ec",
+            "frozen_c3_manifest_sha256": "9680795df58764adc01f270ba327d176fd7b62fa922deb2dd9d471c7469ee624",
+            "direct_unmapped_relation_mode": "reject",
+            "incremental_direct_rebuilder": "prototype/umls_connections/incremental_direct_rebuild_v1.py",
+            "direct_generalized_policy": "prototype/umls_connections/config/direct_relation_policy_v2_general.json"
+          },
+          "common_policy_freeze": {
+            "schema_version": "umls_common_policy_scope_freeze_v1",
+            "status": "FROZEN",
+            "manifest_path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/manifest.json",
+            "scope_path": "two_document_prototype/umls_relation_artifacts/inputs/local_umls_scope_v1.json",
+            "scope_sha256": "b77b7309a8a8070481eabb2abcd447660560b8d5012ac0a46c2aa725b0080ac3",
+            "trusted_cui_count": 1007,
+            "direct": {
+              "policy_path": "prototype/umls_connections/config/direct_relation_policy_v2_general.json",
+              "policy_sha256": "a0e8dd7cf0b013907f770f8bdf32b490b044f0699554c0db61798b6b2f497b49",
+              "artifact_dir": "two_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_common",
+              "candidate_pair_count": 276,
+              "balanced_pair_count": 194,
+              "retrieval_strong_path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/retrieval/direct_strong.json",
+              "retrieval_balanced_path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/retrieval/direct_balanced.json"
+            },
+            "bridge": {
+              "policy_path": "prototype/umls_connections/config/relation_pair_policy_v2_general.json",
+              "policy_sha256": "6729717f637cd9a8d81202056ec9ec59f0dfaf179c667a04ac634dba6e3e6af7",
+              "artifact_dir": "two_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact",
+              "candidate_pair_count": 20576,
+              "balanced_pair_count": 4301,
+              "retrieval_strong_path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/retrieval/bridge_strong.json",
+              "retrieval_balanced_path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/retrieval/bridge_balanced.json"
+            },
+            "safety": {
+              "umls_api_calls": false,
+              "neo4j_reads": false,
+              "neo4j_writes": false,
+              "retrieval_metrics_used": false,
+              "benchmark_tuned": false,
+              "policy_retuned_for_two_doc": false
+            }
+          },
+          "materialization_freeze": {
+            "schema_version": "umls_relation_materialization_freeze_v1",
+            "status": "FROZEN",
+            "source_common_policy_freeze": {
+              "path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/manifest.json",
+              "sha256": "1c65c85ac3c6dd6bdd7e9478d65f62cf5b23cffb4c97ed098b9bf57936321634",
+              "schema_version": "umls_common_policy_scope_freeze_v1"
+            },
+            "scope": {
+              "path": "two_document_prototype/umls_relation_artifacts/inputs/local_umls_scope_v1.json",
+              "sha256": "b77b7309a8a8070481eabb2abcd447660560b8d5012ac0a46c2aa725b0080ac3",
+              "expected_cui_count": 1007,
+              "document_ids": [
+                "Cardio-oncology_2022",
+                "Cardiomyopathies_2023"
+              ]
+            },
+            "direct": {
+              "artifact_dir": "two_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_common",
+              "manifest_path": "two_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_common/manifest.json",
+              "manifest_sha256": "6bdf03268bd188eeb7aab86d36b939d1b89f77dd027f61c03779366891234f80",
+              "pair_evidence_path": "two_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_common/pair_evidence.jsonl",
+              "pair_evidence_sha256": "59d436fd8c16fb1cc11774e76ab030bafc99e966c82ea465f2270f80afc627e0",
+              "policy_path": "prototype/umls_connections/config/direct_relation_policy_v2_general.json",
+              "policy_sha256": "a0e8dd7cf0b013907f770f8bdf32b490b044f0699554c0db61798b6b2f497b49",
+              "policy_snapshot_path": "two_document_prototype/umls_relation_artifacts/materialization_freeze_v1/policy_snapshots/direct_relation_policy_v2_general.json",
+              "policy_snapshot_sha256": "a0e8dd7cf0b013907f770f8bdf32b490b044f0699554c0db61798b6b2f497b49",
+              "profile": "balanced",
+              "materialized_tiers": [
+                "STRONG",
+                "MEDIUM"
+              ],
+              "expected_all_pair_count": 276,
+              "expected_materialized_pair_count": 194,
+              "expected_tier_counts": {
+                "STRONG": 35,
+                "MEDIUM": 159,
+                "WEAK": 70,
+                "REJECT": 12
+              },
+              "payload_path": "two_document_prototype/umls_relation_artifacts/materialization_freeze_v1/payload/umls_direct_balanced_v2.jsonl",
+              "payload_sha256": "3e7d4375ce890b5cbe61b2c263950ff4e69392c308243aec0a17574cf5b42e01"
+            },
+            "bridge": {
+              "artifact_dir": "two_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact",
+              "manifest_path": "two_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact/manifest.json",
+              "manifest_sha256": "a824b748a26b351a0d95bd89b35b4c3f64aa2f27685c9324a24ada1057247043",
+              "pair_evidence_path": "two_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact/pair_evidence.jsonl",
+              "pair_evidence_sha256": "e2ca3dc841b84fba0413eef2f44095e5e8b00de16f274ae7c12c567cdfa55c33",
+              "policy_path": "prototype/umls_connections/config/relation_pair_policy_v2_general.json",
+              "policy_sha256": "6729717f637cd9a8d81202056ec9ec59f0dfaf179c667a04ac634dba6e3e6af7",
+              "policy_snapshot_path": "two_document_prototype/umls_relation_artifacts/materialization_freeze_v1/policy_snapshots/relation_pair_policy_v2_general.json",
+              "policy_snapshot_sha256": "6729717f637cd9a8d81202056ec9ec59f0dfaf179c667a04ac634dba6e3e6af7",
+              "profile": "balanced",
+              "materialized_tiers": [
+                "STRONG",
+                "MEDIUM"
+              ],
+              "expected_all_pair_count": 20576,
+              "expected_materialized_pair_count": 4301,
+              "expected_tier_counts": {
+                "STRONG": 338,
+                "MEDIUM": 3963,
+                "WEAK": 14257,
+                "REJECT": 2018
+              },
+              "payload_path": "two_document_prototype/umls_relation_artifacts/materialization_freeze_v1/payload/umls_bridge_balanced_v2_1.jsonl",
+              "payload_sha256": "8655335ef5e08642769f29eec7776421fe09d2508cd523803fce2855f1fde384"
+            },
+            "safety": {
+              "umls_api_calls": false,
+              "neo4j_reads": false,
+              "neo4j_writes": false,
+              "retrieval_metrics_used": false,
+              "benchmark_tuned": false,
+              "weak_edges_materialized": false,
+              "reject_edges_materialized": false
+            },
+            "manifest_path": "two_document_prototype/umls_relation_artifacts/materialization_freeze_v1/manifest.json"
+          }
+        },
+        "doc_id": null,
+        "source_vocab": "SNOMEDCT_US",
+        "output_dir": null,
+        "cache_dir": null,
+        "run_name": null,
+        "write_neo4j": false,
+        "replace_existing_connections": false,
+        "materialization_mode": "none",
+        "umls_version": "2026AA",
+        "api_timeout": 30,
+        "api_rate_limit_per_second": 2,
+        "api_page_size": 200,
+        "max_cuis": null,
+        "include_cuis": [],
+        "skip_cuis": [],
+        "max_relations_per_cui": 500,
+        "max_source_ui_lookups_per_cui": 300,
+        "write_partial_every": 25,
+        "relation_profile": "core",
+        "include_relation_names": [],
+        "exclude_relation_names": [],
+        "strong_relations_only": false,
+        "ignore_negative_cache": false
+      },
+      "section_embeddings": {
+        "max_sections": null,
+        "batch_size": 8,
+        "force_reembed": false,
+        "include_title": true,
+        "include_body": true,
+        "max_chars_per_section": 8000,
+        "allow_title_only": false
+      },
+      "section_vector_index": {
+        "enabled": true,
+        "name": "section_embedding_index",
+        "similarity": "cosine",
+        "recreate_if_mismatch": false
+      },
+      "runtime": {
+        "clear_chat_cache_before_embeddings": true
+      },
+      "sanity_checks": {
+        "sample_limit": 10,
+        "log_samples": true
+      },
+      "quality": {
+        "max_chunk_chars": 50000
+      }
+    },
+    "experiment": {
+      "scope_id": "cm_co_two_docs_v1",
+      "description": "Controlled two-document corpus: Cardiomyopathies 2023 + Cardio-Oncology 2022.",
+      "document_ids": [
+        "Cardiomyopathies_2023",
+        "Cardio-oncology_2022"
+      ],
+      "relation_policy_contract": {
+        "status": "FROZEN",
+        "manifest_path": "two_document_prototype/umls_relation_artifacts/common_policy_freeze_v1/manifest.json",
+        "direct_policy_version": "v2",
+        "direct_policy_sha256": "a0e8dd7cf0b013907f770f8bdf32b490b044f0699554c0db61798b6b2f497b49",
+        "bridge_policy_version": "v2.1",
+        "bridge_policy_sha256": "6729717f637cd9a8d81202056ec9ec59f0dfaf179c667a04ac634dba6e3e6af7"
+      }
+    }
+  }
+}

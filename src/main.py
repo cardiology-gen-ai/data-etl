@@ -187,6 +187,90 @@ def _artifact_metadata(source_path: Path) -> dict[str, Any]:
     return metadata
 
 
+def _resolve_prebuilt_sources(
+    *,
+    config_path: Path,
+    run_config: dict[str, Any],
+    mode: str,
+    source_type_factory: Any,
+) -> list[dict[str, Any]]:
+    """Normalize one or many prebuilt sources into a strict corpus definition."""
+    if mode == "prebuilt":
+        source_value = run_config.get("source_path")
+        source_type_value = run_config.get("source_type")
+        if not source_value or not source_type_value:
+            raise ValueError(
+                "Prebuilt mode requires run.source_path and run.source_type"
+            )
+        raw_sources: list[dict[str, Any]] = [
+            {
+                "source_path": source_value,
+                "source_type": source_type_value,
+                "expected_chunk_count": run_config.get("expected_chunk_count"),
+            }
+        ]
+    elif mode == "prebuilt_multi":
+        configured = run_config.get("sources")
+        if not isinstance(configured, list) or not configured:
+            raise ValueError(
+                "prebuilt_multi mode requires a non-empty run.sources list"
+            )
+        if not all(isinstance(item, dict) for item in configured):
+            raise TypeError("Every run.sources item must be a JSON object")
+        raw_sources = [dict(item) for item in configured]
+    else:
+        raise ValueError(f"Unsupported prebuilt mode: {mode!r}")
+
+    resolved: list[dict[str, Any]] = []
+    seen_source_keys: set[str] = set()
+    for source_index, item in enumerate(raw_sources):
+        source_value = item.get("source_path")
+        source_type_value = item.get("source_type")
+        if not source_value or not source_type_value:
+            raise ValueError(
+                f"run.sources[{source_index}] requires source_path and source_type"
+            )
+
+        source_path = _resolve_from_config(config_path, source_value)
+        if not source_path.is_file():
+            raise FileNotFoundError(source_path)
+
+        source_type = source_type_factory(source_type_value)
+        artifact = _artifact_metadata(source_path)
+        doc_id = str(artifact.get("doc_id") or "").strip()
+        if not doc_id:
+            raise ValueError(
+                f"Cannot determine doc_id from prebuilt artifact: {source_path}"
+            )
+
+        source_key = f"{doc_id}::{source_type.value}"
+        if source_key in seen_source_keys:
+            raise ValueError(
+                "Duplicate document/source_type in configured corpus: "
+                f"{source_key}"
+            )
+        seen_source_keys.add(source_key)
+
+        expected_count = item.get("expected_chunk_count")
+        if expected_count is not None:
+            expected_count = int(expected_count)
+            if expected_count < 1:
+                raise ValueError(
+                    f"expected_chunk_count must be >= 1 for {source_key}"
+                )
+
+        resolved.append(
+            {
+                "source_path": source_path,
+                "source_type": source_type.value,
+                "source_key": source_key,
+                "artifact": artifact,
+                "expected_chunk_count": expected_count,
+            }
+        )
+    return resolved
+
+
 def _index_output_files(processor: Any, base_dir: Path) -> dict[str, Any]:
     folder = Path(processor.config.indexing.folder)
     if not folder.is_absolute():
@@ -213,36 +297,39 @@ def _write_manifest(
     *,
     processor: Any,
     config_path: Path,
-    source_path: Path,
-    source_type: str,
-    indexed_count: int,
+    mode: str,
+    sources: list[dict[str, Any]],
 ) -> Path:
     base_dir = config_path.parent.resolve()
-    artifact = _artifact_metadata(source_path)
-    source_key = None
-    if artifact.get("doc_id"):
-        source_key = f"{artifact['doc_id']}::{source_type}"
+    manifest_sources: list[dict[str, Any]] = []
 
+    for source in sources:
+        source_path = Path(source["source_path"])
+        item = {
+            "path": _display_path(source_path, base_dir),
+            "type": source["source_type"],
+            "source_key": source["source_key"],
+            "sha256": _sha256(source_path),
+            "artifact": source["artifact"],
+            "indexed_chunk_count": int(source["indexed_chunk_count"]),
+        }
+        if source.get("expected_chunk_count") is not None:
+            item["expected_chunk_count"] = int(source["expected_chunk_count"])
+        manifest_sources.append(item)
+
+    total_indexed = sum(item["indexed_chunk_count"] for item in manifest_sources)
     manifest = {
-        "schema_version": "rag_index_build_v2",
+        "schema_version": "rag_index_build_v3",
         "build_timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "app_id": processor.app_id,
-        "mode": "prebuilt",
+        "mode": mode,
         "config": {
             "path": _display_path(config_path, base_dir),
             "sha256": _sha256(config_path),
         },
-        "source": {
-            "path": _display_path(source_path, base_dir),
-            "type": source_type,
-            "source_key": source_key,
-            "sha256": _sha256(source_path),
-            "artifact": artifact,
-        },
-        "indexed_chunk_count": indexed_count,
-        "stored_vector_count": (
-            processor.index_manager.get_n_documents_in_vectorstore()
-        ),
+        "sources": manifest_sources,
+        "indexed_chunk_count": total_indexed,
+        "stored_vector_count": processor.index_manager.get_n_documents_in_vectorstore(),
         "index": {
             "name": processor.config.indexing.name,
             "folder": str(processor.config.indexing.folder),
@@ -261,6 +348,9 @@ def _write_manifest(
         },
         "git": _git_provenance(base_dir),
     }
+
+    if mode == "prebuilt" and len(manifest_sources) == 1:
+        manifest["source"] = manifest_sources[0]
 
     output_path = Path(processor.config.indexing.folder) / "build_manifest.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -282,7 +372,11 @@ def main(argv: list[str] | None = None) -> int:
     # config directory, regardless of where the CLI command was launched.
     os.chdir(config_dir)
     try:
-        load_dotenv(dotenv_path=config_dir / ".env")
+        env_path = config_dir / ".env"
+        if not env_path.is_file():
+            repo_env = Path(__file__).resolve().parents[1] / ".env"
+            env_path = repo_env if repo_env.is_file() else env_path
+        load_dotenv(dotenv_path=env_path)
         os.environ["CONFIG_PATH"] = str(config_path)
 
         run_config = _load_run_config(config_path, args.app_id)
@@ -308,55 +402,92 @@ def main(argv: list[str] | None = None) -> int:
             processor.perform_etl(force_md_conv=args.force_md_conv)
             return 0
 
-        if mode != "prebuilt":
+        if mode not in {"prebuilt", "prebuilt_multi"}:
             raise ValueError(
                 f"Unsupported run mode for {args.app_id}: {mode!r}"
             )
 
-        source_value = run_config.get("source_path")
-        source_type_value = run_config.get("source_type")
-        if not source_value or not source_type_value:
-            raise ValueError(
-                "Prebuilt mode requires run.source_path and run.source_type"
-            )
+        sources = _resolve_prebuilt_sources(
+            config_path=config_path,
+            run_config=run_config,
+            mode=mode,
+            source_type_factory=PrebuiltChunkSource,
+        )
 
-        source_path = _resolve_from_config(config_path, source_value)
-        source_type = PrebuiltChunkSource(source_type_value)
-
-        # Avoid leaving a stale success manifest when a rebuild fails midway.
         manifest_path = Path(processor.config.indexing.folder) / "build_manifest.json"
         manifest_path.unlink(missing_ok=True)
 
-        indexed_count = processor.process_prebuilt_chunks(
-            source_path=source_path,
-            source_type=source_type,
+        indexed_sources: list[dict[str, Any]] = []
+        for source in sources:
+            source_path = Path(source["source_path"])
+            source_type = PrebuiltChunkSource(source["source_type"])
+            indexed_count = processor.process_prebuilt_chunks(
+                source_path=source_path,
+                source_type=source_type,
+            )
+
+            expected_count = source.get("expected_chunk_count")
+            if expected_count is not None and indexed_count != int(expected_count):
+                raise RuntimeError(
+                    "Indexed chunk count differs from source expectation: "
+                    f"source={source['source_key']}, expected={expected_count}, "
+                    f"actual={indexed_count}"
+                )
+
+            indexed_sources.append(
+                {**source, "indexed_chunk_count": indexed_count}
+            )
+
+        total_indexed = sum(
+            int(source["indexed_chunk_count"]) for source in indexed_sources
         )
         stored_count = processor.index_manager.get_n_documents_in_vectorstore()
 
-        expected_count = run_config.get("expected_chunk_count")
-        if expected_count is not None and indexed_count != int(expected_count):
+        expected_total = run_config.get("expected_total_chunk_count")
+        if expected_total is not None and total_indexed != int(expected_total):
             raise RuntimeError(
-                "Indexed chunk count differs from config expectation: "
-                f"expected={expected_count}, actual={indexed_count}"
+                "Indexed corpus size differs from config expectation: "
+                f"expected={expected_total}, actual={total_indexed}"
             )
-        if expected_count is not None and stored_count != int(expected_count):
+        if expected_total is not None and stored_count != int(expected_total):
             raise RuntimeError(
                 "Stored vector count differs from config expectation: "
-                f"expected={expected_count}, actual={stored_count}"
+                f"expected={expected_total}, actual={stored_count}"
             )
+
+        if mode == "prebuilt_multi" and stored_count != total_indexed:
+            raise RuntimeError(
+                "Multi-document index contains vectors outside the configured corpus "
+                "or is missing configured vectors: "
+                f"configured/indexed={total_indexed}, stored={stored_count}. "
+                "Re-run with --recreate-index for a clean corpus build."
+            )
+
+        if mode == "prebuilt" and sources[0].get("expected_chunk_count") is not None:
+            expected_count = int(sources[0]["expected_chunk_count"])
+            if stored_count != expected_count:
+                raise RuntimeError(
+                    "Stored vector count differs from config expectation: "
+                    f"expected={expected_count}, actual={stored_count}"
+                )
 
         manifest_path = _write_manifest(
             processor=processor,
             config_path=config_path,
-            source_path=source_path,
-            source_type=source_type.value,
-            indexed_count=indexed_count,
+            mode=mode,
+            sources=indexed_sources,
         )
 
         print(f"app_id: {args.app_id}")
-        print(f"source: {_display_path(source_path, config_dir)}")
-        print(f"source_type: {source_type.value}")
-        print(f"indexed_chunks: {indexed_count}")
+        for source in indexed_sources:
+            print(
+                "source: "
+                f"{_display_path(Path(source['source_path']), config_dir)} | "
+                f"source_type={source['source_type']} | "
+                f"source_key={source['source_key']} | "
+                f"indexed_chunks={source['indexed_chunk_count']}"
+            )
+        print(f"indexed_chunks_total: {total_indexed}")
         print(f"stored_vectors: {stored_count}")
         print(f"index_folder: {processor.config.indexing.folder}")
         print(f"manifest: {manifest_path}")

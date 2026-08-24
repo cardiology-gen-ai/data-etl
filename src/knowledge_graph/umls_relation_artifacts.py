@@ -3221,6 +3221,9 @@ def run_umls_relation_artifact_workflow(
     external_label_max_retries: int = 2,
     external_label_max_consecutive_transient_failures: int = 10,
     external_label_resume: bool = True,
+    materialization_freeze_config: Mapping[str, Any] | None = None,
+    write_neo4j: bool = False,
+    replace_existing_connections: bool = False,
 ) -> dict[str, Any]:
     """Pipeline entry point for the frozen relation-artifact workflow.
 
@@ -3240,6 +3243,7 @@ def run_umls_relation_artifact_workflow(
         "resolve_external_labels",
         "build_current_final",
         "build_current_generalized",
+        "materialize_frozen",
     }
     if action not in allowed:
         raise ValueError(
@@ -3451,6 +3455,25 @@ def run_umls_relation_artifact_workflow(
         )
         result["current_generalized_v2"] = generalized
 
+    if action == "materialize_frozen":
+        if materialization_freeze_config is None:
+            raise ValueError(
+                "materialization_freeze_config is required for materialize_frozen"
+            )
+        from knowledge_graph.umls_frozen_materialization import (
+            run_frozen_relation_materialization,
+        )
+
+        materialization = run_frozen_relation_materialization(
+            driver,
+            project_root=project_root,
+            config=materialization_freeze_config,
+            write_neo4j=bool(write_neo4j),
+            replace_existing_connections=bool(replace_existing_connections),
+        )
+        result["neo4j_writes"] = bool(materialization.get("neo4j_writes"))
+        result["materialization"] = materialization
+
     return result
 
 
@@ -3476,6 +3499,8 @@ def run_umls_relation_artifact_workflow_from_config(
     project_root: Path,
     work_root: Path,
     config: Mapping[str, Any] | None,
+    write_neo4j: bool = False,
+    replace_existing_connections: bool = False,
 ) -> dict[str, Any]:
     """Resolve the config-owned Phase-A artifact workflow and execute it."""
 
@@ -3677,6 +3702,16 @@ def run_umls_relation_artifact_workflow_from_config(
             cache_dir=cache_dir,
         )
 
+    materialization_freeze_cfg: Mapping[str, Any] | None = None
+    if action.lower() == "materialize_frozen":
+        configured_freeze = cfg.get("materialization_freeze")
+        if not isinstance(configured_freeze, Mapping):
+            raise ValueError(
+                "umls_connections.artifact_workflow.materialization_freeze "
+                "must be configured for materialize_frozen"
+            )
+        materialization_freeze_cfg = configured_freeze
+
     api_cfg = (
         external_label_cfg
         if action.lower() == "resolve_external_labels"
@@ -3716,6 +3751,9 @@ def run_umls_relation_artifact_workflow_from_config(
             external_label_cfg.get("max_consecutive_transient_failures") or 10
         ),
         external_label_resume=bool(external_label_cfg.get("resume", True)),
+        materialization_freeze_config=materialization_freeze_cfg,
+        write_neo4j=bool(write_neo4j),
+        replace_existing_connections=bool(replace_existing_connections),
     )
 
     expected_cui_count = cfg.get("expected_cui_count")

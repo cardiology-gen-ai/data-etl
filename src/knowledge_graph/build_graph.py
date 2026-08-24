@@ -1094,11 +1094,24 @@ def process_umls_connections(
     mode = mode.strip().lower()
 
     if mode == "frozen_artifacts":
-        if bool(getattr(config, "umls_connections_write_neo4j", False)):
+        artifact_config = getattr(config, "umls_relation_artifact_config", None) or {}
+        artifact_action = str(artifact_config.get("action", "") or "").strip().lower()
+        write_neo4j = bool(getattr(config, "umls_connections_write_neo4j", False))
+        replace_existing = bool(
+            getattr(config, "umls_connections_replace_existing_connections", False)
+        )
+
+        if artifact_action != "materialize_frozen" and write_neo4j:
             raise ValueError(
-                "umls_connections.write_neo4j must remain false for the "
-                "frozen artifact workflow until an explicit materialization action"
+                "umls_connections.write_neo4j=true is allowed in frozen_artifacts "
+                "mode only for artifact_workflow.action=materialize_frozen"
             )
+        if artifact_action != "materialize_frozen" and replace_existing:
+            raise ValueError(
+                "replace_existing_connections=true is allowed in frozen_artifacts "
+                "mode only for artifact_workflow.action=materialize_frozen"
+            )
+
         from knowledge_graph.umls_relation_artifacts import (
             run_umls_relation_artifact_workflow_from_config,
         )
@@ -1109,7 +1122,9 @@ def process_umls_connections(
             driver,
             project_root=project_root,
             work_root=work_root,
-            config=getattr(config, "umls_relation_artifact_config", None),
+            config=artifact_config,
+            write_neo4j=write_neo4j,
+            replace_existing_connections=replace_existing,
         )
 
     if mode != "generic":

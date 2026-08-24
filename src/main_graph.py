@@ -357,6 +357,53 @@ def _resolve_config_path_from_env() -> Path:
     return Path(raw).expanduser().resolve()
 
 
+def _resolve_project_env_path(project_root: Path) -> tuple[Path, bool]:
+    """Resolve the dotenv file selected for this run.
+
+    ``KG_ENV_FILE`` lets experiments select a corpus/database environment
+    without editing the repository default ``.env``. When a custom env file is
+    explicitly selected, its values override stale exported variables by
+    default. Set ``KG_ENV_OVERRIDE=false`` to opt out.
+    """
+
+    raw_env_file = os.environ.get("KG_ENV_FILE")
+    if raw_env_file and raw_env_file.strip():
+        env_path = Path(raw_env_file.strip()).expanduser()
+        if not env_path.is_absolute():
+            env_path = (project_root / env_path).resolve()
+        else:
+            env_path = env_path.resolve()
+        default_override = True
+    else:
+        env_path = (project_root / ".env").resolve()
+        default_override = False
+
+    raw_override = os.environ.get("KG_ENV_OVERRIDE")
+    if raw_override is None or not raw_override.strip():
+        override = default_override
+    else:
+        normalized = raw_override.strip().lower()
+        if normalized in {"1", "true", "yes", "y", "on"}:
+            override = True
+        elif normalized in {"0", "false", "no", "n", "off"}:
+            override = False
+        else:
+            raise ValueError(
+                "KG_ENV_OVERRIDE must be one of true/false, 1/0, yes/no, on/off"
+            )
+
+    if not env_path.is_file():
+        raise FileNotFoundError(f"Environment file not found: {env_path}")
+
+    return env_path, override
+
+
+def _load_project_env(project_root: Path) -> tuple[Path, bool, bool]:
+    env_path, override = _resolve_project_env_path(project_root)
+    loaded = load_dotenv(env_path, override=override)
+    return env_path, loaded, override
+
+
 def load_app_config_from_env() -> tuple[dict, Path, str]:
     config_path = _resolve_config_path_from_env()
     app_id = _get_optional_env("KG_APP_ID") or "cardiology_protocols"
@@ -1013,10 +1060,10 @@ def main(
     log_dir: Optional[Path] = None,
     pipeline_phase: Optional[str] = None,
 ):
-    env_path = Path(__file__).resolve().parent.parent / ".env"
-    loaded = load_dotenv(env_path)
-    logger.info("Loading .env from: %s", env_path)
-    logger.info(".env loaded: %s", loaded)
+    project_root = Path(__file__).resolve().parent.parent
+    env_path, loaded, env_override = _load_project_env(project_root)
+    logger.info("Loading environment from: %s", env_path)
+    logger.info("Environment loaded: %s | override=%s", loaded, env_override)
 
     if not _get_optional_env("CONFIG_PATH"):
         raise RuntimeError(
@@ -1660,8 +1707,13 @@ def _resolve_umls_connection_kwargs(
 
 def run_cli() -> Any:
     project_root = Path(__file__).resolve().parent.parent
-    env_path = project_root / ".env"
-    loaded = load_dotenv(env_path)
+    env_path, loaded, env_override = _load_project_env(project_root)
+    logger.info(
+        "Selected environment file: %s | loaded=%s | override=%s",
+        env_path,
+        loaded,
+        env_override,
+    )
 
     app_config, config_path, app_id = load_app_config_from_env()
     kg_config = app_config.get("knowledge_graph", {})

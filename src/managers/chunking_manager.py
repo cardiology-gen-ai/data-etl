@@ -280,11 +280,14 @@ class ChunkingManager(metaclass=Singleton):
                 raise ValueError(f"Prebuilt record {record_id} has no source chunks")
 
             source_key = f"{doc_id}::{normalized_source_type.value}"
+            retrieval_unit_key = f"{source_key}::{record_id}"
             metadata: Dict[str, Any] = {
                 # Keep filename for provenance and legacy compatibility. New
                 # prebuilt replacement uses the location-independent source_key.
                 "filename": str(path),
                 "source_key": source_key,
+                # Globally unique across documents and retrieval representations.
+                "retrieval_unit_key": retrieval_unit_key,
                 "chunk_idx": len(documents),
                 "headers": {"Section": display_title},
                 "n_tokens": 0,
