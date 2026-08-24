@@ -118,3 +118,5 @@ prototype/
 preprocess_quality_artifacts/
 two_document_prototype/
 four_document_prototype/
+
+*.tar.gz

@@ -151,13 +151,18 @@
         "enabled": false,
         "mode": "frozen_artifacts",
         "artifact_workflow": {
-          "action": "delta_plan",
+          "action": "build_current_generalized",
           "scope_name": "four_document_prototype",
-          "document_ids": [],
+          "document_ids": [
+            "Cardiomyopathies_2023",
+            "Cardio-oncology_2022",
+            "Chronic_Coronary_Syndromes_2024",
+            "ESC_EACTS_Myocardial_Revascularization_2018"
+          ],
           "previous_scope_path": "two_document_prototype/umls_relation_artifacts/inputs/local_umls_scope_v1.json",
-          "expected_cui_count": null,
-          "expected_new_cui_count": null,
-          "expected_retired_cui_count": null,
+          "expected_cui_count": 1295,
+          "expected_new_cui_count": 293,
+          "expected_retired_cui_count": 5,
           "umls_version": "2026AA",
           "sources": [
             "SNOMEDCT_US",
@@ -170,7 +175,7 @@
           "max_relations_per_cui": 1000,
           "discovery": {
             "source_profile": "prototype/umls_connections/cm_bridge_feasibility_v2/config/bridge_sources_v1.json",
-            "relation_cache_dir": "umls_test/umls_api_cache/relations",
+            "relation_cache_dir": "four_document_prototype/umls_api_cache/relations",
             "bridge_census_script": "prototype/umls_connections/bridge_feasibility_census_v2.py",
             "api_timeout": 30,
             "api_rate_limit_per_second": 5,
@@ -178,8 +183,8 @@
             "resume_completed_sources": true
           },
           "external_labels": {
-            "historical_label_map": "prototype/umls_connections/cm_bridge_feasibility_v2/external_cui_labels_v1.json",
-            "cache_dir": "umls_test/umls_api_cache/external_concepts",
+            "historical_label_map": "two_document_prototype/umls_relation_artifacts/current_build_v1/external_labels/external_cui_labels_v1.json",
+            "cache_dir": "four_document_prototype/umls_api_cache/external_concepts",
             "api_timeout": 30,
             "api_rate_limit_per_second": 5,
             "progress_every": 25,
@@ -207,8 +212,12 @@
             "bridge_final_policy": "prototype/umls_connections/cm_bridge_feasibility_v2/config/relation_pair_policy_v1_1.json",
             "bridge_generalized_policy": "prototype/umls_connections/config/relation_pair_policy_v2_general.json",
             "frozen_v1_1_policy_sha256": "791f4451f21fd2e188b0a0946a47227be8ef753d37bbe9ac3f29f9d14c5661ec",
-            "frozen_c3_manifest_sha256": "34780109ce08a85686729b759cd1b78dd67574c6958bc5662c606eb3795ab69b",
-            "direct_unmapped_relation_mode": "reject"
+            "frozen_c3_manifest_sha256": "9680795df58764adc01f270ba327d176fd7b62fa922deb2dd9d471c7469ee624",
+            "direct_unmapped_relation_mode": "reject",
+            "incremental_direct_rebuilder": "prototype/umls_connections/incremental_direct_rebuild_v1.py"
+          },
+          "previous_current_build": {
+            "root": "two_document_prototype/umls_relation_artifacts/current_build_v1"
           }
         },
         "doc_id": null,

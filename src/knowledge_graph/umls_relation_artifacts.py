@@ -243,12 +243,19 @@ class DeltaDiscoveryPaths:
 
 
 @dataclass(frozen=True)
+class PreviousCurrentBuildPaths:
+    # Frozen previous-corpus current-build used as incremental baseline.
+    root: Path
+
+
+@dataclass(frozen=True)
 class CurrentArtifactBuildPaths:
     """Reusable builders for the current-scope artifact stage."""
 
     direct_census_script: Path
     bridge_prelabel_builder: Path
     bridge_prelabel_policy: Path
+    incremental_direct_rebuilder: Path | None = None
     direct_unmapped_relation_mode: str = "error"
 
 
@@ -402,7 +409,7 @@ def _membership_label(document_ids: Sequence[str] | None) -> str:
 def _require_historical_regression_pass(
     report_path: Path,
     *,
-    previous_scope_path: Path,
+    historical_scope_path: Path,
 ) -> dict[str, Any]:
     if not report_path.is_file():
         raise FileNotFoundError(
@@ -421,13 +428,151 @@ def _require_historical_regression_pass(
     expected_scope_hash = _clean(
         ((report.get("bridge") or {}).get("historical_scope_sha256"))
     )
-    actual_scope_hash = _sha256_file(previous_scope_path)
+    # The regression report fingerprints the historical scope used by the
+    # frozen bridge regression builder.  This is intentionally distinct from
+    # previous_scope_path, which is the prior corpus scope used only for
+    # current-vs-previous delta computation.
+    actual_scope_hash = _sha256_file(historical_scope_path)
     if expected_scope_hash and expected_scope_hash != actual_scope_hash:
         raise RuntimeError(
             "Historical scope hash changed since regression: "
             f"expected={expected_scope_hash}, actual={actual_scope_hash}"
         )
     return report
+
+
+def _validate_previous_current_build(
+    *,
+    previous_scope_path: Path,
+    paths: PreviousCurrentBuildPaths,
+    sources: Sequence[str],
+) -> dict[str, Any]:
+    # Validate the previous current_build_v1 as an offline frozen baseline.
+    root = paths.root
+    scope_index = _scope_cui_index(previous_scope_path)
+    scope_sha = _sha256_file(previous_scope_path)
+    scope_count = len(scope_index)
+
+    required = [
+        root / "prelabel_build_report.json",
+        root / "direct_census" / "manifest.json",
+        root / "direct_artifact" / "manifest.json",
+        root / "direct_artifact" / "pair_evidence.jsonl",
+        root / "bridge_evidence" / "manifest.json",
+        root.parent / "delta_discovery_v1" / "manifest.json",
+    ]
+    for source in sources:
+        required.extend(
+            [
+                root / "direct_census" / source / "direct_arcs.json",
+                root / "direct_census" / source / "direct_edges.json",
+                root / "direct_census" / source / "summary.json",
+                root
+                / "bridge_evidence"
+                / source
+                / "collapsed_first_hop_assertions.json",
+                root / "bridge_evidence" / source / "summary.json",
+            ]
+        )
+
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            "Previous current-build baseline is incomplete; missing: "
+            + ", ".join(missing[:20])
+        )
+
+    report_path = root / "prelabel_build_report.json"
+    report = _read_json(report_path)
+    report_scope_sha = _clean(report.get("current_scope_sha256"))
+    report_scope_count = int(report.get("current_cui_count") or -1)
+    if report_scope_sha != scope_sha or report_scope_count != scope_count:
+        raise RuntimeError(
+            "Previous current-build scope mismatch: "
+            f"scope_sha={scope_sha}, report_sha={report_scope_sha}, "
+            f"scope_count={scope_count}, report_count={report_scope_count}"
+        )
+
+    safety = report.get("safety") or {}
+    if (
+        safety.get("umls_api_calls")
+        or safety.get("neo4j_reads")
+        or safety.get("neo4j_writes")
+        or safety.get("retrieval_metrics_used")
+    ):
+        raise RuntimeError(
+            "Previous current-build report contains unsafe flags: "
+            f"{safety}"
+        )
+
+    bridge_manifest_path = root / "bridge_evidence" / "manifest.json"
+    bridge_manifest = _read_json(bridge_manifest_path)
+    if (
+        _clean(bridge_manifest.get("current_scope_sha256")) != scope_sha
+        or int(bridge_manifest.get("current_cui_count") or -1) != scope_count
+    ):
+        raise RuntimeError(
+            "Previous bridge-evidence manifest does not match previous scope"
+        )
+
+    configured_sources = [str(x).strip() for x in sources if str(x).strip()]
+    manifest_sources = [
+        str(x).strip()
+        for x in (bridge_manifest.get("sources") or [])
+        if str(x).strip()
+    ]
+    if set(manifest_sources) != set(configured_sources):
+        raise RuntimeError(
+            "Previous bridge-evidence sources differ from configured sources: "
+            f"previous={sorted(manifest_sources)}, "
+            f"configured={sorted(configured_sources)}"
+        )
+
+    delta_manifest_path = root.parent / "delta_discovery_v1" / "manifest.json"
+    expected_delta_sha = _clean(report.get("delta_discovery_manifest_sha256"))
+    actual_delta_sha = _sha256_file(delta_manifest_path)
+    if expected_delta_sha and expected_delta_sha != actual_delta_sha:
+        raise RuntimeError(
+            "Previous current-build provenance chain is broken: "
+            "delta_discovery manifest hash mismatch "
+            f"expected={expected_delta_sha}, actual={actual_delta_sha}"
+        )
+
+    return {
+        "valid": True,
+        "mode": "validated_previous_current_build",
+        "root": str(root.resolve()),
+        "root_scope_path": str(previous_scope_path.resolve()),
+        "root_scope_sha256": scope_sha,
+        "root_scope_cui_count": scope_count,
+        "prelabel_build_report": str(report_path.resolve()),
+        "prelabel_build_report_sha256": _sha256_file(report_path),
+        "direct_census_manifest": str(
+            (root / "direct_census" / "manifest.json").resolve()
+        ),
+        "direct_census_manifest_sha256": _sha256_file(
+            root / "direct_census" / "manifest.json"
+        ),
+        "direct_artifact_manifest": str(
+            (root / "direct_artifact" / "manifest.json").resolve()
+        ),
+        "direct_artifact_manifest_sha256": _sha256_file(
+            root / "direct_artifact" / "manifest.json"
+        ),
+        "bridge_evidence_manifest": str(bridge_manifest_path.resolve()),
+        "bridge_evidence_manifest_sha256": _sha256_file(
+            bridge_manifest_path
+        ),
+        "delta_discovery_manifest": str(delta_manifest_path.resolve()),
+        "delta_discovery_manifest_sha256": actual_delta_sha,
+        "sources": configured_sources,
+        "safety": {
+            "umls_api_calls": False,
+            "neo4j_reads": False,
+            "neo4j_writes": False,
+            "retrieval_metrics_used": False,
+        },
+    }
 
 
 def build_delta_discovery_plan(
@@ -437,6 +582,7 @@ def build_delta_discovery_plan(
     regression_report_path: Path,
     historical_paths: HistoricalRegressionPaths,
     discovery_paths: DeltaDiscoveryPaths,
+    previous_build_paths: PreviousCurrentBuildPaths | None = None,
     sources: Sequence[str],
     umls_version: str,
     max_relations_per_cui: int,
@@ -445,7 +591,8 @@ def build_delta_discovery_plan(
     """Build a read-only, cache-aware plan for the new-CUI relation census."""
 
     _require_historical_regression_pass(
-        regression_report_path, previous_scope_path=previous_scope_path
+        regression_report_path,
+        historical_scope_path=historical_paths.historical_scope,
     )
 
     current = _scope_cui_index(current_scope_path)
@@ -521,6 +668,16 @@ def build_delta_discovery_plan(
                 f"{historical_source_checks[source]}"
             )
 
+    previous_build_validation: dict[str, Any] | None = None
+    baseline_mode = "complete_previous_relation_cache"
+    if previous_build_paths is not None:
+        previous_build_validation = _validate_previous_current_build(
+            previous_scope_path=previous_scope_path,
+            paths=previous_build_paths,
+            sources=configured_sources,
+        )
+        baseline_mode = "validated_previous_current_build"
+
     cache_dir = discovery_paths.relation_cache_dir
     cache_coverage: dict[str, Any] = {}
     historical_cache_complete = True
@@ -564,13 +721,19 @@ def build_delta_discovery_plan(
             "new_missing_or_invalid_cuis": missing_new,
         }
 
+    baseline_ready = bool(
+        historical_cache_complete or previous_build_validation
+    )
+
     membership_counts: Counter[str] = Counter(
         _membership_label(current[cui].get("document_ids")) for cui in new_cuis
     )
 
     plan = {
         "schema_version": DELTA_PLAN_SCHEMA_VERSION,
-        "ready_for_discovery": bool(historical_cache_complete),
+        "ready_for_discovery": baseline_ready,
+        "baseline_mode": baseline_mode,
+        "previous_current_build": previous_build_validation,
         "safety": {
             "umls_api_calls": False,
             "neo4j_reads": False,
@@ -606,6 +769,9 @@ def build_delta_discovery_plan(
         "relation_cache": {
             "path": str(cache_dir.resolve()),
             "historical_cache_complete": historical_cache_complete,
+            "historical_cache_required_for_discovery": (
+                previous_build_validation is None
+            ),
             "coverage_by_source": cache_coverage,
             "new_top_level_relation_fetches_estimated": total_new_missing,
             "note": (
@@ -618,15 +784,19 @@ def build_delta_discovery_plan(
     }
     _write_json(output_path, plan)
 
-    if not historical_cache_complete:
+    if not baseline_ready:
         raise RuntimeError(
-            "Historical relation cache is incomplete for the frozen 584-CUI scope; "
-            f"see {output_path}. Refusing delta discovery to avoid old-CUI API drift."
+            "Previous relation baseline is incomplete: neither a complete "
+            "previous-scope relation cache nor a validated previous "
+            "current_build_v1 is available. "
+            f"See {output_path}. Refusing delta discovery to avoid old-CUI API drift."
         )
 
     logger.info(
-        "UMLS relation delta plan ready | current=%d | historical=%d | new=%d | "
-        "retired=%d | estimated_top_level_fetches=%d",
+        "UMLS relation delta plan ready | baseline=%s | current=%d | "
+        "historical=%d | new=%d | retired=%d | "
+        "estimated_top_level_fetches=%d",
+        baseline_mode,
         len(current_cuis),
         len(previous_cuis),
         len(new_cuis),
@@ -2599,12 +2769,13 @@ def run_current_prelabel_build(
     sources: Sequence[str],
     umls_version: str,
     max_relations_per_cui: int,
+    previous_build_paths: PreviousCurrentBuildPaths | None = None,
 ) -> dict[str, Any]:
     """Build current DIRECT + pre-label BRIDGE artifacts without API or Neo4j writes."""
 
     _require_historical_regression_pass(
         out_root / "historical_regression_v1" / "regression_report.json",
-        previous_scope_path=historical_paths.historical_scope,
+        historical_scope_path=historical_paths.historical_scope,
     )
     delta_root = out_root / "delta_discovery_v1"
     delta_manifest = _require_delta_discovery_complete(
@@ -2629,31 +2800,87 @@ def run_current_prelabel_build(
     ):
         shutil.rmtree(path, ignore_errors=True)
 
+    bridge_baseline_root = historical_paths.bridge_root
+    if previous_build_paths is not None:
+        bridge_baseline_root = previous_build_paths.root / "bridge_evidence"
+        if not (bridge_baseline_root / "manifest.json").is_file():
+            raise FileNotFoundError(
+                "Previous current-build BRIDGE evidence is missing: "
+                f"{bridge_baseline_root}"
+            )
+
     evidence_manifest = build_current_bridge_evidence_root(
         current_scope_path=current_scope_path,
-        historical_bridge_root=historical_paths.bridge_root,
+        historical_bridge_root=bridge_baseline_root,
         delta_discovery_root=delta_root,
         sources=sources,
         output_root=bridge_evidence_root,
     )
 
-    direct_cmd = [
-        sys.executable,
-        str(build_paths.direct_census_script.resolve()),
-        "--local-scope",
-        str(current_scope_path.resolve()),
-        "--source-profile",
-        str(discovery_paths.source_profile.resolve()),
-        "--cache-dir",
-        str(discovery_paths.relation_cache_dir.resolve()),
-        "--output-dir",
-        str(direct_census_dir),
-        "--max-relations-per-cui",
-        str(max_relations_per_cui),
-        "--require-complete-cache",
-    ]
-    for source in sources:
-        direct_cmd.extend(["--source", source])
+    if previous_build_paths is not None:
+        if build_paths.incremental_direct_rebuilder is None:
+            raise ValueError(
+                "artifact_build.incremental_direct_rebuilder is required "
+                "when previous_current_build is configured"
+            )
+        delta_plan_path = out_root / "delta_plan_v1.json"
+        if not delta_plan_path.is_file():
+            raise FileNotFoundError(delta_plan_path)
+        delta_plan = _read_json(delta_plan_path)
+        previous_scope_raw = _clean(
+            (delta_plan.get("scope") or {}).get("historical_scope_path")
+        )
+        if not previous_scope_raw:
+            raise RuntimeError(
+                "delta_plan_v1.json does not contain historical_scope_path"
+            )
+        previous_scope_path = Path(previous_scope_raw)
+        if not previous_scope_path.is_file():
+            raise FileNotFoundError(previous_scope_path)
+
+        direct_cmd = [
+            sys.executable,
+            str(build_paths.incremental_direct_rebuilder.resolve()),
+            "--current-scope",
+            str(current_scope_path.resolve()),
+            "--previous-scope",
+            str(previous_scope_path.resolve()),
+            "--delta-plan",
+            str(delta_plan_path.resolve()),
+            "--previous-direct-census",
+            str((previous_build_paths.root / "direct_census").resolve()),
+            "--previous-bridge-evidence",
+            str((previous_build_paths.root / "bridge_evidence").resolve()),
+            "--source-profile",
+            str(discovery_paths.source_profile.resolve()),
+            "--cache-dir",
+            str(discovery_paths.relation_cache_dir.resolve()),
+            "--output-dir",
+            str(direct_census_dir),
+            "--max-relations-per-cui",
+            str(max_relations_per_cui),
+            "--require-complete-delta-cache",
+        ]
+        for source in sources:
+            direct_cmd.extend(["--source", source])
+    else:
+        direct_cmd = [
+            sys.executable,
+            str(build_paths.direct_census_script.resolve()),
+            "--local-scope",
+            str(current_scope_path.resolve()),
+            "--source-profile",
+            str(discovery_paths.source_profile.resolve()),
+            "--cache-dir",
+            str(discovery_paths.relation_cache_dir.resolve()),
+            "--output-dir",
+            str(direct_census_dir),
+            "--max-relations-per-cui",
+            str(max_relations_per_cui),
+            "--require-complete-cache",
+        ]
+        for source in sources:
+            direct_cmd.extend(["--source", source])
     _run_builder(direct_cmd, cwd=project_root)
 
     direct_artifact_cmd = [
@@ -2685,10 +2912,20 @@ def run_current_prelabel_build(
     bridge_cmd.extend(["--sources", *sources])
     _run_builder(bridge_cmd, cwd=project_root)
 
+    reusable_label_map = historical_paths.external_label_map
+    if previous_build_paths is not None:
+        previous_label_map = (
+            previous_build_paths.root
+            / "external_labels"
+            / "external_cui_labels_v1.json"
+        )
+        if previous_label_map.is_file():
+            reusable_label_map = previous_label_map
+
     label_plan = build_external_label_plan(
         retained_external_cuis_path=bridge_prelabel_dir
         / "retained_external_cuis.txt",
-        historical_label_map_path=historical_paths.external_label_map,
+        historical_label_map_path=reusable_label_map,
         umls_version=umls_version,
         output_dir=label_plan_dir,
     )
@@ -2745,6 +2982,19 @@ def run_current_prelabel_build(
             "artifact_dir": str(bridge_prelabel_dir),
         },
         "bridge_evidence": evidence_manifest.get("totals", {}),
+        "incremental_baseline": {
+            "enabled": previous_build_paths is not None,
+            "previous_current_build_root": (
+                str(previous_build_paths.root.resolve())
+                if previous_build_paths is not None
+                else None
+            ),
+            "bridge_baseline_root": str(bridge_baseline_root.resolve()),
+            "direct_census_schema": (
+                _read_json(direct_census_dir / "manifest.json") or {}
+            ).get("schema_version"),
+            "reusable_external_label_map": str(reusable_label_map.resolve()),
+        },
         "external_label_plan": {
             k: v
             for k, v in label_plan.items()
@@ -2956,6 +3206,7 @@ def run_umls_relation_artifact_workflow(
     previous_scope_path: Path | None = None,
     historical_regression_paths: HistoricalRegressionPaths | None = None,
     delta_discovery_paths: DeltaDiscoveryPaths | None = None,
+    previous_current_build_paths: PreviousCurrentBuildPaths | None = None,
     current_artifact_build_paths: CurrentArtifactBuildPaths | None = None,
     external_label_resolution_paths: ExternalLabelResolutionPaths | None = None,
     current_final_build_paths: CurrentFinalBuildPaths | None = None,
@@ -3058,6 +3309,7 @@ def run_umls_relation_artifact_workflow(
             ),
             historical_paths=historical_regression_paths,
             discovery_paths=delta_discovery_paths,
+            previous_build_paths=previous_current_build_paths,
             sources=sources,
             umls_version=umls_version,
             max_relations_per_cui=max_relations_per_cui,
@@ -3112,6 +3364,7 @@ def run_umls_relation_artifact_workflow(
             sources=sources,
             umls_version=umls_version,
             max_relations_per_cui=max_relations_per_cui,
+            previous_build_paths=previous_current_build_paths,
         )
         result["current_prelabel_report"] = str(
             out_root / "current_build_v1" / "prelabel_build_report.json"
@@ -3275,6 +3528,31 @@ def run_umls_relation_artifact_workflow_from_config(
             bridge_builder=req("bridge_builder"),
         )
 
+    previous_build_paths: PreviousCurrentBuildPaths | None = None
+    if action.lower() in {
+        "delta_plan",
+        "delta_discovery",
+        "build_current_prelabel",
+    }:
+        previous_build_cfg = cfg.get("previous_current_build")
+        if previous_build_cfg is not None:
+            if not isinstance(previous_build_cfg, Mapping):
+                raise ValueError(
+                    "umls_connections.artifact_workflow.previous_current_build "
+                    "must be an object when configured"
+                )
+            previous_build_root = _resolve_project_path(
+                previous_build_cfg.get("root"),
+                project_root=project_root,
+                required=True,
+            )
+            assert previous_build_root is not None
+            if not previous_build_root.is_dir():
+                raise FileNotFoundError(previous_build_root)
+            previous_build_paths = PreviousCurrentBuildPaths(
+                root=previous_build_root
+            )
+
     delta_paths: DeltaDiscoveryPaths | None = None
     discovery_cfg = cfg.get("discovery") or {}
     if action.lower() in {"delta_plan", "delta_discovery", "build_current_prelabel"}:
@@ -3332,10 +3610,16 @@ def run_umls_relation_artifact_workflow_from_config(
                     "umls_connections.artifact_workflow.artifact_build."
                     "direct_unmapped_relation_mode must be 'error' or 'reject'"
                 )
+            incremental_direct_rebuilder = None
+            if build_cfg.get("incremental_direct_rebuilder") not in (None, ""):
+                incremental_direct_rebuilder = build_req(
+                    "incremental_direct_rebuilder"
+                )
             build_paths = CurrentArtifactBuildPaths(
                 direct_census_script=build_req("direct_census_script"),
                 bridge_prelabel_builder=build_req("bridge_prelabel_builder"),
                 bridge_prelabel_policy=build_req("bridge_prelabel_policy"),
+                incremental_direct_rebuilder=incremental_direct_rebuilder,
                 direct_unmapped_relation_mode=direct_unmapped_relation_mode,
             )
         elif action.lower() == "build_current_final":
@@ -3409,6 +3693,7 @@ def run_umls_relation_artifact_workflow_from_config(
         previous_scope_path=previous_scope_path,
         historical_regression_paths=regression_paths,
         delta_discovery_paths=delta_paths,
+        previous_current_build_paths=previous_build_paths,
         current_artifact_build_paths=build_paths,
         external_label_resolution_paths=external_label_paths,
         current_final_build_paths=final_build_paths,
