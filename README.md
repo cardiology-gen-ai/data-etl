@@ -1764,7 +1764,7 @@ KG_PIPELINE_PHASE=entities python src/main_graph.py
 KG_PIPELINE_PHASE=normalization python src/main_graph.py
 
 # 6. Tests
-PYTHONPATH="$PWD/src" python -m pytest -q
+python -m pytest -q
 ```
 
 If the environment is outside `data-etl`, replace `python` with the appropriate interpreter path, e.g.:

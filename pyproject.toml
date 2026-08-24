@@ -48,6 +48,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+test = [
+    "pytest>=9,<10"
+]
 normalization = [
     "rapidfuzz>=3.9.0,<4",
     "requests>=2.32,<3"
