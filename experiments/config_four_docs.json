@@ -151,7 +151,7 @@
         "enabled": false,
         "mode": "frozen_artifacts",
         "artifact_workflow": {
-          "action": "build_current_generalized",
+          "action": "materialize_frozen",
           "scope_name": "four_document_prototype",
           "document_ids": [
             "Cardiomyopathies_2023",
@@ -218,6 +218,101 @@
           },
           "previous_current_build": {
             "root": "two_document_prototype/umls_relation_artifacts/current_build_v1"
+          },
+          "materialization_freeze": {
+            "schema_version": "umls_relation_materialization_freeze_v1",
+            "status": "FROZEN",
+            "scope": {
+              "path": "four_document_prototype/umls_relation_artifacts/inputs/local_umls_scope_v1.json",
+              "sha256": "523cb234a747fb6763a71b4f78e7a8d2079fc21c352080bd1124376d9b2e97a6",
+              "expected_cui_count": 1295,
+              "document_ids": [
+                "Cardio-oncology_2022",
+                "Cardiomyopathies_2023",
+                "Chronic_Coronary_Syndromes_2024",
+                "ESC_EACTS_Myocardial_Revascularization_2018"
+              ]
+            },
+            "direct": {
+              "artifact_dir": "four_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_generalized",
+              "manifest_path": "four_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_generalized/manifest.json",
+              "manifest_sha256": "5aee49fe497481077ffc7077235062774453b8bcb6380b15d71f438fcf772189",
+              "pair_evidence_path": "four_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact_v2_generalized/pair_evidence.jsonl",
+              "pair_evidence_sha256": "dfa1ccbf824352da84a6e5adc90cc2f3ef5f0aedbb94ababb0b45499c38c1b85",
+              "policy_path": "prototype/umls_connections/config/direct_relation_policy_v2_general.json",
+              "policy_sha256": "a0e8dd7cf0b013907f770f8bdf32b490b044f0699554c0db61798b6b2f497b49",
+              "policy_snapshot_path": "four_document_prototype/umls_relation_artifacts/materialization_freeze_v1/policy_snapshots/direct_relation_policy_v2_general.json",
+              "policy_snapshot_sha256": "a0e8dd7cf0b013907f770f8bdf32b490b044f0699554c0db61798b6b2f497b49",
+              "profile": "balanced",
+              "materialized_tiers": [
+                "STRONG",
+                "MEDIUM"
+              ],
+              "expected_all_pair_count": 390,
+              "expected_materialized_pair_count": 262,
+              "expected_tier_counts": {
+                "STRONG": 44,
+                "MEDIUM": 218,
+                "WEAK": 113,
+                "REJECT": 15
+              },
+              "payload_path": "four_document_prototype/umls_relation_artifacts/materialization_freeze_v1/payload/umls_direct_balanced_v2.jsonl",
+              "payload_sha256": "9b8dea70543791c6e0afc21ba798bc173e306df2e3276f1e6a98382d415d722f",
+              "reference_v1_manifest_path": "four_document_prototype/umls_relation_artifacts/current_build_v1/direct_artifact/manifest.json",
+              "reference_v1_manifest_sha256": "491e6f59473b19bb6cb36661c41bf23015e7a5dd62f2660929d924510d986b89"
+            },
+            "bridge": {
+              "artifact_dir": "four_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact",
+              "manifest_path": "four_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact/manifest.json",
+              "manifest_sha256": "ae8ff16395c37325cb9383b9195d1d9af00a0fcc4f990ed60b5f4ef6c69592fc",
+              "pair_evidence_path": "four_document_prototype/umls_relation_artifacts/current_build_v1/bridge_generalized_v2_artifact/pair_evidence.jsonl",
+              "pair_evidence_sha256": "00f7771c45cdbc51b927f42969b0a3ea53ffa0a07593ba1a8672424c7614ae65",
+              "policy_path": "prototype/umls_connections/config/relation_pair_policy_v2_general.json",
+              "policy_sha256": "6729717f637cd9a8d81202056ec9ec59f0dfaf179c667a04ac634dba6e3e6af7",
+              "policy_snapshot_path": "four_document_prototype/umls_relation_artifacts/materialization_freeze_v1/policy_snapshots/relation_pair_policy_v2_general.json",
+              "policy_snapshot_sha256": "6729717f637cd9a8d81202056ec9ec59f0dfaf179c667a04ac634dba6e3e6af7",
+              "profile": "balanced",
+              "materialized_tiers": [
+                "STRONG",
+                "MEDIUM"
+              ],
+              "expected_all_pair_count": 25358,
+              "expected_materialized_pair_count": 5309,
+              "expected_tier_counts": {
+                "STRONG": 573,
+                "MEDIUM": 4736,
+                "WEAK": 17769,
+                "REJECT": 2280
+              },
+              "payload_path": "four_document_prototype/umls_relation_artifacts/materialization_freeze_v1/payload/umls_bridge_balanced_v2_1.jsonl",
+              "payload_sha256": "58e06c7dd1fec95e55b1f47935f8e4da8636eaacf02eddf55bff9c5af7e47490",
+              "reference_v1_1_manifest_path": "four_document_prototype/umls_relation_artifacts/current_build_v1/bridge_final_artifact/manifest.json",
+              "reference_v1_1_manifest_sha256": "9680795df58764adc01f270ba327d176fd7b62fa922deb2dd9d471c7469ee624"
+            },
+            "safety": {
+              "umls_api_calls": false,
+              "neo4j_reads": false,
+              "neo4j_writes": false,
+              "retrieval_metrics_used": false,
+              "benchmark_tuned": false,
+              "weak_edges_materialized": false,
+              "reject_edges_materialized": false
+            },
+            "git": {
+              "head": "51485c761532dbda3079b288aa39cc85c7ce7548",
+              "branch": "test",
+              "status_short": [
+                "M src/managers/chunking_manager.py",
+                "?? apply_multidoc_data_etl_patch.py",
+                "?? experiments/config_four_docs.before_delta_plan_v1.json",
+                "?? experiments/config_four_docs.before_four_doc_global_rebuild_v1.json",
+                "?? experiments/config_four_docs.before_four_doc_label_resolution_v1.json",
+                "?? experiments/config_four_docs.before_freeze_four_doc_v1_1_manifest_v1.json",
+                "?? experiments/config_four_docs.before_previous_build_baseline_v1.json",
+                "?? experiments/config_rag_multidoc_v1.template.json"
+              ]
+            },
+            "manifest_path": "four_document_prototype/umls_relation_artifacts/materialization_freeze_v1/manifest.json"
           }
         },
         "doc_id": null,
